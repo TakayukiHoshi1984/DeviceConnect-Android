@@ -141,4 +141,22 @@ public class HealthProfile extends DConnectProfile implements HealthProfileConst
         setUnsupportedError(response);
         return true;
     }
+
+    // ------------------------------------
+    // セッターメソッド群
+    // ------------------------------------
+
+    /**
+     * レスポンスに心拍数を設定する.
+     * 
+     * @param response レスポンス
+     * @param heartRate 心拍数
+     */
+    public static void setHeartRate(final Intent response, final int heartRate) {
+        response.putExtra(PARAM_HEART_RATE, heartRate);
+    }
+
+    // ------------------------------------
+    // ゲッターメソッド群
+    // ------------------------------------
 }
