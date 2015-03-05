@@ -1319,6 +1319,7 @@ public class SonyCameraDeviceService extends DConnectMessageService {
         if (!direction.equals("in")) {
             if (!direction.equals("out")) {
                 MessageUtils.setInvalidRequestParameterError(response);
+                return true;
             }
         }
         if (!movement.equals("start")) {
@@ -1326,6 +1327,7 @@ public class SonyCameraDeviceService extends DConnectMessageService {
                 if (!movement.equals("1shot")) {
                     if (!movement.equals("max")) {
                         MessageUtils.setInvalidRequestParameterError(response);
+                        return true;
                     }
                 }
             }
@@ -1378,24 +1380,21 @@ public class SonyCameraDeviceService extends DConnectMessageService {
             mLogger.warning("serviceId is invalid. serviceId=" + serviceId);
             mLogger.exiting(this.getClass().getName(), "onGetZoomDiameter");
             MessageUtils.setEmptyServiceIdError(response);
-            sendResponse(response);
             return true;
         }
         if (mAvailableApiList == null) {
             MessageUtils.setUnknownError(response);
-            sendResponse(response);
             return true;
         }
         if (mAvailableApiList.indexOf("getEvent") == -1) {
             MessageUtils.setNotSupportActionError(response);
-            sendResponse(response);
             return true;
         }
-        response.putExtra(DConnectMessage.EXTRA_RESULT, DConnectMessage.RESULT_OK);
+
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                double zoomDiameterParam = 0;
+                double zoomPositionParam = 0;
                 try {
                     JSONObject replyJson = mRemoteApi.getEvent(mWhileFetching);
                     if (isErrorReply(replyJson)) {
@@ -1412,14 +1411,14 @@ public class SonyCameraDeviceService extends DConnectMessageService {
                             }
                             String type = obj.optString("type");
                             if ("zoomInformation".equals(type)) {
-                                zoomDiameterParam = (Double) Double.valueOf(obj.getString("zoomPosition"))
+                                zoomPositionParam = (Double) Double.valueOf(obj.getString("zoomPosition"))
                                         / (Double) VAL_TO_PERCENTAGE;
                                 DecimalFormat decimalFormat = new DecimalFormat("0.0#");
-                                zoomDiameterParam = Double.valueOf(decimalFormat.format(zoomDiameterParam));
+                                zoomPositionParam = Double.valueOf(decimalFormat.format(zoomPositionParam));
                             }
                         }
                         response.putExtra(DConnectMessage.EXTRA_RESULT, DConnectMessage.RESULT_OK);
-                        response.putExtra(SonyCameraZoomProfile.PARAM_ZOOM_DIAMETER, zoomDiameterParam);
+                        response.putExtra(SonyCameraZoomProfile.PARAM_ZOOM_POSITION, zoomPositionParam);
                         sendResponse(request, response);
                     }
                 } catch (IOException e) {
