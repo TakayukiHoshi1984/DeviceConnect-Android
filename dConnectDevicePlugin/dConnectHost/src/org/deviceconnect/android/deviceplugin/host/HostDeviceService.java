@@ -1195,20 +1195,24 @@ public class HostDeviceService extends DConnectMessageService implements
     /**
      * Mediaの再再生.
      * 
-     * @return SessionID
+     * @return SessionID エラー時は-1
      */
     public int resumeMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
-            try {
-                mMediaStatus = MEDIA_PLAYER_PLAY;
-                mMediaPlayer.start();
-            } catch (IllegalStateException e) {
-                if (BuildConfig.DEBUG) {
-                    e.printStackTrace();
+            if (mMediaStatus != MEDIA_PLAYER_STOP) {
+                try {
+                    mMediaStatus = MEDIA_PLAYER_PLAY;
+                    mMediaPlayer.start();
+                } catch (IllegalStateException e) {
+                    if (BuildConfig.DEBUG) {
+                        e.printStackTrace();
+                    }
                 }
+                sendOnStatusChangeEvent("play");
+                return mMediaPlayer.getAudioSessionId();
+            } else {
+                return -1;
             }
-            sendOnStatusChangeEvent("play");
-            return mMediaPlayer.getAudioSessionId();
         } else if (mSetMediaType == MEDIA_TYPE_VIDEO) {
             mMediaStatus = MEDIA_PLAYER_PLAY;
             Intent mIntent = new Intent(VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER);
@@ -1229,6 +1233,9 @@ public class HostDeviceService extends DConnectMessageService implements
     public int playMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
             try {
+                if (mMediaStatus == MEDIA_PLAYER_PAUSE) {
+                    return -1;
+                }
                 if (mMediaStatus != MEDIA_PLAYER_PAUSE
                         && mMediaStatus != MEDIA_PLAYER_SET
                         && mMediaStatus != MEDIA_PLAYER_COMPLETE) {
@@ -1285,21 +1292,24 @@ public class HostDeviceService extends DConnectMessageService implements
     /**
      * メディアの停止.
      * 
-     * @return セッションID
+     * @return セッションID エラー時は-1
      */
     public int pauseMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
-            try {
-                mMediaStatus = MEDIA_PLAYER_PAUSE;
-                mMediaPlayer.pause();
-            } catch (IllegalStateException e) {
-                if (BuildConfig.DEBUG) {
-                    e.printStackTrace();
+            if (mMediaStatus != MEDIA_PLAYER_STOP) {
+                try {
+                    mMediaStatus = MEDIA_PLAYER_PAUSE;
+                    mMediaPlayer.pause();
+                } catch (IllegalStateException e) {
+                    if (BuildConfig.DEBUG) {
+                        e.printStackTrace();
+                    }
                 }
+                sendOnStatusChangeEvent("pause");
+                return mMediaPlayer.getAudioSessionId();
+            } else {
+                return -1;
             }
-            sendOnStatusChangeEvent("pause");
-            return mMediaPlayer.getAudioSessionId();
-
         } else if (mSetMediaType == MEDIA_TYPE_VIDEO) {
             mMediaStatus = MEDIA_PLAYER_PAUSE;
             Intent mIntent = new Intent(VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER);
