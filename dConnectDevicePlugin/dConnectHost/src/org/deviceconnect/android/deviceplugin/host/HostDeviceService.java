@@ -1195,7 +1195,7 @@ public class HostDeviceService extends DConnectMessageService implements
     /**
      * Mediaの再再生.
      * 
-     * @return SessionID エラー時は-1
+     * @return SessionID 
      */
     public int resumeMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
@@ -1228,35 +1228,24 @@ public class HostDeviceService extends DConnectMessageService implements
     /**
      * メディアの再生.
      * 
-     * @return セッションID
+     * @return セッションID 
      */
     public int playMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
             try {
-                if (mMediaStatus == MEDIA_PLAYER_PAUSE) {
-                    return -1;
-                }
-                if (mMediaStatus != MEDIA_PLAYER_PAUSE
-                        && mMediaStatus != MEDIA_PLAYER_SET
-                        && mMediaStatus != MEDIA_PLAYER_COMPLETE) {
-                    mMediaPlayer.prepare();
-                }
                 if (mMediaStatus == MEDIA_PLAYER_STOP) {
                     mMediaPlayer.seekTo(0);
                 }
                 mMediaPlayer.start();
                 mMediaStatus = MEDIA_PLAYER_PLAY;
-            } catch (IOException e) {
-                if (BuildConfig.DEBUG) {
-                    e.printStackTrace();
-                }
+                sendOnStatusChangeEvent("play");
+                return mMediaPlayer.getAudioSessionId();
             } catch (IllegalStateException e) {
                 if (BuildConfig.DEBUG) {
                     e.printStackTrace();
                 }
             }
-            sendOnStatusChangeEvent("play");
-            return mMediaPlayer.getAudioSessionId();
+            return -1;
         } else if (mSetMediaType == MEDIA_TYPE_VIDEO) {
             String className = getClassnameOfTopActivity();
 
@@ -1292,7 +1281,7 @@ public class HostDeviceService extends DConnectMessageService implements
     /**
      * メディアの停止.
      * 
-     * @return セッションID エラー時は-1
+     * @return セッションID
      */
     public int pauseMedia() {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
@@ -1428,6 +1417,7 @@ public class HostDeviceService extends DConnectMessageService implements
                 mMediaPlayer.stop();
                 mMediaStatus = MEDIA_PLAYER_STOP;
                 sendOnStatusChangeEvent("stop");
+                mMediaPlayer.prepareAsync();
             } catch (IllegalStateException e) {
                 if (BuildConfig.DEBUG) {
                     e.printStackTrace();
