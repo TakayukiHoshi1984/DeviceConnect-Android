@@ -1402,12 +1402,23 @@ public class SonyCameraDeviceService extends DConnectMessageService {
                         sendErrorResponse(request, response);
                     } else {
                         JSONArray resultsObj = replyJson.getJSONArray("result");
-                        replyJson = resultsObj.getJSONObject(2);
-                        zoomDiameterParam = (Double) Double.valueOf(replyJson.getString("zoomPosition"))
-                                / (Double) VAL_TO_PERCENTAGE;
-                        DecimalFormat decimalFormat = new DecimalFormat("0.0#");
-                        zoomDiameterParam = Double.valueOf(decimalFormat.format(zoomDiameterParam));
-
+                        int size = resultsObj.length();
+                        for (int i = 0; i < size; i++) {
+                            JSONObject obj = null;
+                            try {
+                                obj = resultsObj.getJSONObject(i);
+                            } catch (Exception e) {
+                                continue;
+                            }
+                            String type = obj.optString("type");
+                            if ("zoomInformation".equals(type)) {
+                                zoomDiameterParam = (Double) Double.valueOf(obj.getString("zoomPosition"))
+                                        / (Double) VAL_TO_PERCENTAGE;
+                                DecimalFormat decimalFormat = new DecimalFormat("0.0#");
+                                zoomDiameterParam = Double.valueOf(decimalFormat.format(zoomDiameterParam));
+                            }
+                        }
+                        response.putExtra(DConnectMessage.EXTRA_RESULT, DConnectMessage.RESULT_OK);
                         response.putExtra(SonyCameraZoomProfile.PARAM_ZOOM_DIAMETER, zoomDiameterParam);
                         sendResponse(request, response);
                     }

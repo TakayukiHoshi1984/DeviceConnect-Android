@@ -28,7 +28,7 @@ public class CameraProfile extends DConnectProfile {
     /**
      * パラメータ:{@value} .
      */
-    public static final String PARAM_ZOOM_DIAMETER = "zoomdiameter";
+    public static final String PARAM_ZOOM_DIAMETER = "zoomDiameter";
 
     @Override
     public String getProfileName() {
