@@ -32,6 +32,7 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostProximityProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostServiceDiscoveryProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostSettingsProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostSystemProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostVibrationProfile;
 import org.deviceconnect.android.deviceplugin.host.video.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.video.VideoPlayer;
@@ -129,6 +130,7 @@ public class HostDeviceService extends DConnectMessageService {
         addProfile(new HostVibrationProfile());
         addProfile(new HostProximityProfile());
         addProfile(new HostCanvasProfile());
+        addProfile(new HostTouchProfile());
 
         // バッテリー関連の処理と値の保持
         mHostBatteryManager = new HostBatteryManager();
