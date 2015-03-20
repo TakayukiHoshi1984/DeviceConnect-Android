@@ -52,6 +52,7 @@ public class DConnectServiceDiscoveryProfile extends ServiceDiscoveryProfile {
             return onGetServices(request, response);
         } else {
             MessageUtils.setUnknownAttributeError(response);
+            ((DConnectService) getContext()).sendResponse(request, response);
             return true;
         }
     }

@@ -165,4 +165,61 @@ public class FailServiceDiscoveryProfileTestCase extends RESTfulDConnectTestCase
             fail("Exception in JSONObject." + e.getMessage());
         }
     }
+
+    /**
+     * GETメソッドでサービス追加イベント登録を行う.
+     * 
+     * <pre>
+     * 【HTTP通信】
+     * Method: GET
+     * Path: /servicediscovery/onservicechange
+     * </pre>
+     * 
+     * <pre>
+     * 【期待する動作】
+     * ・resultに1が返ってくること。
+     * </pre>
+     */
+    public void testOnServiceChangeInvalidMethodGet() {
+        URIBuilder builder = TestURIBuilder.createURIBuilder();
+        builder.setProfile(ServiceDiscoveryProfileConstants.PROFILE_NAME);
+        builder.setAttribute(ServiceDiscoveryProfileConstants.ATTRIBUTE_ON_SERVICE_CHANGE);
+        builder.addParameter(AuthorizationProfileConstants.PARAM_ACCESS_TOKEN, getAccessToken());
+        try {
+            HttpUriRequest request = new HttpGet(builder.toString());
+            JSONObject root = sendRequest(request);
+            assertResultError(ErrorCode.UNKNOWN_ATTRIBUTE.getCode(), root);
+        } catch (JSONException e) {
+            fail("Exception in JSONObject." + e.getMessage());
+        }
+    }
+
+    /**
+     * POSTメソッドでサービス追加イベント登録を行う.
+     * 
+     * <pre>
+     * 【HTTP通信】
+     * Method: POST
+     * Path: /servicediscovery/onservicechange
+     * </pre>
+     * 
+     * <pre>
+     * 【期待する動作】
+     * ・resultに1が返ってくること。
+     * </pre>
+     */
+    public void testOnServiceChangeInvalidMethodPost() {
+        URIBuilder builder = TestURIBuilder.createURIBuilder();
+        builder.setProfile(ServiceDiscoveryProfileConstants.PROFILE_NAME);
+        builder.setAttribute(ServiceDiscoveryProfileConstants.ATTRIBUTE_ON_SERVICE_CHANGE);
+        builder.addParameter(AuthorizationProfileConstants.PARAM_ACCESS_TOKEN, getAccessToken());
+        try {
+            HttpUriRequest request = new HttpPost(builder.toString());
+            JSONObject root = sendRequest(request);
+            assertResultError(ErrorCode.NOT_SUPPORT_ACTION.getCode(), root);
+        } catch (JSONException e) {
+            fail("Exception in JSONObject." + e.getMessage());
+        }
+    }
+
 }
