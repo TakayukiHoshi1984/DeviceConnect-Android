@@ -24,6 +24,8 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostConnectProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceOrientationProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileDescriptorProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostLightProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostMediaPlayerProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostMediaStreamingRecordingProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostNotificationProfile;
@@ -33,7 +35,6 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostServiceDiscoveryP
 import org.deviceconnect.android.deviceplugin.host.profile.HostSettingsProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostSystemProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
-import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostVibrationProfile;
 import org.deviceconnect.android.deviceplugin.host.video.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.video.VideoPlayer;
@@ -146,6 +147,7 @@ public class HostDeviceService extends DConnectMessageService {
         addProfile(new HostCanvasProfile());
         addProfile(new HostTouchProfile());
         addProfile(new HostKeyEventProfile());
+        addProfile(new HostLightProfile());
 
         // バッテリー関連の処理と値の保持
         mHostBatteryManager = new HostBatteryManager();
