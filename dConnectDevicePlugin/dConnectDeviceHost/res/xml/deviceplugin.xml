@@ -124,7 +124,7 @@
     <profile name="light" expireperiod="86400000">
         <name lang="ja">ライト</name>
         <description lang="ja">ライトを制御する</description>
-        <name lang="ja">Light</name>
-        <description lang="ja">Control a light</description>
+        <name lang="en">Light</name>
+        <description lang="en">Control a light</description>
     </profile>
 </deviceplugin-provider>
