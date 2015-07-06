@@ -1,21 +1,16 @@
 package org.deviceconnect.android.deviceplugin.host.profile;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.deviceconnect.android.deviceplugin.host.BuildConfig;
+import org.deviceconnect.android.deviceplugin.host.camera.CameraOverlay;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.original.profile.LightProfile;
 import org.deviceconnect.message.intent.message.IntentDConnectMessage;
 
 import android.content.Intent;
-import android.graphics.SurfaceTexture;
-import android.hardware.Camera;
-import android.hardware.Camera.Parameters;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -23,7 +18,6 @@ import android.util.Log;
  * 
  * @author NTT DOCOMO, INC.
  */
-@SuppressWarnings("deprecation")
 public class HostLightProfile extends LightProfile {
 
     /**
@@ -39,7 +33,18 @@ public class HostLightProfile extends LightProfile {
     /**
      * カメラのインスタンス.
      */
-    private Camera mCamera;
+    private CameraOverlay mCamera;
+
+    /**
+     * コンストラクタ.
+     * @param camera カメラ操作するためのインスタンス
+     */
+    public HostLightProfile(final CameraOverlay camera) {
+        if (camera == null) {
+            throw new NullPointerException("camera is null.");
+        }
+        mCamera = camera;
+    }
 
     @Override
     protected boolean onGetLight(final Intent request, final Intent response) {
@@ -49,7 +54,7 @@ public class HostLightProfile extends LightProfile {
         lightParam.putString(PARAM_NAME, LIGHT_NAME);
         lightParam.putString(PARAM_LIGHT_ID, LIGHT_ID);
         lightParam.putString(PARAM_CONFIG, "");
-        lightParam.putBoolean(PARAM_ON, mCamera != null);
+        lightParam.putBoolean(PARAM_ON, mCamera.isLight());
         lightsParam.add(lightParam);
 
         response.putExtra(PARAM_LIGHTS, lightsParam.toArray(new Bundle[lightsParam.size()]));
@@ -69,7 +74,7 @@ public class HostLightProfile extends LightProfile {
             MessageUtils.setInvalidRequestParameterError(response, 
                     "lightId is invalid.");
         } else {
-            turnOnLight();
+            mCamera.turnOnLight();
             setResult(response, IntentDConnectMessage.RESULT_OK);
         }
         return true;
@@ -87,56 +92,10 @@ public class HostLightProfile extends LightProfile {
             MessageUtils.setInvalidRequestParameterError(response, 
                     "lightId is invalid.");
         } else {
-            turnOffLight();
+            mCamera.turnOffLight();
             setResult(response, IntentDConnectMessage.RESULT_OK);
         }
         return true;
-    }
-
-    /**
-     * 端末のLEDライトをONにする.
-     */
-    private synchronized void turnOnLight() {
-        if (mCamera == null) {
-            mCamera = Camera.open();
-
-            Parameters p = mCamera.getParameters();
-            p.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-            mCamera.setParameters(p);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                SurfaceTexture preview = new SurfaceTexture(0);
-                try {
-                    mCamera.setPreviewTexture(preview);
-                } catch (IOException e) {
-                    // Do nothing
-                    if (BuildConfig.DEBUG) {
-                        Log.w("HOST", "", e);
-                    }
-                }
-            }
-            mCamera.startPreview();
-        }
-    }
-
-    /**
-     * 端末のLEDライトをOFFにする.
-     */
-    private synchronized void turnOffLight() {
-        if (mCamera != null) {
-            mCamera.stopPreview();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                try {
-                    mCamera.setPreviewTexture(null);
-                } catch (IOException e) {
-                    // Do nothing
-                    if (BuildConfig.DEBUG) {
-                        Log.w("HOST", "", e);
-                    }
-                }
-            }
-            mCamera.release();
-            mCamera = null;
-        }
     }
 
     /**

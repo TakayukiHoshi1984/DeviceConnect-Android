@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.provider.FileManager;
 
@@ -27,11 +28,15 @@ import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.SurfaceTexture;
 import android.graphics.Typeface;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.hardware.Camera.Parameters;
+import android.os.Build;
 import android.os.Handler;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -42,6 +47,7 @@ import android.widget.TextView;
  * カメラのプレビューをオーバーレイで表示するクラス.
  * @author NTT DOCOMO, INC.
  */
+@SuppressWarnings("deprecation")
 public class CameraOverlay implements Camera.PreviewCallback {
     /**
      * 写真を取るまでの待機時間を定義.
@@ -93,6 +99,16 @@ public class CameraOverlay implements Camera.PreviewCallback {
      * 撮影が終わった後にOverlayを終了するかチェックする
      */
     private boolean mFinishFlag;
+
+    /**
+     * フラッシュライトの状態.
+     * <p>
+     * <ul>
+     * <li>true: フラッシュライトが点灯</li>
+     * <li>false: フラッシュライトが消灯</li>
+     * </ul>
+     */
+    private boolean mLightFlag;
 
     /**
      * 画面回転のイベントを受け付けるレシーバー.
@@ -148,8 +164,17 @@ public class CameraOverlay implements Camera.PreviewCallback {
 
     /**
      * Overlayを表示する.
+     * @throws IOException カメラの起動に失敗した場合に発生
      */
-    public synchronized void show() {
+    public synchronized void show() throws IOException {
+        if (mCamera == null) {
+            mCamera = Camera.open();
+            if (mCamera == null) {
+                // カメラのインスタンスが取得できなかった場合
+                throw new IOException("camera cannot open.");
+            }
+        }
+
         mPreview = new Preview(mContext);
 
         Point size = getDisplaySize();
@@ -166,7 +191,6 @@ public class CameraOverlay implements Camera.PreviewCallback {
         l.y = -size.y / 2;
         mWinMgr.addView(mPreview, l);
 
-        mCamera = Camera.open();
         mPreview.switchCamera(mCamera);
         mCamera.setPreviewCallback(this);
 
@@ -199,15 +223,25 @@ public class CameraOverlay implements Camera.PreviewCallback {
     }
 
     /**
+     * フラッシュライトの状態を取得する.
+     * @return フラッシュライトが点灯している場合はtrue、それ以外はfalse
+     */
+    public synchronized boolean isLight() {
+        return mLightFlag;
+    }
+
+    /**
      * Overlayを非表示にする.
      */
     public synchronized void hide() {
         if (mCamera != null) {
             mPreview.setCamera(null);
-            mCamera.stopPreview(); 
             mCamera.setPreviewCallback(null);
-            mCamera.release();
-            mCamera = null;
+            mCamera.stopPreview();
+            if (!mLightFlag) {
+                mCamera.release();
+                mCamera = null;
+            }
         }
         if (mPreview != null) {
             mWinMgr.removeView(mPreview);
@@ -227,6 +261,65 @@ public class CameraOverlay implements Camera.PreviewCallback {
      */
     public synchronized void setFinishFlag(final boolean flag) {
         mFinishFlag = flag;
+    }
+
+    /**
+     * 端末のLEDライトをONにする.
+     */
+    public synchronized void turnOnLight() {
+        if (!isShow() && mCamera == null) {
+            mCamera = Camera.open();
+            if (mCamera == null) {
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                SurfaceTexture preview = new SurfaceTexture(0);
+                try {
+                    mCamera.setPreviewTexture(preview);
+                } catch (IOException e) {
+                    // Do nothing
+                    if (BuildConfig.DEBUG) {
+                        Log.w("HOST", "", e);
+                    }
+                }
+            }
+            mCamera.startPreview();
+        }
+
+        if (mCamera != null && !isLight()) {
+            Parameters p = mCamera.getParameters();
+            p.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            mCamera.setParameters(p);
+        }
+        mLightFlag = true;
+    }
+
+    /**
+     * 端末のLEDライトをOFFにする.
+     */
+    public synchronized void turnOffLight() {
+        if (mCamera != null && isLight()) {
+            Parameters p = mCamera.getParameters();
+            p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+            mCamera.setParameters(p);
+
+            if (!isShow()) {
+                mCamera.stopPreview();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    try {
+                        mCamera.setPreviewTexture(null);
+                    } catch (IOException e) {
+                        // Do nothing
+                        if (BuildConfig.DEBUG) {
+                            Log.w("HOST", "", e);
+                        }
+                    }
+                }
+                mCamera.release();
+                mCamera = null;
+            }
+        }
+        mLightFlag = false;
     }
 
     /**
@@ -331,7 +424,7 @@ public class CameraOverlay implements Camera.PreviewCallback {
     public void onPreviewFrame(final byte[] data, final Camera camera) {
         camera.setPreviewCallback(null);
 
-        if (mServer != null) {
+        if (mServer != null && mPreview != null) {
             int format = mPreview.getPreviewFormat();
             int width = mPreview.getPreviewWidth();
             int height = mPreview.getPreviewHeight();
