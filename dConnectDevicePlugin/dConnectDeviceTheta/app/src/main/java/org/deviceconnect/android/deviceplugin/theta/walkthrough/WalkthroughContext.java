@@ -7,6 +7,7 @@ import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
+import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -21,7 +22,7 @@ import java.util.concurrent.Executors;
 public class WalkthroughContext  {
 
     private static final String TAG = "Walk";
-    private static final int NUM_PRELOAD = 1;
+    private static final int NUM_PRELOAD = 10;
 
     private final File[] mAllFiles;
     private final BitmapLoader mBitmapLoader;
@@ -54,15 +55,17 @@ public class WalkthroughContext  {
             @Override
             public void onLoad(int pos) {
                 Log.d(TAG, "onLoad: " + pos);
-                startVideo();
+                if (pos == NUM_PRELOAD - 1) {
+                    startVideo();
+                }
             }
 
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-//                stop();
-//                mBitmapLoader.reset();
-//                start();
+                stop();
+                mBitmapLoader.reset();
+                start();
             }
 
             @Override
@@ -82,6 +85,8 @@ public class WalkthroughContext  {
                 mPixelBuffer.setRenderer(mRenderer);
             }
         });
+
+        initRendererParam(new Param());
     }
 
     public void setUri(final String uriString) {
@@ -122,7 +127,7 @@ public class WalkthroughContext  {
             @Override
             public void run() {
                 render();
-                stop();
+//                stop();
             }
         }, 0, mInterval);
     }
@@ -161,12 +166,17 @@ public class WalkthroughContext  {
         });
     }
 
-    private File getBitmapFile(final int position) {
-        return mAllFiles[position];
-    }
-
-    private int getSize() {
-        return mAllFiles.length;
+    private void initRendererParam(final Param param) {
+        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
+        builder.setPosition(new Vector3D(
+            (float) param.getCameraX(),
+            (float) param.getCameraY() * -1,
+            (float) param.getCameraZ()));
+        builder.setFov((float) param.getCameraFov());
+        mRenderer.setCamera(builder.create());
+        mRenderer.setSphereRadius((float) param.getSphereSize());
+        mRenderer.setScreenWidth(param.getImageWidth());
+        mRenderer.setScreenHeight(param.getImageHeight());
     }
 
     public void setEventListener(final EventListener listener) {
@@ -308,5 +318,128 @@ public class WalkthroughContext  {
 
         void onError(int pos, Exception e);
 
+    }
+
+    public static class Param {
+
+        double mCameraX;
+
+        double mCameraY;
+
+        double mCameraZ;
+
+        double mCameraYaw;
+
+        double mCameraRoll;
+
+        double mCameraPitch;
+
+        double mCameraFov = 90.0d;
+
+        double mSphereSize = 1.0d;
+
+        int mImageWidth = 480;
+
+        int mImageHeight = 270;
+
+        boolean mStereoMode;
+
+        boolean mVrMode;
+
+        public double getCameraX() {
+            return mCameraX;
+        }
+
+        public void setCameraX(final double x) {
+            mCameraX = x;
+        }
+
+        public double getCameraY() {
+            return mCameraY;
+        }
+
+        public void setCameraY(final double y) {
+            mCameraY = y;
+        }
+
+        public double getCameraZ() {
+            return mCameraZ;
+        }
+
+        public void setCameraZ(final double z) {
+            mCameraZ = z;
+        }
+
+        public double getCameraYaw() {
+            return mCameraYaw;
+        }
+
+        public void setCameraYaw(final double yaw) {
+            mCameraYaw = yaw;
+        }
+
+        public double getCameraRoll() {
+            return mCameraRoll;
+        }
+
+        public void setCameraRoll(final double roll) {
+            mCameraRoll = roll;
+        }
+
+        public double getCameraPitch() {
+            return mCameraPitch;
+        }
+
+        public void setCameraPitch(final double pitch) {
+            mCameraPitch = pitch;
+        }
+
+        public double getCameraFov() {
+            return mCameraFov;
+        }
+
+        public void setCameraFov(final double fov) {
+            mCameraFov = fov;
+        }
+
+        public double getSphereSize() {
+            return mSphereSize;
+        }
+
+        public void setSphereSize(final double size) {
+            mSphereSize = size;
+        }
+
+        public int getImageWidth() {
+            return mImageWidth;
+        }
+
+        public void setImageWidth(final int width) {
+            mImageWidth = width;
+        }
+
+        public int getImageHeight() {
+            return mImageHeight;
+        }
+
+        public void setImageHeight(final int height) {
+            mImageHeight = height;
+        }
+
+        public boolean isStereoMode() {
+            return mStereoMode;
+        }
+
+        public void setStereoMode(final boolean isStereo) {
+            mStereoMode = isStereo;
+        }
+
+        public boolean isVrMode() {
+            return mVrMode;
+        }
+
+        public void setVrMode(final boolean isVr) {
+            mVrMode = isVr;
+        }
     }
 }
