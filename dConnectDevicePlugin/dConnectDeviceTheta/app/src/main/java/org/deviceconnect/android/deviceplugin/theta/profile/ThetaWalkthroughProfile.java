@@ -108,6 +108,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                     mWalkContexts.put(uri, walkContext);
 
                     setResult(response, DConnectMessage.RESULT_OK);
+                    response.putExtra(DConnectProfileConstants.PARAM_URI, uri);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     MessageUtils.setUnknownError(response, e.getMessage());
