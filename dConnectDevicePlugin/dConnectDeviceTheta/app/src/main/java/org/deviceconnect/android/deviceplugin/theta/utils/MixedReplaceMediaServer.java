@@ -32,6 +32,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -96,6 +97,8 @@ public class MixedReplaceMediaServer {
      * List a Server Runnable.
      */
     private final List<ServerRunnable> mRunnables = Collections.synchronizedList(new ArrayList<ServerRunnable>());
+
+    private final Map<String, BlockingQueue<byte[]>> mMediaQueues = new HashMap<String, BlockingQueue<byte[]>>();
 
     /**
      * Server Event Listener.
@@ -220,11 +223,16 @@ public class MixedReplaceMediaServer {
             return;
         }
         if (!mIsServerStopped) {
-            synchronized (mRunnables) {
-                for (ServerRunnable run : mRunnables) {
-                    run.offerMedia(segment, media);
-                }
+            BlockingQueue<byte[]> queue =  mMediaQueues.get(segment);
+            if (queue != null) {
+                queue.offer(media);
             }
+        }
+    }
+
+    public void createMediaQueue(final String segment) {
+        synchronized (mMediaQueues) {
+            mMediaQueues.put(segment, new ArrayBlockingQueue<byte[]>(MAX_MEDIA_CACHE));
         }
     }
 
@@ -351,12 +359,6 @@ public class MixedReplaceMediaServer {
         private Request mRequest;
 
         /**
-         * Queues that holds the media.
-         */
-        private final Map<String, BlockingQueue<byte[]>> mMediaQueues =
-            new HashMap<String, BlockingQueue<byte[]>>();
-
-        /**
          * Whether media delivery is stopped or not.
          */
         private boolean mIsMediaStopped;
@@ -394,26 +396,25 @@ public class MixedReplaceMediaServer {
                 } else {
                     String segment = Uri.parse(mRequest.getUri()).getLastPathSegment();
                     boolean isGet = header.hasParam("snapshot");
-                    byte[] data = null;
-                    if (mServerEventListener != null) {
-                        data = mServerEventListener.onConnect(mRequest);
-                    }
-                    if (data != null) {
-                        mLogger.info("Requested media is found: " + segment);
-                        offerMedia(segment, data);
-                    } else {
-                        mLogger.warning("Requested media is NOT found: " + segment);
-                        mStream.write(generateNotFound().getBytes());
-                        mStream.flush();
-                        return;
-                    }
-
+//                    byte[] data = null;
+//                    if (mServerEventListener != null) {
+//                        data = mServerEventListener.onConnect(mRequest);
+//                    }
+//                    if (data != null) {
+//                        mLogger.info("Requested media is found: " + segment);
+//                        offerMedia(segment, data);
+//                    } else {
+//                        mLogger.warning("Requested media is NOT found: " + segment);
+//                        mStream.write(generateNotFound().getBytes());
+//                        mStream.flush();
+//                        return;
+//                    }
 
                     if (isGet) {
                         BlockingQueue<byte[]> mediaQueue = mMediaQueues.get(segment);
                         byte[] media;
                         if (mediaQueue != null) {
-                            media = mediaQueue.take();
+                            media = mediaQueue.poll(30, TimeUnit.SECONDS);
                         } else {
                             media = new byte[0];
                         }
@@ -486,28 +487,6 @@ public class MixedReplaceMediaServer {
                 }
                 mRunnables.remove(this);
             }
-        }
-
-        /**
-         * Inserts the media data into queue.
-         *
-         * @param segment the segment of URI of media
-         * @param media   the media to add
-         * @return true if the media data was added to this queue, else false
-         */
-        private boolean offerMedia(final String segment, final byte[] media) {
-            BlockingQueue<byte[]> mediaQueue;
-            synchronized (mMediaQueues) {
-                mediaQueue = mMediaQueues.get(segment);
-                if (mediaQueue == null) {
-                    mediaQueue = new ArrayBlockingQueue<byte[]>(MAX_MEDIA_CACHE);
-                    mMediaQueues.put(segment, mediaQueue);
-                }
-            }
-            if (mediaQueue.size() == MAX_MEDIA_CACHE) {
-                mediaQueue.remove();
-            }
-            return mediaQueue.offer(media);
         }
 
         /**

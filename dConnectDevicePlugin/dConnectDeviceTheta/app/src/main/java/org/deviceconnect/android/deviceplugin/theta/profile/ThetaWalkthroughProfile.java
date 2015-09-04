@@ -99,9 +99,11 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                     File dir = new File(extStore, source);
                     Log.d("Walk", "dir: " + dir.getAbsolutePath() + " isDir: " + dir.isDirectory());
 
-                    WalkthroughContext walkContext = new WalkthroughContext(dir, width, height);
                     String segment = UUID.randomUUID().toString();
                     String uri = mServer.getUrl() + "/" + segment;
+                    mServer.createMediaQueue(segment);
+
+                    WalkthroughContext walkContext = new WalkthroughContext(dir, width, height);
                     walkContext.setEventListener(ThetaWalkthroughProfile.this);
                     walkContext.setUri(uri);
                     walkContext.start();

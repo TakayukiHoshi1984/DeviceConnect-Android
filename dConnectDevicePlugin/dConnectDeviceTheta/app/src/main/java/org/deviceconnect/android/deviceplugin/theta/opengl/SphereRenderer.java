@@ -13,10 +13,12 @@ import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 import org.deviceconnect.android.deviceplugin.theta.opengl.model.UVSphere;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
+import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -40,6 +42,8 @@ public class SphereRenderer implements Renderer {
      * Number of sphere polygon partitions for photo, which must be an even number.
      */
     private static final int SHELL_DIVIDES = 40;
+
+    private static final String TAG = "GL";
 
     private final String VSHADER_SRC =
             "attribute vec4 aPosition;\n" +
@@ -115,9 +119,12 @@ public class SphereRenderer implements Renderer {
     }
 
     private void draw(final Camera camera) {
+        Log.d(TAG, "SphereRenderer.draw()");
+
         Matrix.setIdentityM(mModelMatrix, 0);
         Matrix.setIdentityM(mViewMatrix, 0);
         Matrix.setIdentityM(mProjectionMatrix, 0);
+        checkGlError(TAG, "setIdentityM");
 
         if (mTextureUpdate && null != mTexture && !mTexture.isRecycled()) {
             loadTexture(mTexture);
@@ -134,7 +141,10 @@ public class SphereRenderer implements Renderer {
         float upY = camera.getUpperDirection().y();
         float upZ = camera.getUpperDirection().z();
         Matrix.setLookAtM(mViewMatrix, 0, x, y, z, frontX, frontY, frontZ, upX, upY, upZ);
+        checkGlError(TAG, "setLookAtM");
+
         Matrix.perspectiveM(mProjectionMatrix, 0, camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
+        checkGlError(TAG, "perspectiveM");
 
         GLES20.glUniformMatrix4fv(mModelMatrixHandle, 1, false, mModelMatrix, 0);
         GLES20.glUniformMatrix4fv(mProjectionMatrixHandle, 1, false, mProjectionMatrix, 0);
@@ -226,14 +236,20 @@ public class SphereRenderer implements Renderer {
      */
     public void loadTexture(final Bitmap texture) {
         GLES20.glGenTextures(1, mTextures, 0);
+        checkGlError(TAG, "glGenTextures");
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        checkGlError(TAG, "glActiveTexture");
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
+        checkGlError(TAG, "glBindTexture");
 
         GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        checkGlError(TAG, "glTexParameterf: GL_TEXTURE_MIN_FILTER");
         GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        checkGlError(TAG, "glTexParameterf: GL_TEXTURE_MAG_FILTER");
 
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, texture, 0);
+        checkGlError(TAG, "texImage2D");
     }
 
     private int loadShader(final int type, final String shaderCode) {

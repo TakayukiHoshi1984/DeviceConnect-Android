@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 public class WalkthroughContext  {
 
     private static final String TAG = "Walk";
-    private static final int NUM_PRELOAD = 10;
+    private static final int NUM_PRELOAD = 1;
 
     private final File[] mAllFiles;
     private final BitmapLoader mBitmapLoader;
@@ -54,17 +54,15 @@ public class WalkthroughContext  {
             @Override
             public void onLoad(int pos) {
                 Log.d(TAG, "onLoad: " + pos);
-                if (pos == NUM_PRELOAD - 1) {
-                    startVideo();
-                }
+                startVideo();
             }
 
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-                stop();
-                mBitmapLoader.reset();
-                start();
+//                stop();
+//                mBitmapLoader.reset();
+//                start();
             }
 
             @Override
@@ -124,6 +122,7 @@ public class WalkthroughContext  {
             @Override
             public void run() {
                 render();
+                stop();
             }
         }, 0, mInterval);
     }
