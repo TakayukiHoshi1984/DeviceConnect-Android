@@ -22,6 +22,7 @@ import org.deviceconnect.android.deviceplugin.theta.profile.ThetaMediaStreamReco
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaOmnidirectionalImageProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaServiceDiscoveryProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaSystemProfile;
+import org.deviceconnect.android.deviceplugin.theta.profile.ThetaWalkthroughProfile;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.event.cache.MemoryCacheController;
 import org.deviceconnect.android.message.DConnectMessageService;
@@ -58,6 +59,7 @@ public class ThetaDeviceService extends DConnectMessageService {
         addProfile(new ThetaFileProfile(mClient, fileMgr));
         addProfile(new ThetaMediaStreamRecordingProfile(mClient, fileMgr));
         addProfile(new ThetaOmnidirectionalImageProfile());
+        addProfile(new ThetaWalkthroughProfile());
 
         WifiManager wifiMgr = (WifiManager) getContext().getSystemService(Context.WIFI_SERVICE);
         fetchThetaDevice(wifiMgr.getConnectionInfo());
@@ -133,6 +135,7 @@ public class ThetaDeviceService extends DConnectMessageService {
             services.add(service);
         }
 
+        // ROI
         Bundle service = new Bundle();
         service.putString(ServiceDiscoveryProfile.PARAM_ID,
             ThetaOmnidirectionalImageProfile.SERVICE_ID);
@@ -141,6 +144,17 @@ public class ThetaDeviceService extends DConnectMessageService {
         service.putBoolean(ServiceDiscoveryProfile.PARAM_ONLINE, true);
         service.putStringArray(ServiceDiscoveryProfile.PARAM_SCOPES,
             new String[] {OmnidirectionalImageProfile.PROFILE_NAME});
+        services.add(service);
+
+        // Walkthrough
+        service = new Bundle();
+        service.putString(ServiceDiscoveryProfile.PARAM_ID,
+            ThetaWalkthroughProfile.SERVICE_ID);
+        service.putString(ServiceDiscoveryProfile.PARAM_NAME,
+            ThetaWalkthroughProfile.SERVICE_NAME);
+        service.putBoolean(ServiceDiscoveryProfile.PARAM_ONLINE, true);
+        service.putStringArray(ServiceDiscoveryProfile.PARAM_SCOPES,
+            new String[] {ThetaWalkthroughProfile.PROFILE_NAME});
         services.add(service);
 
         response.putExtra(DConnectMessage.EXTRA_RESULT, DConnectMessage.RESULT_OK);

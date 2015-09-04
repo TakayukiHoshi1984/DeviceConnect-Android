@@ -13,5 +13,6 @@
         <name lang="en">Omnidirectional Image</name>
         <description lang="en">Generates an ROI image from an omnidirectional image.</description>
     </profile>
+    <profile name="walkthrough" />
     
 </deviceplugin-provider>

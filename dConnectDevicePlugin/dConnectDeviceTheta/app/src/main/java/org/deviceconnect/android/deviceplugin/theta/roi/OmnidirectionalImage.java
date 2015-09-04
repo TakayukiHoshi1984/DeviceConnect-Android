@@ -37,7 +37,6 @@ public class OmnidirectionalImage {
      */
     public OmnidirectionalImage(final String uri, final String requestOrigin) throws IOException {
         mUri = uri;
-
         InputStream is = null;
         try {
             URLConnection conn = new URL(uri).openConnection();
@@ -61,6 +60,11 @@ public class OmnidirectionalImage {
                 is.close();
             }
         }
+    }
+
+    public OmnidirectionalImage(final String uri, final Bitmap bitmap) {
+        mBitmap = bitmap;
+        mUri = uri;
     }
 
     /**
