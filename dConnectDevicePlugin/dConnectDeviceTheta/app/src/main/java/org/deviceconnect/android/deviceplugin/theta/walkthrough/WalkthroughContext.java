@@ -1,12 +1,20 @@
 package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.util.Log;
+import android.view.Surface;
+import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
+import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
 import java.io.ByteArrayOutputStream;
@@ -14,15 +22,26 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
-public class WalkthroughContext  {
+public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final int NUM_PRELOAD = 10;
+    private static final int NUM_PRELOAD = 5;
+    private static final float NS2S = 1.0f / 1000000000.0f;
+
+    private Logger mLogger = Logger.getLogger("theta.dplugin");
+
+    private final SensorManager mSensorMgr;
+    private long mLastEventTimestamp;
+    private float mEventInterval;
+    private final int mDisplayRotation;
+    private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
     private final File[] mAllFiles;
     private final BitmapLoader mBitmapLoader;
@@ -39,7 +58,12 @@ public class WalkthroughContext  {
     private final SphereRenderer mRenderer = new SphereRenderer();
     private ByteArrayOutputStream mBaos;
 
-    public WalkthroughContext(final File omniImageDir, final int width, final int height) {
+    public WalkthroughContext(final Context context, final File omniImageDir,
+                              final int width, final int height) {
+        WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
+        mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+
         boolean isDir = omniImageDir.isDirectory();
         if (!isDir) {
             throw new IllegalArgumentException("dir is not directory.");
@@ -63,9 +87,8 @@ public class WalkthroughContext  {
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-                stop();
                 mBitmapLoader.reset();
-                start();
+                mBitmapLoader.init(NUM_PRELOAD);
             }
 
             @Override
@@ -75,7 +98,7 @@ public class WalkthroughContext  {
             }
         });
 
-        mInterval = 1000;
+        mInterval = 100;
 
         mBaos = new ByteArrayOutputStream(width * height);
         mExecutor.execute(new Runnable() {
@@ -87,6 +110,123 @@ public class WalkthroughContext  {
         });
 
         initRendererParam(new Param());
+    }
+
+    private boolean startVrMode() {
+        // Reset current rotation.
+        mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+
+        List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
+        if (sensors.size() == 0) {
+            mLogger.warning("Failed to start VR mode: any sensor is NOT found.");
+            return false;
+        }
+        for (Sensor sensor : sensors) {
+            if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                mLogger.info("Started VR mode: GYROSCOPE sensor is found.");
+                mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+                return true;
+            }
+        }
+        mLogger.warning("Failed to start VR mode: GYROSCOPE sensor is NOT found.");
+        return false;
+    }
+
+    private void stopVrMode() {
+        mSensorMgr.unregisterListener(this);
+    }
+
+    @Override
+    public void onAccuracyChanged(final Sensor sensor, final int accuracy) {
+        // Nothing to do.
+    }
+
+    @Override
+    public void onSensorChanged(final SensorEvent event) {
+        if (mLastEventTimestamp != 0) {
+            float EPSILON = 0.000000001f;
+            float[] vGyroscope = new float[3];
+            float[] deltaVGyroscope = new float[4];
+            Quaternion qGyroscopeDelta;
+            float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+
+            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+            float tmp = vGyroscope[2];
+            vGyroscope[2] = vGyroscope[0] * -1;
+            vGyroscope[0] = tmp;
+
+            float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
+                    + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
+            if (magnitude > EPSILON) {
+                vGyroscope[0] /= magnitude;
+                vGyroscope[1] /= magnitude;
+                vGyroscope[2] /= magnitude;
+            }
+
+            float thetaOverTwo = magnitude * dT / 2.0f;
+            float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
+            float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+
+            deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
+            deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
+            deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
+            deltaVGyroscope[3] = cosThetaOverTwo;
+
+            float[] delta = new float[3];
+            switch (mDisplayRotation) {
+                case Surface.ROTATION_0:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[1];
+                    delta[2] = deltaVGyroscope[2];
+                    break;
+                case Surface.ROTATION_90:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[2] * -1;
+                    delta[2] = deltaVGyroscope[1];
+                    break;
+                case Surface.ROTATION_180:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[1] * -1;
+                    delta[2] = deltaVGyroscope[2];
+                    break;
+                case Surface.ROTATION_270:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[2];
+                    delta[2] = deltaVGyroscope[1] * -1;
+                    break;
+                default:
+                    break;
+            }
+
+            qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
+
+            mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
+
+            float[] qvOrientation = new float[4];
+            qvOrientation[0] = mCurrentRotation.imaginary().x();
+            qvOrientation[1] = mCurrentRotation.imaginary().y();
+            qvOrientation[2] = mCurrentRotation.imaginary().z();
+            qvOrientation[3] = mCurrentRotation.real();
+
+            float[] rmGyroscope = new float[9];
+            SensorManager.getRotationMatrixFromVector(rmGyroscope,
+                    qvOrientation);
+
+            float[] vOrientation = new float[3];
+            SensorManager.getOrientation(rmGyroscope, vOrientation);
+
+            SphereRenderer.Camera currentCamera = mRenderer.getCamera();
+            SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
+            newCamera.rotate(mCurrentRotation);
+            mRenderer.setCamera(newCamera.create());
+
+//            mEventInterval += dT;
+//            if (mEventInterval >= 0.1f) {
+//                mEventInterval = 0;
+//                render();
+//            }
+        }
+        mLastEventTimestamp = event.timestamp;
     }
 
     public void setUri(final String uriString) {
@@ -104,6 +244,7 @@ public class WalkthroughContext  {
 
     public void start() {
         Log.d(TAG, "Walkthrough.start()");
+        startVrMode();
         mBitmapLoader.init(NUM_PRELOAD);
     }
 
@@ -114,6 +255,9 @@ public class WalkthroughContext  {
         }
         mTimer.cancel();
         mTimer = null;
+
+        stopVrMode();
+
     }
 
     private void startVideo() {
@@ -127,41 +271,48 @@ public class WalkthroughContext  {
             @Override
             public void run() {
                 render();
-//                stop();
             }
         }, 0, mInterval);
     }
 
     private void render() {
-        Log.d(TAG, "Walkthrough.render()");
+        //Log.d(TAG, "Walkthrough.render()");
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
 
-                Bitmap texture;
                 try {
-                    texture = mBitmapLoader.pull();
-                    if (texture == null) {
-                        Log.d("Walk", "no longer bitmap.");
+                    Bitmap texture;
+                    try {
+                        texture = mBitmapLoader.pull();
+                        if (texture == null) {
+                            Log.d("Walk", "no longer bitmap.");
+                            return;
+                        }
+                    } catch (InterruptedException e) {
+                        Log.d("Walk", "thread is interrupted.");
                         return;
                     }
-                } catch (InterruptedException e) {
-                    Log.d("Walk", "thread is interrupted.");
-                    return;
+                    Log.i(TAG, "Changing Texure: size=" + texture.getWidth() + " x " + texture.getHeight());
+
+                    mRenderer.setTexture(texture);
+                    mPixelBuffer.render();
+                    Bitmap result = mPixelBuffer.convertToBitmap();
+
+                    mBaos.reset();
+                    result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
+                    mRoi = mBaos.toByteArray();
+
+                    //texture.recycle();
+
+                    if (mListener != null) {
+                        mListener.onUpdate(WalkthroughContext.this, mRoi);
+                    }
+                } catch (Throwable e) {
+                   Log.d(TAG, "ERROR: Executor:", e);
+                    e.printStackTrace();
                 }
-                Log.i(TAG, "Changing Texure: " + texture.getWidth() + " x " + texture.getHeight());
 
-                mRenderer.setTexture(texture);
-                mPixelBuffer.render();
-                Bitmap result = mPixelBuffer.convertToBitmap();
-
-                mBaos.reset();
-                result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
-                mRoi = mBaos.toByteArray();
-
-                if (mListener != null) {
-                    mListener.onUpdate(WalkthroughContext.this, mRoi);
-                }
             }
         });
     }
@@ -236,29 +387,29 @@ public class WalkthroughContext  {
                 return null;
             }
             int pos = mPos++;
+            if (pos == mBitmaps.length - 1) {
+                if (mListener != null) {
+                    mListener.onComplete();
+                }
+            }
 
             File file = mFiles[pos];
             synchronized (file) {
                 Bitmap bitmap = mBitmaps[pos];
                 if (bitmap != null) {
+                    Log.d(TAG, "Already loaded: pos=" + pos);
                     return bitmap;
                 }
 
+                Log.d(TAG, "Now loading... : pos=" + pos);
+                loadBitmap(pos);
                 while ((bitmap = mBitmaps[pos]) == null) {
                     file.wait(100);
                 }
+                Log.d(TAG, "Loaded: pos=" + pos);
 
                 // Remove pulled bitmap from this buffer.
-                mBitmaps[pos] = null;
-
-                // Start to load next bitmap.
-                if (0 <= pos && pos < mBitmaps.length - 1) {
-                    loadBitmap(pos + 1);
-                } else {
-                    if (mListener != null) {
-                        mListener.onComplete();
-                    }
-                }
+                //mBitmaps[pos] = null;
 
                 return bitmap;
             }
@@ -296,6 +447,9 @@ public class WalkthroughContext  {
                         if (mListener != null) {
                             mListener.onError(pos, e);
                         }
+                    } catch (Throwable e) {
+                        Log.d(TAG, "ERROR: loadBitmap: ", e);
+                        e.printStackTrace();
                     } finally {
                         if (fis != null) {
                             try {

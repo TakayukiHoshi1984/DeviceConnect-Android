@@ -76,8 +76,21 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     protected boolean onPostWalker(final Intent request, final Intent response) {
         final String source = getSource(request);
-        final int width = 480;
-        final int height = 270;
+        final Integer width = getWidth(request);
+        final Integer height = getHeight(request);
+
+        if (source == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "source is null.");
+            return true;
+        }
+        if (width == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "width is null.");
+            return true;
+        }
+        if (height == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "height is null.");
+            return true;
+        }
 
         mExecutor.execute(new Runnable() {
             @Override
@@ -103,7 +116,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                     String uri = mServer.getUrl() + "/" + segment;
                     mServer.createMediaQueue(segment);
 
-                    WalkthroughContext walkContext = new WalkthroughContext(dir, width, height);
+                    WalkthroughContext walkContext = new WalkthroughContext(getContext(), dir, width, height);
                     walkContext.setEventListener(ThetaWalkthroughProfile.this);
                     walkContext.setUri(uri);
                     walkContext.start();
@@ -131,12 +144,12 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         return request.getStringExtra(PARAM_SOURCE);
     }
 
-    public static String getWidth(final Intent request) {
-        return request.getStringExtra(PARAM_WIDTH);
+    public static Integer getWidth(final Intent request) {
+        return parseInteger(request, PARAM_WIDTH);
     }
 
-    public static String getHeight(final Intent request) {
-        return request.getStringExtra(PARAM_HEIGHT);
+    public static Integer getHeight(final Intent request) {
+        return parseInteger(request, PARAM_HEIGHT);
     }
 
     @Override
@@ -157,4 +170,5 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     @Override
     public void onCloseServer() {
     }
+
 }

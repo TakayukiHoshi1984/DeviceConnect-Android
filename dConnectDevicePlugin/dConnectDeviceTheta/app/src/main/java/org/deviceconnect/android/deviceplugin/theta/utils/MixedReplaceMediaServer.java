@@ -7,6 +7,7 @@
 package org.deviceconnect.android.deviceplugin.theta.utils;
 
 import android.net.Uri;
+import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 
@@ -395,6 +396,7 @@ public class MixedReplaceMediaServer {
                     return;
                 } else {
                     String segment = Uri.parse(mRequest.getUri()).getLastPathSegment();
+                    Log.d("Walk", "*** timestamp: " + header.getParam("timestamp"));
                     boolean isGet = header.hasParam("snapshot");
 //                    byte[] data = null;
 //                    if (mServerEventListener != null) {
@@ -415,6 +417,9 @@ public class MixedReplaceMediaServer {
                         byte[] media;
                         if (mediaQueue != null) {
                             media = mediaQueue.poll(30, TimeUnit.SECONDS);
+                            if (media == null) {
+                                return;
+                            }
                         } else {
                             media = new byte[0];
                         }
@@ -464,6 +469,8 @@ public class MixedReplaceMediaServer {
                         mLogger.warning("Error server socket[" + mServerName + "]");
                     }
                 }
+            } catch (Throwable e) {
+                e.printStackTrace();
             } finally {
                 mLogger.fine("socket close.");
                 if (mServerEventListener != null && mRequest != null) {
