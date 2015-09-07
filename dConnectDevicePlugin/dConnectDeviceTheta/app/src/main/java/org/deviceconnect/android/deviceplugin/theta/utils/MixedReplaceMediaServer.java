@@ -398,19 +398,14 @@ public class MixedReplaceMediaServer {
                     String segment = Uri.parse(mRequest.getUri()).getLastPathSegment();
                     Log.d("Walk", "*** timestamp: " + header.getParam("timestamp"));
                     boolean isGet = header.hasParam("snapshot");
-//                    byte[] data = null;
-//                    if (mServerEventListener != null) {
-//                        data = mServerEventListener.onConnect(mRequest);
-//                    }
-//                    if (data != null) {
-//                        mLogger.info("Requested media is found: " + segment);
-//                        offerMedia(segment, data);
-//                    } else {
-//                        mLogger.warning("Requested media is NOT found: " + segment);
-//                        mStream.write(generateNotFound().getBytes());
-//                        mStream.flush();
-//                        return;
-//                    }
+                    byte[] data = null;
+                    if (mServerEventListener != null) {
+                        data = mServerEventListener.onConnect(mRequest);
+                    }
+                    if (data != null) {
+                        mLogger.info("Requested media is found: " + segment);
+                        offerMedia(segment, data);
+                    }
 
                     if (isGet) {
                         BlockingQueue<byte[]> mediaQueue = mMediaQueues.get(segment);

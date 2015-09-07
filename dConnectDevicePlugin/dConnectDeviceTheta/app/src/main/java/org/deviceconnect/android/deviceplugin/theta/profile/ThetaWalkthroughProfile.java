@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +44,8 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     public static final String PARAM_WIDTH = "width";
 
     public static final String PARAM_HEIGHT = "height";
+
+    public static final String PARAM_FPS = "fps";
 
     public static final String SERVICE_ID = "walker";
 
@@ -78,6 +81,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         final String source = getSource(request);
         final Integer width = getWidth(request);
         final Integer height = getHeight(request);
+        final Double fps = getFps(request);
 
         if (source == null) {
             MessageUtils.setInvalidRequestParameterError(response, "source is null.");
@@ -89,6 +93,10 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         }
         if (height == null) {
             MessageUtils.setInvalidRequestParameterError(response, "height is null.");
+            return true;
+        }
+        if (fps == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "fps is null.");
             return true;
         }
 
@@ -116,7 +124,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                     String uri = mServer.getUrl() + "/" + segment;
                     mServer.createMediaQueue(segment);
 
-                    WalkthroughContext walkContext = new WalkthroughContext(getContext(), dir, width, height);
+                    WalkthroughContext walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
                     walkContext.setEventListener(ThetaWalkthroughProfile.this);
                     walkContext.setUri(uri);
                     walkContext.start();
@@ -152,6 +160,10 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         return parseInteger(request, PARAM_HEIGHT);
     }
 
+    public static Double getFps(final Intent request) {
+        return parseDouble(request, PARAM_FPS);
+    }
+
     @Override
     public void onUpdate(final WalkthroughContext walkContext, final byte[] roi) {
         Log.d(TAG, "onUpdate: " + roi.length + " bytes");
@@ -159,12 +171,36 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     }
 
     @Override
+    public void onComplete(final WalkthroughContext walkContext) {
+        mServer.stopMedia(walkContext.getSegment());
+
+        walkContext.destroy();
+        mWalkContexts.remove(walkContext.getUri());
+
+        Log.d(TAG, "ThetaWalkthrough.onComplete: contexts=" + mWalkContexts.size());
+    }
+
+    @Override
+    public void onExpire(final WalkthroughContext walkContext) {
+        mServer.stopMedia(walkContext.getSegment());
+
+        walkContext.destroy();
+        mWalkContexts.remove(walkContext.getUri());
+    }
+
+    @Override
     public byte[] onConnect(final MixedReplaceMediaServer.Request request) {
-        return new byte[0];
+        final String uri = request.getUri();
+        final WalkthroughContext target = mWalkContexts.get(uri);
+        if (target != null && request.isGet()) {
+            target.restartExpireTimer();
+        }
+        return null;
     }
 
     @Override
     public void onDisconnect(final MixedReplaceMediaServer.Request request) {
+        String segment = request.getUri();
     }
 
     @Override

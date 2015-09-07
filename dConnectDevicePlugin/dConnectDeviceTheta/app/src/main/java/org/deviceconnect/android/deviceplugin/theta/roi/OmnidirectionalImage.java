@@ -43,18 +43,6 @@ public class OmnidirectionalImage {
             conn.setRequestProperty(DConnectMessage.HEADER_GOTAPI_ORIGIN, requestOrigin);
             is = conn.getInputStream();
             mBitmap = BitmapFactory.decodeStream(is);
-
-            int width = mBitmap.getWidth();
-            int height = mBitmap.getHeight();
-            IntBuffer buf = IntBuffer.allocate(width * height);
-            IntBuffer tmp = IntBuffer.allocate(width * height);
-            mBitmap.copyPixelsToBuffer(buf);
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width; j++) {
-                    tmp.put((height - i - 1) * width + j, buf.get(i * width + j));
-                }
-            }
-            mBitmap.copyPixelsFromBuffer(tmp);
         } finally {
             if (is != null) {
                 is.close();

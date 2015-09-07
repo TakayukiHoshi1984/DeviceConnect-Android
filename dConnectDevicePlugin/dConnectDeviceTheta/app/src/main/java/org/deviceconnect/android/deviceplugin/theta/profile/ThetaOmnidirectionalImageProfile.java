@@ -166,6 +166,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                     roiContext.changeRendererParam(RoiDeliveryContext.DEFAULT_PARAM, true);
                     roiContext.renderWithBlocking();
                     roiContext.startExpireTimer();
+                    mServer.createMediaQueue(segment);
                     mRoiContexts.put(uri, roiContext);
 
                     setResult(response, DConnectMessage.RESULT_OK);

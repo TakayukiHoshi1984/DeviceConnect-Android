@@ -24,6 +24,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -34,8 +35,9 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final double FPS = 10.0;
+
     private static final int NUM_PRELOAD = 5;
+    private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
@@ -54,6 +56,7 @@ public class WalkthroughContext implements SensorEventListener {
 
     private final long mInterval; // milliseconds
     private Timer mTimer;
+    private Timer mExpireTimer;
     private EventListener mListener;
 
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
@@ -62,7 +65,7 @@ public class WalkthroughContext implements SensorEventListener {
     private ByteArrayOutputStream mBaos;
 
     public WalkthroughContext(final Context context, final File omniImageDir,
-                              final int width, final int height) {
+                              final int width, final int height, final float fps) {
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -99,8 +102,9 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-//                mBitmapLoader.reset();
-//                mBitmapLoader.init(NUM_PRELOAD);
+                if (mListener != null) {
+                    mListener.onComplete(WalkthroughContext.this);
+                }
             }
 
             @Override
@@ -110,7 +114,7 @@ public class WalkthroughContext implements SensorEventListener {
             }
         });
 
-        mInterval = (long) ((double) 1000 / FPS);
+        mInterval = (long) (1000.0f / fps);
 
         mBaos = new ByteArrayOutputStream(width * height);
         mExecutor.execute(new Runnable() {
@@ -122,6 +126,12 @@ public class WalkthroughContext implements SensorEventListener {
         });
 
         initRendererParam(new Param());
+    }
+
+    public void destroy() {
+        stop();
+        mPixelBuffer.destroy();
+        mBitmapLoader.reset();
     }
 
     private boolean startVrMode() {
@@ -342,12 +352,47 @@ public class WalkthroughContext implements SensorEventListener {
         mRenderer.setScreenHeight(param.getImageHeight());
     }
 
+    public void startExpireTimer() {
+        if (mExpireTimer != null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Date expireTime = new Date(now + EXPIRE_INTERVAL);
+        mExpireTimer = new Timer();
+        mExpireTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                mExpireTimer.cancel();
+                mExpireTimer = null;
+                if (mListener != null) {
+                    mListener.onExpire(WalkthroughContext.this);
+                }
+            }
+        }, expireTime);
+    }
+
+    public void stopExpireTimer() {
+        if (mExpireTimer != null) {
+            mExpireTimer.cancel();
+            mExpireTimer = null;
+        }
+    }
+
+    public void restartExpireTimer() {
+        stopExpireTimer();
+        startExpireTimer();
+    }
+
     public void setEventListener(final EventListener listener) {
         mListener = listener;
     }
 
     public static interface EventListener {
         void onUpdate(WalkthroughContext context, byte[] roi);
+
+        void onComplete(WalkthroughContext context);
+
+        void onExpire(WalkthroughContext roiContext);
     }
 
     private static class BitmapLoader {

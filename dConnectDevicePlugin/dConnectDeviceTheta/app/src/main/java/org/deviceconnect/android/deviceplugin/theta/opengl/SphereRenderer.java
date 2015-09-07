@@ -126,7 +126,8 @@ public class SphereRenderer implements Renderer {
         Matrix.setIdentityM(mProjectionMatrix, 0);
         checkGlError(TAG, "setIdentityM");
 
-        if (mTextureUpdate && null != mTexture && !mTexture.isRecycled()) {
+        if (mTextureUpdate && null != mTexture) {
+            GLES20.glDeleteTextures(1, mTextures, 0);
             loadTexture(mTexture);
             mTextureUpdate = false;
         }
@@ -140,7 +141,7 @@ public class SphereRenderer implements Renderer {
         float upX = camera.getUpperDirection().x();
         float upY = camera.getUpperDirection().y();
         float upZ = camera.getUpperDirection().z();
-        Matrix.setLookAtM(mViewMatrix, 0, x, y, z, frontX, frontY, frontZ, upX, -upY, upZ);
+        Matrix.setLookAtM(mViewMatrix, 0, x, y, z, frontX, frontY, frontZ, upX, upY, upZ);
         checkGlError(TAG, "setLookAtM");
 
         Matrix.perspectiveM(mProjectionMatrix, 0, camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
