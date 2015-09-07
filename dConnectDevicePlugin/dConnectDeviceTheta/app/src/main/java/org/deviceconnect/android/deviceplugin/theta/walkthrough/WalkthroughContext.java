@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -32,6 +34,7 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
+    private static final double FPS = 10.0;
     private static final int NUM_PRELOAD = 5;
     private static final float NS2S = 1.0f / 1000000000.0f;
 
@@ -68,12 +71,21 @@ public class WalkthroughContext implements SensorEventListener {
         if (!isDir) {
             throw new IllegalArgumentException("dir is not directory.");
         }
-        mAllFiles = omniImageDir.listFiles(new FilenameFilter() {
+
+        File[] files = omniImageDir.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(final File dir, final String filename) {
                 return filename.endsWith(".jpg");
             }
         });
+        List<File> fileList = new ArrayList<File>();
+        for (int i = 0; i < files.length; i++) {
+            fileList.add(files[i]);
+        }
+        Collections.sort(fileList);
+        mAllFiles = fileList.toArray(new File[fileList.size()]);
+
+
         mBitmapLoader = new BitmapLoader(mAllFiles);
         mBitmapLoader.setLoaderListener(new BitmapLoaderListener() {
             @Override
@@ -87,8 +99,8 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-                mBitmapLoader.reset();
-                mBitmapLoader.init(NUM_PRELOAD);
+//                mBitmapLoader.reset();
+//                mBitmapLoader.init(NUM_PRELOAD);
             }
 
             @Override
@@ -98,7 +110,7 @@ public class WalkthroughContext implements SensorEventListener {
             }
         });
 
-        mInterval = 100;
+        mInterval = (long) ((double) 1000 / FPS);
 
         mBaos = new ByteArrayOutputStream(width * height);
         mExecutor.execute(new Runnable() {
@@ -303,7 +315,7 @@ public class WalkthroughContext implements SensorEventListener {
                     result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
                     mRoi = mBaos.toByteArray();
 
-                    //texture.recycle();
+                    texture.recycle();
 
                     if (mListener != null) {
                         mListener.onUpdate(WalkthroughContext.this, mRoi);
@@ -386,36 +398,44 @@ public class WalkthroughContext implements SensorEventListener {
             if (mPos == mBitmaps.length) {
                 return null;
             }
+
             int pos = mPos++;
             if (pos == mBitmaps.length - 1) {
                 if (mListener != null) {
                     mListener.onComplete();
                 }
             }
+            try {
+                File file = mFiles[pos];
+                synchronized (file) {
+                    Bitmap bitmap = mBitmaps[pos];
+                    if (bitmap != null) {
+                        Log.d(TAG, "Already loaded: pos=" + pos);
+                        return bitmap;
+                    }
 
-            File file = mFiles[pos];
-            synchronized (file) {
-                Bitmap bitmap = mBitmaps[pos];
-                if (bitmap != null) {
-                    Log.d(TAG, "Already loaded: pos=" + pos);
+                    Log.d(TAG, "Now loading... : pos=" + pos);
+                    loadBitmap(pos);
+                    while ((bitmap = mBitmaps[pos]) == null) {
+                        file.wait(100);
+                    }
+                    Log.d(TAG, "Loaded: pos=" + pos);
+
+                    // Remove pulled bitmap from this buffer.
+                    mBitmaps[pos] = null;
+
                     return bitmap;
                 }
-
-                Log.d(TAG, "Now loading... : pos=" + pos);
-                loadBitmap(pos);
-                while ((bitmap = mBitmaps[pos]) == null) {
-                    file.wait(100);
-                }
-                Log.d(TAG, "Loaded: pos=" + pos);
-
-                // Remove pulled bitmap from this buffer.
-                //mBitmaps[pos] = null;
-
-                return bitmap;
+            } finally {
+                loadBitmap(pos + 1);
             }
         }
 
         private void loadBitmap(final int pos) {
+            if (pos >= mBitmaps.length) {
+                return;
+            }
+
             Log.d(TAG, "Loading bitmap: pos=" + pos);
 
             final File file = mFiles[pos];
