@@ -145,6 +145,27 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     @Override
     protected boolean onDeleteRequest(final Intent request, final Intent response) {
+        String interfaceName = getInterface(request);
+        String attributeName = getAttribute(request);
+        if (interfaceName == null && attributeName == null) {
+            return onDeleteWalker(request, response);
+        } else {
+            MessageUtils.setUnknownAttributeError(response);
+            return true;
+        }
+    }
+
+    protected boolean onDeleteWalker(final Intent request, final Intent response) {
+        String uri = getURI(request);
+        if (uri == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
+            return true;
+        }
+        WalkthroughContext walkContext = mWalkContexts.remove(uri);
+        if (walkContext != null) {
+            walkContext.destroy();
+        }
+        setResult(response, DConnectMessage.RESULT_OK);
         return true;
     }
 
@@ -158,6 +179,10 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     public static Integer getHeight(final Intent request) {
         return parseInteger(request, PARAM_HEIGHT);
+    }
+
+    public static String getURI(final Intent request) {
+        return request.getStringExtra(PARAM_URI);
     }
 
     public static Double getFps(final Intent request) {
