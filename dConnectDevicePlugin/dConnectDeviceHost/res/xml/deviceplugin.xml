@@ -120,5 +120,11 @@
         <name lang="en">Touch </name>
         <description lang="en">Touch event. </description>
     </profile>
-     
+    
+    <profile name="light" expireperiod="86400000">
+        <name lang="ja">ライト</name>
+        <description lang="ja">ライトを制御する</description>
+        <name lang="en">Light</name>
+        <description lang="en">Control a light</description>
+    </profile>
 </deviceplugin-provider>

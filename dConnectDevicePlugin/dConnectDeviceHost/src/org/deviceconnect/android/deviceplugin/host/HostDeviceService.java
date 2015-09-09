@@ -24,6 +24,8 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostConnectProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceOrientationProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileDescriptorProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostLightProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostMediaPlayerProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostMediaStreamingRecordingProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostNotificationProfile;
@@ -33,7 +35,6 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostServiceDiscoveryP
 import org.deviceconnect.android.deviceplugin.host.profile.HostSettingsProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostSystemProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
-import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostVibrationProfile;
 import org.deviceconnect.android.deviceplugin.host.video.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.video.VideoPlayer;
@@ -130,6 +131,10 @@ public class HostDeviceService extends DConnectMessageService {
         mFileDataManager = new FileDataManager(mFileMgr);
         mFileDataManager.startTimer();
 
+        // オーバーレイ
+        mCameraOverlay = new CameraOverlay(this);
+        mCameraOverlay.setFileManager(mFileMgr);
+
         // add supported profiles
         addProfile(new HostConnectProfile(BluetoothAdapter.getDefaultAdapter()));
         addProfile(new HostNotificationProfile());
@@ -146,6 +151,7 @@ public class HostDeviceService extends DConnectMessageService {
         addProfile(new HostCanvasProfile());
         addProfile(new HostTouchProfile());
         addProfile(new HostKeyEventProfile());
+        addProfile(new HostLightProfile(mCameraOverlay));
 
         // バッテリー関連の処理と値の保持
         mHostBatteryManager = new HostBatteryManager();
@@ -159,10 +165,6 @@ public class HostDeviceService extends DConnectMessageService {
         mIfBatteryConnect = new IntentFilter();
         mIfBatteryConnect.addAction(Intent.ACTION_POWER_CONNECTED);
         mIfBatteryConnect.addAction(Intent.ACTION_POWER_DISCONNECTED);
-
-        // オーバーレイ
-        mCameraOverlay = new CameraOverlay(this);
-        mCameraOverlay.setFileManager(mFileMgr);
 
         // MediaPlayer (Video) IntentFilter.
         mIfMediaPlayerVideo = new IntentFilter();
@@ -680,7 +682,9 @@ public class HostDeviceService extends DConnectMessageService {
             c.close();
             return filename;
         } else {
-            c.close();
+            if (c != null) {
+                c.close();
+            }
             return null;
         }
     }
@@ -1006,14 +1010,20 @@ public class HostDeviceService extends DConnectMessageService {
                 mServer = new MixedReplaceMediaServer();
                 mServer.setServerName("HostDevicePlugin Server");
                 mServer.setContentType("image/jpg");
-                String ip = mServer.start();
 
                 if (!mCameraOverlay.isShow()) {
-                    mCameraOverlay.show();
+                    try {
+                        mCameraOverlay.show();
+                    } catch (IOException e) {
+                        mServer.stop();
+                        mServer = null;
+                        return null;
+                    }
                 }
                 mCameraOverlay.setFinishFlag(false);
                 mCameraOverlay.setServer(mServer);
 
+                String ip = mServer.start();
                 return ip;
             } else {
                 return mServer.getUrl();
@@ -1041,7 +1051,14 @@ public class HostDeviceService extends DConnectMessageService {
      */
     public void takePicture(final CameraOverlay.OnTakePhotoListener listener) {
         if (!mCameraOverlay.isShow()) {
-            mCameraOverlay.show();
+            try {
+                mCameraOverlay.show();
+            } catch (IOException e) {
+                if (listener != null) {
+                    listener.onFailedTakePhoto();
+                }
+                return;
+            }
             mCameraOverlay.setFinishFlag(true);
         }
         mCameraOverlay.takePicture(listener);
