@@ -56,16 +56,15 @@ public class PixelBuffer {
     private final GL10 mGL;
     private final String mThreadOwner;
 
+    private boolean mIsDestroyed;
     private GLSurfaceView.Renderer mRenderer;
     private IntBuffer mIb;
-    private IntBuffer mIbt;
     private final Bitmap mBitmap;
 
     public PixelBuffer(final int width, final int height, final boolean isStereo) {
         mWidth = isStereo ? width * 2 : width;
         mHeight = height;
         mIb = IntBuffer.allocate(mWidth * mHeight);
-        mIbt = IntBuffer.allocate(mWidth * mHeight);
         mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
 
         mEGL = (EGL10) EGLContext.getEGL();
@@ -102,9 +101,10 @@ public class PixelBuffer {
         }
     }
 
-    public void destroy() {
+    public synchronized void destroy() {
         mEGL.eglDestroyContext(mEGLDisplay, mEGLContext);
         mBitmap.recycle();
+        mIsDestroyed = true;
     }
 
     public void setRenderer(GLSurfaceView.Renderer renderer) {
@@ -153,11 +153,13 @@ public class PixelBuffer {
         return eGLConfigs;
     }
 
-    public Bitmap convertToBitmap() {
+    public synchronized Bitmap convertToBitmap() {
+        if (mIsDestroyed) {
+            return null;
+        }
         mGL.glReadPixels(0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, mIb);
         mBitmap.copyPixelsFromBuffer(mIb);
         mIb.clear();
-        mIbt.clear();
         return mBitmap;
     }
 }

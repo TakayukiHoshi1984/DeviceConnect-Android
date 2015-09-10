@@ -531,6 +531,9 @@ public class RoiDeliveryContext implements SensorEventListener {
         public byte[] call() throws Exception {
             mPixelBuffer.render();
             Bitmap result = mPixelBuffer.convertToBitmap();
+            if (result == null) {
+                return null;
+            }
 
             mBaos.reset();
             result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);

@@ -142,7 +142,6 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         return false;
     }
 
-
     @Override
     protected boolean onDeleteRequest(final Intent request, final Intent response) {
         String interfaceName = getInterface(request);
@@ -163,7 +162,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         }
         WalkthroughContext walkContext = mWalkContexts.remove(uri);
         if (walkContext != null) {
-            walkContext.destroy();
+            walkContext.stop();
         }
         setResult(response, DConnectMessage.RESULT_OK);
         return true;
@@ -199,7 +198,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     public void onComplete(final WalkthroughContext walkContext) {
         mServer.stopMedia(walkContext.getSegment());
 
-        walkContext.destroy();
+        walkContext.stop();
         mWalkContexts.remove(walkContext.getUri());
 
         Log.d(TAG, "ThetaWalkthrough.onComplete: contexts=" + mWalkContexts.size());
@@ -209,7 +208,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     public void onExpire(final WalkthroughContext walkContext) {
         mServer.stopMedia(walkContext.getSegment());
 
-        walkContext.destroy();
+        walkContext.stop();
         mWalkContexts.remove(walkContext.getUri());
     }
 

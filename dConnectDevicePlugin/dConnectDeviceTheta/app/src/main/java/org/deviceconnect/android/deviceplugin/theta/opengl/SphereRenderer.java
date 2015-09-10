@@ -203,6 +203,9 @@ public class SphereRenderer implements Renderer {
      * @param texture Photo object for texture
      */
     public void setTexture(Bitmap texture) {
+        if (mTexture != null && texture != null && mTexture != texture) {
+            mTexture.recycle();
+        }
         mTexture = texture;
         mTextureUpdate = true;
     }

@@ -55,7 +55,7 @@ public class WalkthroughContext implements SensorEventListener {
     private String mSegment;
 
     private final long mInterval; // milliseconds
-    private Timer mTimer;
+    private Timer mDeliveryTimer;
     private Timer mExpireTimer;
     private EventListener mListener;
 
@@ -70,27 +70,10 @@ public class WalkthroughContext implements SensorEventListener {
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
-        boolean isDir = omniImageDir.isDirectory();
-        if (!isDir) {
-            throw new IllegalArgumentException("dir is not directory.");
-        }
-
-        File[] files = omniImageDir.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(final File dir, final String filename) {
-                return filename.endsWith(".jpg");
-            }
-        });
-        List<File> fileList = new ArrayList<File>();
-        for (int i = 0; i < files.length; i++) {
-            fileList.add(files[i]);
-        }
-        Collections.sort(fileList);
-        mAllFiles = fileList.toArray(new File[fileList.size()]);
-
-
+        mAllFiles = loadFiles(omniImageDir);
         mBitmapLoader = new BitmapLoader(mAllFiles);
         mBitmapLoader.setLoaderListener(new BitmapLoaderListener() {
+
             @Override
             public void onLoad(int pos) {
                 Log.d(TAG, "onLoad: " + pos);
@@ -128,10 +111,24 @@ public class WalkthroughContext implements SensorEventListener {
         initRendererParam(new Param());
     }
 
-    public void destroy() {
-        stop();
-        mPixelBuffer.destroy();
-        mBitmapLoader.reset();
+    private File[] loadFiles(final File dir) {
+        if (!dir.isDirectory()) {
+            throw new IllegalArgumentException("dir is not directory.");
+        }
+        Log.d(TAG, "Loading Omni images directory: " + dir.getAbsolutePath());
+        File[] files = dir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(final File dir, final String filename) {
+                return filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg");
+            }
+        });
+        Log.d(TAG, "Files: " + files.length);
+        List<File> fileList = new ArrayList<File>();
+        for (int i = 0; i < files.length; i++) {
+            fileList.add(files[i]);
+        }
+        Collections.sort(fileList);
+        return fileList.toArray(new File[fileList.size()]);
     }
 
     private boolean startVrMode() {
@@ -241,12 +238,6 @@ public class WalkthroughContext implements SensorEventListener {
             SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
             newCamera.rotate(mCurrentRotation);
             mRenderer.setCamera(newCamera.create());
-
-//            mEventInterval += dT;
-//            if (mEventInterval >= 0.1f) {
-//                mEventInterval = 0;
-//                render();
-//            }
         }
         mLastEventTimestamp = event.timestamp;
     }
@@ -272,24 +263,22 @@ public class WalkthroughContext implements SensorEventListener {
 
     public void stop() {
         Log.d(TAG, "Walkthrough.stop()");
-        if (mTimer == null) {
-            return;
-        }
-        mTimer.cancel();
-        mTimer = null;
 
+        stopVideo();
         stopVrMode();
 
+        mBitmapLoader.reset();
+        mPixelBuffer.destroy();
     }
 
-    private void startVideo() {
+    private synchronized void startVideo() {
         Log.d(TAG, "Walkthrough.startVideo()");
-        if (mTimer != null) {
+        if (mDeliveryTimer != null) {
             Log.d(TAG, "Already started video.");
             return;
         }
-        mTimer = new Timer();
-        mTimer.schedule(new TimerTask() {
+        mDeliveryTimer = new Timer();
+        mDeliveryTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 render();
@@ -297,8 +286,16 @@ public class WalkthroughContext implements SensorEventListener {
         }, 0, mInterval);
     }
 
+    private synchronized void stopVideo() {
+        if (mDeliveryTimer == null) {
+            return;
+        }
+        mDeliveryTimer.cancel();
+        mDeliveryTimer = null;
+    }
+
     private void render() {
-        //Log.d(TAG, "Walkthrough.render()");
+        Log.d(TAG, "Walkthrough.render()");
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -320,12 +317,13 @@ public class WalkthroughContext implements SensorEventListener {
                     mRenderer.setTexture(texture);
                     mPixelBuffer.render();
                     Bitmap result = mPixelBuffer.convertToBitmap();
+                    if (result == null) {
+                        return;
+                    }
 
                     mBaos.reset();
                     result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
                     mRoi = mBaos.toByteArray();
-
-                    texture.recycle();
 
                     if (mListener != null) {
                         mListener.onUpdate(WalkthroughContext.this, mRoi);
