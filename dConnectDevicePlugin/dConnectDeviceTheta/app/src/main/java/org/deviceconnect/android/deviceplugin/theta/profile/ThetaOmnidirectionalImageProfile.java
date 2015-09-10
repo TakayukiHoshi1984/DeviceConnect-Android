@@ -6,29 +6,35 @@
  */
 package org.deviceconnect.android.deviceplugin.theta.profile;
 
+import android.content.Context;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Surface;
+import android.view.WindowManager;
 
-import org.deviceconnect.android.deviceplugin.theta.ThetaDeviceService;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
-import org.deviceconnect.android.deviceplugin.theta.opengl.model.UVSphere;
 import org.deviceconnect.android.deviceplugin.theta.roi.OmnidirectionalImage;
 import org.deviceconnect.android.deviceplugin.theta.roi.RoiDeliveryContext;
 import org.deviceconnect.android.deviceplugin.theta.utils.MixedReplaceMediaServer;
+import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
+import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
+import org.deviceconnect.android.deviceplugin.theta.walkthrough.Overlay;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.OmnidirectionalImageProfile;
 import org.deviceconnect.message.DConnectMessage;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,7 +44,9 @@ import java.util.concurrent.Executors;
  * @author NTT DOCOMO, INC.
  */
 public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfile
-    implements RoiDeliveryContext.OnChangeListener, MixedReplaceMediaServer.ServerEventListener {
+    implements RoiDeliveryContext.OnChangeListener,
+               MixedReplaceMediaServer.ServerEventListener,
+               SensorEventListener {
 
     /**
      * The service ID of ROI Image Service.
@@ -63,6 +71,8 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         Collections.synchronizedMap(new HashMap<String, RoiDeliveryContext>());
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+
+    private Overlay mOverlay;
 
     static {
         List<ParamDefinition> def = new ArrayList<ParamDefinition>();
@@ -120,74 +130,225 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
     protected boolean onGetView(final Intent request, final Intent response, final String serviceId,
                                 final String source) {
         requestView(response, serviceId, source, true);
-        return false;
+        return true;
     }
 
     @Override
     protected boolean onPutView(final Intent request, final Intent response, final String serviceId,
                                 final String source) {
         requestView(response, serviceId, source, false);
-        return false;
+        return true;
     }
 
     private void requestView(final Intent response, final String serviceId,
                              final String source, final boolean isGet) {
-        mExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                if (!checkServiceId(serviceId)) {
-                    MessageUtils.setNotFoundServiceError(response);
-                    ((ThetaDeviceService) getContext()).sendResponse(response);
-                    return;
-                }
-                try {
-                    synchronized (lockObj) {
-                        if (mServer == null) {
-                            mServer = new MixedReplaceMediaServer();
-                            mServer.setServerName("ThetaDevicePlugin Server");
-                            mServer.setContentType("image/jpeg");
-                            mServer.setServerEventListener(ThetaOmnidirectionalImageProfile.this);
-                            mServer.start();
-                        }
-                    }
 
-                    OmnidirectionalImage omniImage = mOmniImages.get(source);
-                    if (omniImage == null) {
-                        String origin = getContext().getPackageName();
-                        omniImage = new OmnidirectionalImage(source, origin);
-                        mOmniImages.put(source, omniImage);
-                    }
+        try {
+            stopVrMode();
+            startVrMode();
 
-                    RoiDeliveryContext roiContext = new RoiDeliveryContext(getContext(), omniImage);
-                    String segment = UUID.randomUUID().toString();
-                    String uri = mServer.getUrl() + "/" + segment;
-                    roiContext.setUri(uri);
-                    roiContext.setOnChangeListener(ThetaOmnidirectionalImageProfile.this);
-                    roiContext.changeRendererParam(RoiDeliveryContext.DEFAULT_PARAM, true);
-                    roiContext.renderWithBlocking();
-                    roiContext.startExpireTimer();
-                    mServer.createMediaQueue(segment);
-                    mRoiContexts.put(uri, roiContext);
-
-                    setResult(response, DConnectMessage.RESULT_OK);
-                    if (isGet) {
-                        setURI(response, uri + "?snapshot");
-                    } else {
-                        setURI(response, uri);
-                    }
-                } catch (MalformedURLException e) {
-                    MessageUtils.setInvalidRequestParameterError(response, "uri is malformed: " + source);
-                } catch (FileNotFoundException e) {
-                    MessageUtils.setInvalidRequestParameterError(response, "Image is not found: " + source);
-                } catch (IOException e) {
-                    MessageUtils.setUnknownError(response, e.getMessage());
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    MessageUtils.setUnknownError(response, e.getMessage());
-                }
-                ((ThetaDeviceService) getContext()).sendResponse(response);
+            OmnidirectionalImage omniImage = mOmniImages.get(source);
+            if (omniImage == null) {
+                String origin = getContext().getPackageName();
+                omniImage = new OmnidirectionalImage(source, origin);
+                mOmniImages.put(source, omniImage);
             }
-        });
+            if (mOverlay == null) {
+                mOverlay = new Overlay(getContext());
+            }
+            if (!mOverlay.isShow()) {
+                mOverlay.show(omniImage.getData());
+            }
+            setResult(response, DConnectMessage.RESULT_OK);
+        } catch (FileNotFoundException e) {
+            MessageUtils.setInvalidRequestParameterError(response, "Image is not found: " + source);
+        } catch (IOException e) {
+            MessageUtils.setUnknownError(response, e.getMessage());
+        }
+
+//        mExecutor.execute(new Runnable() {
+//            @Override
+//            public void run() {
+//                if (!checkServiceId(serviceId)) {
+//                    MessageUtils.setNotFoundServiceError(response);
+//                    ((ThetaDeviceService) getContext()).sendResponse(response);
+//                    return;
+//                }
+//                try {
+//                    synchronized (lockObj) {
+//                        if (mServer == null) {
+//                            mServer = new MixedReplaceMediaServer();
+//                            mServer.setServerName("ThetaDevicePlugin Server");
+//                            mServer.setContentType("image/jpeg");
+//                            mServer.setServerEventListener(ThetaOmnidirectionalImageProfile.this);
+//                            mServer.start();
+//                        }
+//                    }
+//
+//                    OmnidirectionalImage omniImage = mOmniImages.get(source);
+//                    if (omniImage == null) {
+//                        String origin = getContext().getPackageName();
+//                        omniImage = new OmnidirectionalImage(source, origin);
+//                        mOmniImages.put(source, omniImage);
+//                    }
+//
+//                    RoiDeliveryContext roiContext = new RoiDeliveryContext(getContext(), omniImage);
+//                    String segment = UUID.randomUUID().toString();
+//                    String uri = mServer.getUrl() + "/" + segment;
+//                    roiContext.setUri(uri);
+//                    roiContext.setOnChangeListener(ThetaOmnidirectionalImageProfile.this);
+//                    roiContext.changeRendererParam(RoiDeliveryContext.DEFAULT_PARAM, true);
+//                    roiContext.renderWithBlocking();
+//                    roiContext.startExpireTimer();
+//                    mServer.createMediaQueue(segment);
+//                    mRoiContexts.put(uri, roiContext);
+//
+//                    setResult(response, DConnectMessage.RESULT_OK);
+//                    if (isGet) {
+//                        setURI(response, uri + "?snapshot");
+//                    } else {
+//                        setURI(response, uri);
+//                    }
+//                } catch (MalformedURLException e) {
+//                    MessageUtils.setInvalidRequestParameterError(response, "uri is malformed: " + source);
+//                } catch (FileNotFoundException e) {
+//                    MessageUtils.setInvalidRequestParameterError(response, "Image is not found: " + source);
+//                } catch (IOException e) {
+//                    MessageUtils.setUnknownError(response, e.getMessage());
+//                } catch (Throwable e) {
+//                    e.printStackTrace();
+//                    MessageUtils.setUnknownError(response, e.getMessage());
+//                }
+//                ((ThetaDeviceService) getContext()).sendResponse(response);
+//            }
+//        });
+    }
+
+    private boolean startVrMode() {
+        Context context = getContext();
+        // Reset current rotation.
+        mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+
+        WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
+
+        SensorManager mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
+        if (sensors.size() == 0) {
+            mLogger.warning("Failed to start VR mode: any sensor is NOT found.");
+            return false;
+        }
+        for (Sensor sensor : sensors) {
+            if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                mLogger.info("Started VR mode: GYROSCOPE sensor is found.");
+                mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+                return true;
+            }
+        }
+        mLogger.warning("Failed to start VR mode: GYROSCOPE sensor is NOT found.");
+        return false;
+    }
+
+    private void stopVrMode() {
+        Context context = getContext();
+        SensorManager mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        mSensorMgr.unregisterListener(this);
+    }
+
+    private static final float NS2S = 1.0f / 1000000000.0f;
+    private long mLastEventTimestamp;
+    private int mDisplayRotation;
+    private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+
+    @Override
+    public void onAccuracyChanged(final Sensor sensor, final int accuracy) {
+        // Nothing to do.
+    }
+
+    @Override
+    public void onSensorChanged(final SensorEvent event) {
+        if (mLastEventTimestamp != 0) {
+            float EPSILON = 0.000000001f;
+            float[] vGyroscope = new float[3];
+            float[] deltaVGyroscope = new float[4];
+            Quaternion qGyroscopeDelta;
+            float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+
+            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+            float tmp = vGyroscope[2];
+            vGyroscope[2] = vGyroscope[0] * +1;
+            vGyroscope[0] = tmp;
+
+            float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
+                + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
+            if (magnitude > EPSILON) {
+                vGyroscope[0] /= magnitude;
+                vGyroscope[1] /= magnitude;
+                vGyroscope[2] /= magnitude;
+            }
+
+            float thetaOverTwo = magnitude * dT / 2.0f;
+            float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
+            float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+
+            deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
+            deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
+            deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
+            deltaVGyroscope[3] = cosThetaOverTwo;
+
+            float[] delta = new float[3];
+            switch (mDisplayRotation) {
+                case Surface.ROTATION_0:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[1];
+                    delta[2] = deltaVGyroscope[2];
+                    break;
+                case Surface.ROTATION_90:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[2] * -1;
+                    delta[2] = deltaVGyroscope[1];
+                    break;
+                case Surface.ROTATION_180:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[1] * -1;
+                    delta[2] = deltaVGyroscope[2];
+                    break;
+                case Surface.ROTATION_270:
+                    delta[0] = deltaVGyroscope[0];
+                    delta[1] = deltaVGyroscope[2];
+                    delta[2] = deltaVGyroscope[1] * -1;
+                    break;
+                default:
+                    break;
+            }
+
+            qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
+
+            mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
+
+            float[] qvOrientation = new float[4];
+            qvOrientation[0] = mCurrentRotation.imaginary().x();
+            qvOrientation[1] = mCurrentRotation.imaginary().y();
+            qvOrientation[2] = mCurrentRotation.imaginary().z();
+            qvOrientation[3] = mCurrentRotation.real();
+
+            float[] rmGyroscope = new float[9];
+            SensorManager.getRotationMatrixFromVector(rmGyroscope,
+                qvOrientation);
+
+            float[] vOrientation = new float[3];
+            SensorManager.getOrientation(rmGyroscope, vOrientation);
+
+            if (mOverlay != null && mOverlay.isShow()) {
+                SphereRenderer renderer = mOverlay.getRenderer();
+                SphereRenderer.Camera currentCamera = renderer.getCamera();
+                SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
+                newCamera.rotate(mCurrentRotation);
+                renderer.setCamera(newCamera.create());
+            }
+
+        }
+        mLastEventTimestamp = event.timestamp;
     }
 
     @Override

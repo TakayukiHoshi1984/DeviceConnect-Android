@@ -166,6 +166,7 @@ public class SphereRenderer implements Renderer {
      */
     @Override
     public void onSurfaceChanged(final GL10 gl, final int width, final int height) {
+        GLES20.glViewport(0, 0, width, height);
     }
 
     /**
@@ -203,6 +204,9 @@ public class SphereRenderer implements Renderer {
      * @param texture Photo object for texture
      */
     public void setTexture(Bitmap texture) {
+        if (mTexture != null && !mTexture.isRecycled()) {
+            mTexture.recycle();
+        }
         mTexture = texture;
         mTextureUpdate = true;
     }

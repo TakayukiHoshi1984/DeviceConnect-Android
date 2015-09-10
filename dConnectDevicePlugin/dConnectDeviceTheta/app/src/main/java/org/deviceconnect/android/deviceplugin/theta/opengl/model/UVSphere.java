@@ -74,7 +74,7 @@ public class UVSphere {
         GLES20.glEnableVertexAttribArray(mUVHandle);
 
         for (int i = 0; i < this.mStrips; i++) {
-            GLES20.glVertexAttribPointer(mPositionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, vertexStride, mVertices.get(mVertices.size() - 1 - i));
+            GLES20.glVertexAttribPointer(mPositionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, vertexStride, mVertices.get(i /*mVertices.size() - 1 - i*/));
             GLES20.glVertexAttribPointer(mUVHandle, TEXTURE_COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, textureStride, mTextureCoords.get(i));
 
 
@@ -118,7 +118,7 @@ public class UVSphere {
                 vertices[6 * j + 2] = radius * ez;
 
                 texCoords[4 * j + 0] = 1.0f - (j / (float) divide);
-                texCoords[4 * j + 1] = 2 * (i + 0) / (float) divide;
+                texCoords[4 * j + 1] = 2 * (i + 1) / (float) divide;
 
                 // second point
                 ex = (float) (Math.cos(altitude) * Math.cos(azimuth));
@@ -130,7 +130,7 @@ public class UVSphere {
                 vertices[6 * j + 5] = radius * ez;
 
                 texCoords[4 * j + 2] = 1.0f - (j / (float) divide);
-                texCoords[4 * j + 3] = 2 * (i + 1) / (float) divide;
+                texCoords[4 * j + 3] = 2 * (i + 0) / (float) divide;
             }
 
             mVertices.add(makeFloatBufferFromArray(vertices));

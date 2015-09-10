@@ -36,33 +36,24 @@ public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
 
-    private static final int NUM_PRELOAD = 5;
-    private static final long EXPIRE_INTERVAL = 10 * 1000;
+    private static final int NUM_PRELOAD = 50;
     private static final float NS2S = 1.0f / 1000000000.0f;
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
     private final SensorManager mSensorMgr;
     private long mLastEventTimestamp;
-    private float mEventInterval;
     private final int mDisplayRotation;
     private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
     private final File[] mAllFiles;
     private final BitmapLoader mBitmapLoader;
-    private byte[] mRoi;
-    private String mUri;
-    private String mSegment;
 
     private final long mInterval; // milliseconds
     private Timer mTimer;
-    private Timer mExpireTimer;
-    private EventListener mListener;
 
+    private Overlay mOverlay;
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
-    private PixelBuffer mPixelBuffer;
-    private final SphereRenderer mRenderer = new SphereRenderer();
-    private ByteArrayOutputStream mBaos;
 
     public WalkthroughContext(final Context context, final File omniImageDir,
                               final int width, final int height, final float fps) {
@@ -88,11 +79,12 @@ public class WalkthroughContext implements SensorEventListener {
         Collections.sort(fileList);
         mAllFiles = fileList.toArray(new File[fileList.size()]);
 
+        mOverlay = new Overlay(context);
 
         mBitmapLoader = new BitmapLoader(mAllFiles);
         mBitmapLoader.setLoaderListener(new BitmapLoaderListener() {
             @Override
-            public void onLoad(int pos) {
+            public void onLoad(int pos, Bitmap b) {
                 Log.d(TAG, "onLoad: " + pos);
                 if (pos == NUM_PRELOAD - 1) {
                     startVideo();
@@ -102,9 +94,7 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
-                if (mListener != null) {
-                    mListener.onComplete(WalkthroughContext.this);
-                }
+                stop();
             }
 
             @Override
@@ -115,22 +105,10 @@ public class WalkthroughContext implements SensorEventListener {
         });
 
         mInterval = (long) (1000.0f / fps);
-
-        mBaos = new ByteArrayOutputStream(width * height);
-        mExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                mPixelBuffer = new PixelBuffer(width, height, false);
-                mPixelBuffer.setRenderer(mRenderer);
-            }
-        });
-
-        initRendererParam(new Param());
     }
 
     public void destroy() {
         stop();
-        mPixelBuffer.destroy();
         mBitmapLoader.reset();
     }
 
@@ -174,7 +152,7 @@ public class WalkthroughContext implements SensorEventListener {
 
             System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
             float tmp = vGyroscope[2];
-            vGyroscope[2] = vGyroscope[0] * -1;
+            vGyroscope[2] = vGyroscope[0];
             vGyroscope[0] = tmp;
 
             float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
@@ -237,41 +215,31 @@ public class WalkthroughContext implements SensorEventListener {
             float[] vOrientation = new float[3];
             SensorManager.getOrientation(rmGyroscope, vOrientation);
 
-            SphereRenderer.Camera currentCamera = mRenderer.getCamera();
-            SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(mCurrentRotation);
-            mRenderer.setCamera(newCamera.create());
-
-//            mEventInterval += dT;
-//            if (mEventInterval >= 0.1f) {
-//                mEventInterval = 0;
-//                render();
-//            }
+            if (mOverlay != null && mOverlay.isShow()) {
+                SphereRenderer renderer = mOverlay.getRenderer();
+                SphereRenderer.Camera currentCamera = renderer.getCamera();
+                SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
+                newCamera.rotate(mCurrentRotation);
+                renderer.setCamera(newCamera.create());
+            }
         }
         mLastEventTimestamp = event.timestamp;
-    }
-
-    public void setUri(final String uriString) {
-        mUri = uriString;
-        mSegment = Uri.parse(uriString).getLastPathSegment();
-    }
-
-    public String getUri() {
-        return mUri;
-    }
-
-    public String getSegment() {
-        return mSegment;
     }
 
     public void start() {
         Log.d(TAG, "Walkthrough.start()");
         startVrMode();
+
         mBitmapLoader.init(NUM_PRELOAD);
+
+        mOverlay.show(null);
     }
 
     public void stop() {
         Log.d(TAG, "Walkthrough.stop()");
+
+        mOverlay.hide();
+
         if (mTimer == null) {
             return;
         }
@@ -279,7 +247,6 @@ public class WalkthroughContext implements SensorEventListener {
         mTimer = null;
 
         stopVrMode();
-
     }
 
     private void startVideo() {
@@ -298,101 +265,35 @@ public class WalkthroughContext implements SensorEventListener {
     }
 
     private void render() {
-        //Log.d(TAG, "Walkthrough.render()");
+        Log.d(TAG, "Walkthrough.render: interval=" + mInterval);
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
+                long start;
 
                 try {
                     Bitmap texture;
-                    try {
-                        texture = mBitmapLoader.pull();
-                        if (texture == null) {
-                            Log.d("Walk", "no longer bitmap.");
-                            return;
-                        }
-                    } catch (InterruptedException e) {
-                        Log.d("Walk", "thread is interrupted.");
+
+                    start = System.currentTimeMillis();
+                    texture = mBitmapLoader.pull();
+                    Log.d("Walk", "pull texture: " + (System.currentTimeMillis() - start) + " msec");
+
+                    if (texture == null) {
+                        Log.d("Walk", "no longer bitmap.");
                         return;
                     }
+
                     Log.i(TAG, "Changing Texure: size=" + texture.getWidth() + " x " + texture.getHeight());
 
-                    mRenderer.setTexture(texture);
-                    mPixelBuffer.render();
-                    Bitmap result = mPixelBuffer.convertToBitmap();
-
-                    mBaos.reset();
-                    result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
-                    mRoi = mBaos.toByteArray();
-
-                    texture.recycle();
-
-                    if (mListener != null) {
-                        mListener.onUpdate(WalkthroughContext.this, mRoi);
-                    }
+                    mOverlay.setOmnidirectionalImage(texture);
+                } catch (InterruptedException e) {
+                    Log.d("Walk", "thread is interrupted.");
                 } catch (Throwable e) {
-                   Log.d(TAG, "ERROR: Executor:", e);
+                    Log.d(TAG, "ERROR: Executor:", e);
                     e.printStackTrace();
                 }
-
             }
         });
-    }
-
-    private void initRendererParam(final Param param) {
-        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
-        builder.setPosition(new Vector3D(
-            (float) param.getCameraX(),
-            (float) param.getCameraY() * -1,
-            (float) param.getCameraZ()));
-        builder.setFov((float) param.getCameraFov());
-        mRenderer.setCamera(builder.create());
-        mRenderer.setSphereRadius((float) param.getSphereSize());
-        mRenderer.setScreenWidth(param.getImageWidth());
-        mRenderer.setScreenHeight(param.getImageHeight());
-    }
-
-    public void startExpireTimer() {
-        if (mExpireTimer != null) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        Date expireTime = new Date(now + EXPIRE_INTERVAL);
-        mExpireTimer = new Timer();
-        mExpireTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                mExpireTimer.cancel();
-                mExpireTimer = null;
-                if (mListener != null) {
-                    mListener.onExpire(WalkthroughContext.this);
-                }
-            }
-        }, expireTime);
-    }
-
-    public void stopExpireTimer() {
-        if (mExpireTimer != null) {
-            mExpireTimer.cancel();
-            mExpireTimer = null;
-        }
-    }
-
-    public void restartExpireTimer() {
-        stopExpireTimer();
-        startExpireTimer();
-    }
-
-    public void setEventListener(final EventListener listener) {
-        mListener = listener;
-    }
-
-    public static interface EventListener {
-        void onUpdate(WalkthroughContext context, byte[] roi);
-
-        void onComplete(WalkthroughContext context);
-
-        void onExpire(WalkthroughContext roiContext);
     }
 
     private static class BitmapLoader {
@@ -439,6 +340,10 @@ public class WalkthroughContext implements SensorEventListener {
             }
         }
 
+        public Bitmap get(final int pos) {
+            return mBitmaps[pos];
+        }
+
         public synchronized Bitmap pull() throws InterruptedException {
             if (mPos == mBitmaps.length) {
                 return null;
@@ -462,7 +367,7 @@ public class WalkthroughContext implements SensorEventListener {
                     Log.d(TAG, "Now loading... : pos=" + pos);
                     loadBitmap(pos);
                     while ((bitmap = mBitmaps[pos]) == null) {
-                        file.wait(100);
+                        file.wait(10);
                     }
                     Log.d(TAG, "Loaded: pos=" + pos);
 
@@ -496,17 +401,23 @@ public class WalkthroughContext implements SensorEventListener {
             mExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    long start;
+
                     FileInputStream fis = null;
                     try {
                         fis = new FileInputStream(file);
+
+                        start = System.currentTimeMillis();
                         Bitmap bitmap = BitmapFactory.decodeStream(fis);
+                        Log.d("Walk", "decodeStream: " + (System.currentTimeMillis() - start) + " msec");
+
                         synchronized (file) {
                             mBitmaps[pos] = bitmap;
                             file.notifyAll();
                         }
 
                         if (mListener != null) {
-                            mListener.onLoad(pos);
+                            mListener.onLoad(pos, bitmap);
                         }
                     } catch (IOException e) {
                         if (mListener != null) {
@@ -531,134 +442,11 @@ public class WalkthroughContext implements SensorEventListener {
 
     private static interface BitmapLoaderListener {
 
-        void onLoad(int pos);
+        void onLoad(int pos, Bitmap b);
 
         void onComplete();
 
         void onError(int pos, Exception e);
 
-    }
-
-    public static class Param {
-
-        double mCameraX;
-
-        double mCameraY;
-
-        double mCameraZ;
-
-        double mCameraYaw;
-
-        double mCameraRoll;
-
-        double mCameraPitch;
-
-        double mCameraFov = 90.0d;
-
-        double mSphereSize = 1.0d;
-
-        int mImageWidth = 480;
-
-        int mImageHeight = 270;
-
-        boolean mStereoMode;
-
-        boolean mVrMode;
-
-        public double getCameraX() {
-            return mCameraX;
-        }
-
-        public void setCameraX(final double x) {
-            mCameraX = x;
-        }
-
-        public double getCameraY() {
-            return mCameraY;
-        }
-
-        public void setCameraY(final double y) {
-            mCameraY = y;
-        }
-
-        public double getCameraZ() {
-            return mCameraZ;
-        }
-
-        public void setCameraZ(final double z) {
-            mCameraZ = z;
-        }
-
-        public double getCameraYaw() {
-            return mCameraYaw;
-        }
-
-        public void setCameraYaw(final double yaw) {
-            mCameraYaw = yaw;
-        }
-
-        public double getCameraRoll() {
-            return mCameraRoll;
-        }
-
-        public void setCameraRoll(final double roll) {
-            mCameraRoll = roll;
-        }
-
-        public double getCameraPitch() {
-            return mCameraPitch;
-        }
-
-        public void setCameraPitch(final double pitch) {
-            mCameraPitch = pitch;
-        }
-
-        public double getCameraFov() {
-            return mCameraFov;
-        }
-
-        public void setCameraFov(final double fov) {
-            mCameraFov = fov;
-        }
-
-        public double getSphereSize() {
-            return mSphereSize;
-        }
-
-        public void setSphereSize(final double size) {
-            mSphereSize = size;
-        }
-
-        public int getImageWidth() {
-            return mImageWidth;
-        }
-
-        public void setImageWidth(final int width) {
-            mImageWidth = width;
-        }
-
-        public int getImageHeight() {
-            return mImageHeight;
-        }
-
-        public void setImageHeight(final int height) {
-            mImageHeight = height;
-        }
-
-        public boolean isStereoMode() {
-            return mStereoMode;
-        }
-
-        public void setStereoMode(final boolean isStereo) {
-            mStereoMode = isStereo;
-        }
-
-        public boolean isVrMode() {
-            return mVrMode;
-        }
-
-        public void setVrMode(final boolean isVr) {
-            mVrMode = isVr;
-        }
     }
 }
