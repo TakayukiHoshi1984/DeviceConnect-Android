@@ -108,7 +108,10 @@ public class WalkthroughContext implements SensorEventListener {
             }
         });
 
-        initRendererParam(new Param());
+        Param param = new Param();
+        param.setImageWidth(width);
+        param.setImageHeight(height);
+        initRendererParam(param);
     }
 
     private File[] loadFiles(final File dir) {
