@@ -55,7 +55,6 @@ public class WalkthroughContext implements SensorEventListener {
     private String mSegment;
 
     private final long mInterval; // milliseconds
-    private Timer mDeliveryTimer;
     private Timer mExpireTimer;
     private EventListener mListener;
 
@@ -63,6 +62,7 @@ public class WalkthroughContext implements SensorEventListener {
     private PixelBuffer mPixelBuffer;
     private final SphereRenderer mRenderer = new SphereRenderer();
     private ByteArrayOutputStream mBaos;
+    private boolean mIsStopped = true;
 
     public WalkthroughContext(final Context context, final File omniImageDir,
                               final int width, final int height, final float fps) {
@@ -77,6 +77,9 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onLoad(int pos) {
                 Log.d(TAG, "onLoad: " + pos);
+                if (mIsStopped) {
+                    return;
+                }
                 if (pos == NUM_PRELOAD - 1) {
                     startVideo();
                 }
@@ -85,6 +88,7 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onComplete() {
                 Log.d(TAG, "onComplete: ");
+                //stopVideo();
                 if (mListener != null) {
                     mListener.onComplete(WalkthroughContext.this);
                 }
@@ -258,47 +262,64 @@ public class WalkthroughContext implements SensorEventListener {
         return mSegment;
     }
 
-    public void start() {
+    public synchronized void start() {
         Log.d(TAG, "Walkthrough.start()");
-        startVrMode();
-        mBitmapLoader.init(NUM_PRELOAD);
+        if (mIsStopped) {
+            mIsStopped = false;
+            startVrMode();
+            mBitmapLoader.init(NUM_PRELOAD);
+        }
     }
 
-    public void stop() {
+    public synchronized void stop() {
         Log.d(TAG, "Walkthrough.stop()");
-
-        stopVideo();
-        stopVrMode();
-
-        mBitmapLoader.reset();
-        mPixelBuffer.destroy();
+        if (!mIsStopped) {
+            mIsStopped = true;
+            stopVrMode();
+            mBitmapLoader.reset();
+            mPixelBuffer.destroy();
+            mExecutor.shutdownNow();
+        }
     }
+
+    private Thread mRendererThread;
 
     private synchronized void startVideo() {
         Log.d(TAG, "Walkthrough.startVideo()");
-        if (mDeliveryTimer != null) {
-            Log.d(TAG, "Already started video.");
+        if (mRendererThread != null) {
             return;
         }
-        mDeliveryTimer = new Timer();
-        mDeliveryTimer.schedule(new TimerTask() {
+
+        mRendererThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                render();
-            }
-        }, 0, mInterval);
-    }
+                try {
+                    long start, end, interval;
+                    while (!mIsStopped) {
+                        start = System.currentTimeMillis();
+                        render();
+                        end = System.currentTimeMillis();
 
-    private synchronized void stopVideo() {
-        if (mDeliveryTimer == null) {
-            return;
-        }
-        mDeliveryTimer.cancel();
-        mDeliveryTimer = null;
+                        interval = mInterval - (end - start);
+                        if (interval > 0) {
+                            Thread.sleep(interval);
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // Nothing to do.
+                }
+
+                Log.d(TAG, "Stopped video.");
+            }
+        });
+        mRendererThread.start();
     }
 
     private void render() {
         Log.d(TAG, "Walkthrough.render()");
+        if (mIsStopped) {
+            return;
+        }
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -430,6 +451,7 @@ public class WalkthroughContext implements SensorEventListener {
         }
 
         public synchronized void reset() {
+            Log.d(TAG, "Walkthrough.reset()");
             mPos = 0;
             for (int i = 0; i < mBitmaps.length; i++) {
                 Bitmap bitmap = mBitmaps[i];
@@ -442,10 +464,12 @@ public class WalkthroughContext implements SensorEventListener {
 
         public synchronized Bitmap pull() throws InterruptedException {
             if (mPos == mBitmaps.length) {
+                Log.w(TAG, "Walkthrough.pull(): out of range");
                 return null;
             }
 
             int pos = mPos++;
+            Log.d(TAG, "Walkthrough.pull(): changed pos: " + pos);
             if (pos == mBitmaps.length - 1) {
                 if (mListener != null) {
                     mListener.onComplete();
@@ -478,7 +502,7 @@ public class WalkthroughContext implements SensorEventListener {
         }
 
         private void loadBitmap(final int pos) {
-            if (pos >= mBitmaps.length) {
+            if (0 > pos || pos >= mBitmaps.length) {
                 return;
             }
 

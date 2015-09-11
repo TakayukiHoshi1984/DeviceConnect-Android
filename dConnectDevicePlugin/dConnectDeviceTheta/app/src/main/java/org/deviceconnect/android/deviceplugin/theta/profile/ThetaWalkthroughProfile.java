@@ -82,6 +82,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         final Integer width = getWidth(request);
         final Integer height = getHeight(request);
         final Double fps = getFps(request);
+        Log.d(TAG, "onPostWalker: source=" + source + " width=" + width + " height=" + height + " fps=" + fps);
 
         if (source == null) {
             MessageUtils.setInvalidRequestParameterError(response, "source is null.");
@@ -124,11 +125,14 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                     String uri = mServer.getUrl() + "/" + segment;
                     mServer.createMediaQueue(segment);
 
-                    WalkthroughContext walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
-                    walkContext.setEventListener(ThetaWalkthroughProfile.this);
-                    walkContext.setUri(uri);
-                    walkContext.start();
-                    mWalkContexts.put(uri, walkContext);
+                    WalkthroughContext walkContext = mWalkContexts.get(uri);
+                    if (walkContext == null) {
+                        walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
+                        walkContext.setEventListener(ThetaWalkthroughProfile.this);
+                        walkContext.setUri(uri);
+                        walkContext.start();
+                        mWalkContexts.put(uri, walkContext);
+                    }
 
                     setResult(response, DConnectMessage.RESULT_OK);
                     response.putExtra(DConnectProfileConstants.PARAM_URI, uri);
