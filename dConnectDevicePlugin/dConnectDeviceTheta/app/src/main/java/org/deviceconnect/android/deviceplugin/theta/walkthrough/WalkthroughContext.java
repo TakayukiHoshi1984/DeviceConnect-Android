@@ -475,29 +475,26 @@ public class WalkthroughContext implements SensorEventListener {
                     mListener.onComplete();
                 }
             }
-            try {
-                File file = mFiles[pos];
-                synchronized (file) {
-                    Bitmap bitmap = mBitmaps[pos];
-                    if (bitmap != null) {
-                        Log.d(TAG, "Already loaded: pos=" + pos);
-                        return bitmap;
-                    }
 
-                    Log.d(TAG, "Now loading... : pos=" + pos);
+            File file = mFiles[pos];
+            synchronized (file) {
+                Bitmap bitmap = mBitmaps[pos];
+                if (bitmap == null) {
+                    Log.d(TAG, "Now loading...: pos=" + pos);
                     loadBitmap(pos);
                     while ((bitmap = mBitmaps[pos]) == null) {
                         file.wait(100);
                     }
                     Log.d(TAG, "Loaded: pos=" + pos);
-
-                    // Remove pulled bitmap from this buffer.
-                    mBitmaps[pos] = null;
-
-                    return bitmap;
+                } else {
+                    Log.d(TAG, "Already loaded: pos=" + pos);
                 }
-            } finally {
+
+                // Remove pulled bitmap from this buffer.
+                mBitmaps[pos] = null;
+
                 loadBitmap(pos + 1);
+                return bitmap;
             }
         }
 
