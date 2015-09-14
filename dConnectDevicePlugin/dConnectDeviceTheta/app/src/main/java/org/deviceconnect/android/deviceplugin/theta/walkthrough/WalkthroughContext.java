@@ -48,6 +48,7 @@ public class WalkthroughContext implements SensorEventListener {
     private final int mDisplayRotation;
     private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
+    private final File mDir;
     private final File[] mAllFiles;
     private final BitmapLoader mBitmapLoader;
     private byte[] mRoi;
@@ -70,6 +71,7 @@ public class WalkthroughContext implements SensorEventListener {
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
+        mDir = omniImageDir;
         mAllFiles = loadFiles(omniImageDir);
         mBitmapLoader = new BitmapLoader(mAllFiles);
         mBitmapLoader.setLoaderListener(new BitmapLoaderListener() {
@@ -260,6 +262,10 @@ public class WalkthroughContext implements SensorEventListener {
 
     public String getSegment() {
         return mSegment;
+    }
+
+    public File getOmnidirectionalImageDirectory() {
+        return mDir;
     }
 
     public synchronized void start() {

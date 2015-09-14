@@ -113,29 +113,35 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             mServer.setServerEventListener(ThetaWalkthroughProfile.this);
                             mServer.start();
                         }
+
+                        File extStore = Environment.getExternalStorageDirectory();
+                        Log.d("Walk", "extStore: " + extStore.getAbsolutePath());
+
+                        File dir = new File(extStore, source);
+                        Log.d("Walk", "dir: " + dir.getAbsolutePath() + " isDir: " + dir.isDirectory());
+
+                        String uri;
+                        String key = dir.getCanonicalPath();
+                        WalkthroughContext walkContext = mWalkContexts.get(key);
+                        if (walkContext == null) {
+
+
+                            String segment = UUID.randomUUID().toString();
+                            uri = mServer.getUrl() + "/" + segment;
+                            mServer.createMediaQueue(segment);
+
+                            walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
+                            walkContext.setEventListener(ThetaWalkthroughProfile.this);
+                            walkContext.setUri(uri);
+                            walkContext.start();
+                            mWalkContexts.put(key, walkContext);
+                        } else {
+                            uri = walkContext.getUri();
+                        }
+
+                        setResult(response, DConnectMessage.RESULT_OK);
+                        response.putExtra(DConnectProfileConstants.PARAM_URI, uri);
                     }
-
-                    File extStore = Environment.getExternalStorageDirectory();
-                    Log.d("Walk", "extStore: " + extStore.getAbsolutePath());
-
-                    File dir = new File(extStore, source);
-                    Log.d("Walk", "dir: " + dir.getAbsolutePath() + " isDir: " + dir.isDirectory());
-
-                    String segment = UUID.randomUUID().toString();
-                    String uri = mServer.getUrl() + "/" + segment;
-                    mServer.createMediaQueue(segment);
-
-                    WalkthroughContext walkContext = mWalkContexts.get(uri);
-                    if (walkContext == null) {
-                        walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
-                        walkContext.setEventListener(ThetaWalkthroughProfile.this);
-                        walkContext.setUri(uri);
-                        walkContext.start();
-                        mWalkContexts.put(uri, walkContext);
-                    }
-
-                    setResult(response, DConnectMessage.RESULT_OK);
-                    response.putExtra(DConnectProfileConstants.PARAM_URI, uri);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     MessageUtils.setUnknownError(response, e.getMessage());
@@ -203,7 +209,11 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         mServer.stopMedia(walkContext.getSegment());
 
         walkContext.stop();
-        mWalkContexts.remove(walkContext.getUri());
+
+        // Remove WalkThrough context.
+        File dir = walkContext.getOmnidirectionalImageDirectory();
+        String key = dir.getAbsolutePath();
+        mWalkContexts.remove(key);
 
         Log.d(TAG, "ThetaWalkthrough.onComplete: contexts=" + mWalkContexts.size());
     }
@@ -213,13 +223,29 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         mServer.stopMedia(walkContext.getSegment());
 
         walkContext.stop();
-        mWalkContexts.remove(walkContext.getUri());
+
+        // Remove WalkThrough context.
+        File dir = walkContext.getOmnidirectionalImageDirectory();
+        String key = dir.getAbsolutePath();
+        mWalkContexts.remove(key);
     }
 
     @Override
     public byte[] onConnect(final MixedReplaceMediaServer.Request request) {
         final String uri = request.getUri();
-        final WalkthroughContext target = mWalkContexts.get(uri);
+
+        WalkthroughContext target = null;
+        synchronized (lockObj) {
+            for (Iterator<Map.Entry<String, WalkthroughContext>> it = mWalkContexts.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<String, WalkthroughContext> entry = it.next();
+                WalkthroughContext walkContext = entry.getValue();
+                if (uri.equals(walkContext.getUri())) {
+                    target = walkContext;
+                    break;
+                }
+            }
+        }
+
         if (target != null && request.isGet()) {
             target.restartExpireTimer();
         }
@@ -228,7 +254,6 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     @Override
     public void onDisconnect(final MixedReplaceMediaServer.Request request) {
-        String segment = request.getUri();
     }
 
     @Override
