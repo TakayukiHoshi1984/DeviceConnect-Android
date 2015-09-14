@@ -82,9 +82,9 @@ public class WalkthroughContext implements SensorEventListener {
                 if (mIsStopped) {
                     return;
                 }
-                if (pos == NUM_PRELOAD - 1) {
-                    startVideo();
-                }
+//                if (pos == NUM_PRELOAD - 1) {
+//                    startVideo();
+//                }
             }
 
             @Override
@@ -268,12 +268,16 @@ public class WalkthroughContext implements SensorEventListener {
         return mDir;
     }
 
+    public byte[] getMedia() {
+        return mRoi;
+    }
+
     public synchronized void start() {
         Log.d(TAG, "Walkthrough.start()");
         if (mIsStopped) {
             mIsStopped = false;
             startVrMode();
-            mBitmapLoader.init(NUM_PRELOAD);
+            seek(1);
         }
     }
 
@@ -288,40 +292,131 @@ public class WalkthroughContext implements SensorEventListener {
         }
     }
 
-    private Thread mRendererThread;
+    private PlayStatus mPlayStatus;
 
-    private synchronized void startVideo() {
-        Log.d(TAG, "Walkthrough.startVideo()");
-        if (mRendererThread != null) {
-            return;
+    public synchronized int seek(final int delta) {
+        if (mIsStopped) {
+            return -1;
         }
+        mPlayStatus = nextPlayStatus(delta);
+        int nextFrom = mPlayStatus.getStartFrame();
+        int nextTo = mPlayStatus.getEndFrame();
+        int maxCount = getFrameCount(nextFrom, nextTo);
+        mBitmapLoader.free(nextFrom, maxCount);
+        mBitmapLoader.prepareBitmap(nextFrom, maxCount);
 
-        mRendererThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    long start, end, interval;
-                    while (!mIsStopped) {
-                        start = System.currentTimeMillis();
-                        render();
-                        end = System.currentTimeMillis();
-
-                        interval = mInterval - (end - start);
-                        if (interval > 0) {
-                            Thread.sleep(interval);
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    // Nothing to do.
-                }
-
-                Log.d(TAG, "Stopped video.");
+        try {
+            for (int i = nextFrom; i < nextTo; i++) {
+                Bitmap texture = mBitmapLoader.pull(i);
+                render(i, texture);
             }
-        });
-        mRendererThread.start();
+            return maxCount;
+        } catch (InterruptedException e) {
+            return -1;
+        }
     }
 
-    private void render() {
+    private int getFrameCount(final int start, final int end) {
+        int startIndex = remapFrameIndex(start);
+        int endIndex = remapFrameIndex(end);
+        if (endIndex < startIndex) {
+            startIndex += getAllFrameCount();
+        }
+        return endIndex - startIndex;
+    }
+
+    private int remapFrameIndex(final int index) {
+        int count = getAllFrameCount();
+        if (index >= count) {
+            return index % count;
+        }
+        if (index < 0) {
+            int tmpIndex = index;
+            tmpIndex = tmpIndex % count;
+            tmpIndex += count;
+            return tmpIndex;
+        }
+        return index;
+    }
+
+    private int getAllFrameCount() {
+        return mAllFiles.length;
+    }
+
+    private PlayStatus nextPlayStatus(final int delta) {
+        if (mPlayStatus != null) {
+            int nowFrom = mPlayStatus.getStartFrame();
+            int nowTo = mPlayStatus.getEndFrame();
+            int nextFrom = remapFrameIndex(nowFrom + delta);
+            int nextTo = remapFrameIndex(nowTo + delta);
+            return new PlayStatus(nextFrom, nextTo);
+        } else {
+            return new PlayStatus(0, remapFrameIndex(delta));
+        }
+    }
+
+    private static class PlayStatus {
+        private int mStartFrame;
+        private int mEndFrame;
+        private int mCurrentFrame;
+        private boolean mIsPlaying;
+
+        public PlayStatus(final int startFrame, final int endFrame) {
+            mStartFrame = startFrame;
+            mEndFrame = endFrame;
+            mCurrentFrame = -1;
+        }
+
+        public int getStartFrame() {
+            return mStartFrame;
+        }
+
+        public int getEndFrame() {
+            return mEndFrame;
+        }
+
+        public void setCurrentFrame(final int currentFrame) {
+            mCurrentFrame = currentFrame;
+        }
+
+        public boolean isFinished() {
+            return mCurrentFrame == mEndFrame -1;
+        }
+    }
+
+//    private Thread mRendererThread;
+//    private synchronized void startVideo() {
+//        Log.d(TAG, "Walkthrough.startVideo()");
+//        if (mRendererThread != null) {
+//            return;
+//        }
+//
+//        mRendererThread = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    long start, end, interval;
+//                    while (!mIsStopped) {
+//                        start = System.currentTimeMillis();
+//                        render();
+//                        end = System.currentTimeMillis();
+//
+//                        interval = mInterval - (end - start);
+//                        if (interval > 0) {
+//                            Thread.sleep(interval);
+//                        }
+//                    }
+//                } catch (InterruptedException e) {
+//                    // Nothing to do.
+//                }
+//
+//                Log.d(TAG, "Stopped video.");
+//            }
+//        });
+//        mRendererThread.start();
+//    }
+
+    private void render(final int index, final Bitmap texture) {
         Log.d(TAG, "Walkthrough.render()");
         if (mIsStopped) {
             return;
@@ -331,19 +426,6 @@ public class WalkthroughContext implements SensorEventListener {
             public void run() {
 
                 try {
-                    Bitmap texture;
-                    try {
-                        texture = mBitmapLoader.pull();
-                        if (texture == null) {
-                            Log.d("Walk", "no longer bitmap.");
-                            return;
-                        }
-                    } catch (InterruptedException e) {
-                        Log.d("Walk", "thread is interrupted.");
-                        return;
-                    }
-                    Log.i(TAG, "Changing Texure: size=" + texture.getWidth() + " x " + texture.getHeight());
-
                     mRenderer.setTexture(texture);
                     mPixelBuffer.render();
                     Bitmap result = mPixelBuffer.convertToBitmap();
@@ -357,6 +439,13 @@ public class WalkthroughContext implements SensorEventListener {
 
                     if (mListener != null) {
                         mListener.onUpdate(WalkthroughContext.this, mRoi);
+                    }
+
+                    synchronized (this) {
+                        mPlayStatus.setCurrentFrame(index);
+                        if (mPlayStatus.isFinished()) {
+                            // TODO 指定されたフレームまでの再生が終了した場合の処理
+                        }
                     }
                 } catch (Throwable e) {
                    Log.d(TAG, "ERROR: Executor:", e);
@@ -433,7 +522,7 @@ public class WalkthroughContext implements SensorEventListener {
 
         private BitmapLoaderListener mListener;
 
-        private int mPos;
+        private BitmapLoaderTask mTask;
 
         public BitmapLoader(final File[] files) {
             for (File file : files) {
@@ -456,9 +545,65 @@ public class WalkthroughContext implements SensorEventListener {
             }
         }
 
+        public int getTotalCount() {
+            return mFiles.length;
+        }
+
+        public synchronized void prepareBitmap(final int from, final int maxCount) {
+            if (mTask != null) {
+                mTask.cancel();
+                mTask = null;
+            }
+            mTask = new BitmapLoaderTask();
+            mTask.setStartIndex(from);
+            mTask.setMaxCount(maxCount);
+            mTask.setBitmapLoader(this);
+            mExecutor.execute(mTask);
+        }
+
+        public void free(final int from, final int maxCount) {
+            free(loopIndexes(from, maxCount));
+        }
+
+        private void free(final int[] excludedIndexes) {
+            for (int i = 0; i < mBitmaps.length; i++) {
+                if (!contains(i, excludedIndexes)) {
+                    Bitmap bitmap = mBitmaps[i];
+                    if (bitmap != null) {
+                        bitmap.recycle();
+                        mBitmaps[i] = null;
+                    }
+                }
+            }
+        }
+
+        private boolean contains(final int targetIndex, final int[] range) {
+            for (int i = 0; i < range.length; i++) {
+                if (range[i] == targetIndex) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private int[] loopIndexes(final int from, final int length) {
+            int [] indexes = new int[length];
+            int count = 0;
+            int origin = from;
+            for (int i = 0, d = 0; count < length; i++, d++, count++) {
+                int index = origin + d;
+                if (index >= mBitmaps.length) {
+                    index = 0;
+                    origin = 0;
+                    d = 0;
+                }
+                indexes[i] = index;
+            }
+            return indexes;
+        }
+
         public synchronized void reset() {
             Log.d(TAG, "Walkthrough.reset()");
-            mPos = 0;
             for (int i = 0; i < mBitmaps.length; i++) {
                 Bitmap bitmap = mBitmaps[i];
                 if (bitmap != null) {
@@ -468,13 +613,12 @@ public class WalkthroughContext implements SensorEventListener {
             }
         }
 
-        public synchronized Bitmap pull() throws InterruptedException {
-            if (mPos == mBitmaps.length) {
+        public synchronized Bitmap pull(int pos) throws InterruptedException {
+            if (0 > pos || pos >= mBitmaps.length) {
                 Log.w(TAG, "Walkthrough.pull(): out of range");
                 return null;
             }
 
-            int pos = mPos++;
             Log.d(TAG, "Walkthrough.pull(): changed pos: " + pos);
             if (pos == mBitmaps.length - 1) {
                 if (mListener != null) {
@@ -499,7 +643,6 @@ public class WalkthroughContext implements SensorEventListener {
                 // Remove pulled bitmap from this buffer.
                 mBitmaps[pos] = null;
 
-                loadBitmap(pos + 1);
                 return bitmap;
             }
         }
@@ -554,6 +697,52 @@ public class WalkthroughContext implements SensorEventListener {
                     }
                 }
             });
+        }
+    }
+
+    private static class BitmapLoaderTask implements Runnable {
+
+        private int mStartIndex;
+        private int mMaxCount;
+        private BitmapLoader mBitmapLoader;
+        private boolean mIsCanceled;
+
+        public void setStartIndex(final int startIndex) {
+            mStartIndex = startIndex;
+        }
+
+        public void setMaxCount(final int maxCount) {
+            mMaxCount = maxCount;
+        }
+
+        public void setBitmapLoader(final BitmapLoader loader) {
+            mBitmapLoader = loader;
+        }
+
+        public void cancel() {
+            mIsCanceled = true;
+        }
+
+        private boolean isCanceled() {
+            return mIsCanceled;
+        }
+
+        @Override
+        public void run() {
+            int totalCount = mBitmapLoader.getTotalCount();
+            int remainedCount = mMaxCount;
+            for (int i = mStartIndex; remainedCount > 0; remainedCount--) {
+
+                mBitmapLoader.loadBitmap(i++);
+
+                if (i >= totalCount) {
+                    i -= totalCount;
+                }
+
+                if (isCanceled()) {
+                    break;
+                }
+            }
         }
     }
 

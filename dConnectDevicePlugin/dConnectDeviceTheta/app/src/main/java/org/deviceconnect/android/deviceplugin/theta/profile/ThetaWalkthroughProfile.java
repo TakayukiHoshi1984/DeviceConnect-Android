@@ -153,6 +153,41 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     }
 
     @Override
+    protected boolean onPutRequest(final Intent request, final Intent response) {
+        String interfaceName = getInterface(request);
+        String attributeName = getAttribute(request);
+        if (interfaceName == null && attributeName == null) {
+            return onPutWalker(request, response);
+        } else {
+            MessageUtils.setUnknownAttributeError(response);
+            return true;
+        }
+    }
+
+    protected boolean onPutWalker(final Intent request, final Intent response) {
+        String uri = getURI(request);
+        Integer deltaParam = parseInteger(request, "delta");
+        if (deltaParam == null) {
+            MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
+            return true;
+        }
+        if (uri == null) {
+            MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
+            return true;
+        }
+
+        WalkthroughContext walkContext = findContextByUri(uri);
+        int frameCount = walkContext.seek(deltaParam);
+        if (frameCount > 0) {
+            setResult(response, DConnectMessage.RESULT_OK);
+            response.putExtra("count", frameCount);
+        } else {
+            MessageUtils.setUnknownError(response, "Failed to change the position of the walk-through.");
+        }
+        return true;
+    }
+
+    @Override
     protected boolean onDeleteRequest(final Intent request, final Intent response) {
         String interfaceName = getInterface(request);
         String attributeName = getAttribute(request);
@@ -170,9 +205,14 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
             return true;
         }
-        WalkthroughContext walkContext = mWalkContexts.remove(uri);
+        WalkthroughContext walkContext = findContextByUri(uri);
         if (walkContext != null) {
             walkContext.stop();
+
+            // Remove WalkThrough context.
+            File dir = walkContext.getOmnidirectionalImageDirectory();
+            String key = dir.getAbsolutePath();
+            mWalkContexts.remove(key);
         }
         setResult(response, DConnectMessage.RESULT_OK);
         return true;
@@ -234,6 +274,26 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     public byte[] onConnect(final MixedReplaceMediaServer.Request request) {
         final String uri = request.getUri();
 
+        WalkthroughContext target = findContextByUri(uri);
+        if (target != null && request.isGet()) {
+            target.restartExpireTimer();
+        }
+        if (target != null) {
+            return target.getMedia();
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public void onDisconnect(final MixedReplaceMediaServer.Request request) {
+    }
+
+    @Override
+    public void onCloseServer() {
+    }
+
+    private WalkthroughContext findContextByUri(final String uri) {
         WalkthroughContext target = null;
         synchronized (lockObj) {
             for (Iterator<Map.Entry<String, WalkthroughContext>> it = mWalkContexts.entrySet().iterator(); it.hasNext(); ) {
@@ -245,19 +305,6 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                 }
             }
         }
-
-        if (target != null && request.isGet()) {
-            target.restartExpireTimer();
-        }
-        return null;
+        return target;
     }
-
-    @Override
-    public void onDisconnect(final MixedReplaceMediaServer.Request request) {
-    }
-
-    @Override
-    public void onCloseServer() {
-    }
-
 }
