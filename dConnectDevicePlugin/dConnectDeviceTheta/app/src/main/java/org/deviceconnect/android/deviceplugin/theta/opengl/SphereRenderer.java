@@ -119,8 +119,6 @@ public class SphereRenderer implements Renderer {
     }
 
     private void draw(final Camera camera) {
-        Log.d(TAG, "SphereRenderer.draw()");
-
         Matrix.setIdentityM(mModelMatrix, 0);
         Matrix.setIdentityM(mViewMatrix, 0);
         Matrix.setIdentityM(mProjectionMatrix, 0);

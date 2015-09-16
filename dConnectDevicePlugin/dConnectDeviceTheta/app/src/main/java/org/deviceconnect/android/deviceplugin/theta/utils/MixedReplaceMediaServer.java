@@ -396,7 +396,6 @@ public class MixedReplaceMediaServer {
                     return;
                 } else {
                     String segment = Uri.parse(mRequest.getUri()).getLastPathSegment();
-                    Log.d("Walk", "*** timestamp: " + header.getParam("timestamp"));
                     boolean isGet = header.hasParam("snapshot");
                     byte[] data = null;
                     if (mServerEventListener != null) {

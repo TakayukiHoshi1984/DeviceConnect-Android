@@ -21,13 +21,14 @@ import java.util.logging.SimpleFormatter;
  */
 public class ThetaDeviceApplication extends Application {
 
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        if (BuildConfig.DEBUG) {
+        if (DEBUG) {
             AndroidHandler handler = new AndroidHandler("theta.dplugin");
             handler.setFormatter(new SimpleFormatter());
             handler.setLevel(Level.ALL);

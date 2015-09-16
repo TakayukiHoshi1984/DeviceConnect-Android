@@ -36,6 +36,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                MixedReplaceMediaServer.ServerEventListener {
 
     private static final String TAG = "Walk";
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     public static final String PROFILE_NAME = "walkthrough";
 
@@ -240,8 +241,10 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     @Override
     public void onUpdate(final WalkthroughContext walkContext, final byte[] roi) {
-        Log.d(TAG, "onUpdate: " + roi.length + " bytes");
-        mServer.offerMedia(walkContext.getSegment(), roi);
+//        if (DEBUG) {
+//            Log.d(TAG, "onUpdate: " + roi + " bytes. context=" + walkContext + " server=" + mServer);
+//        }
+//        mServer.offerMedia(walkContext.getSegment(), roi);
     }
 
     @Override
