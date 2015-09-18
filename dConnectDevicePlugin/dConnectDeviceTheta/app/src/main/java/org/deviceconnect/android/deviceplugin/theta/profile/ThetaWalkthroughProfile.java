@@ -166,24 +166,28 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     }
 
     protected boolean onPutWalker(final Intent request, final Intent response) {
-        String uri = getURI(request);
-        Integer deltaParam = parseInteger(request, "delta");
-        if (deltaParam == null) {
-            MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
-            return true;
-        }
-        if (uri == null) {
-            MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
-            return true;
-        }
+        try {
+            String uri = getURI(request);
+            Integer deltaParam = parseInteger(request, "delta");
+            if (deltaParam == null) {
+                MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
+                return true;
+            }
+            if (uri == null) {
+                MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
+                return true;
+            }
 
-        WalkthroughContext walkContext = findContextByUri(uri);
-        int frameCount = walkContext.seek(deltaParam);
-        if (frameCount > 0) {
+            WalkthroughContext walkContext = findContextByUri(uri);
+            if (walkContext == null) {
+                MessageUtils.setInvalidRequestParameterError(response, "the specified uri is unavailable: uri = " + uri);
+                return true;
+            }
+            walkContext.seek(deltaParam);
             setResult(response, DConnectMessage.RESULT_OK);
-            response.putExtra("count", frameCount);
-        } else {
-            MessageUtils.setUnknownError(response, "Failed to change the position of the walk-through.");
+            response.putExtra("count", deltaParam);
+        } catch (Throwable e) {
+            Log.e(TAG, "ERROR: ", e);
         }
         return true;
     }
@@ -241,28 +245,24 @@ public class ThetaWalkthroughProfile extends DConnectProfile
 
     @Override
     public void onUpdate(final WalkthroughContext walkContext, final byte[] roi) {
-//        if (DEBUG) {
-//            Log.d(TAG, "onUpdate: " + roi + " bytes. context=" + walkContext + " server=" + mServer);
-//        }
-//        mServer.offerMedia(walkContext.getSegment(), roi);
+        if (DEBUG) {
+            Log.d(TAG, "onUpdate: " + roi + " bytes. context=" + walkContext + " server=" + mServer);
+        }
+        mServer.offerMedia(walkContext.getSegment(), roi);
     }
 
     @Override
     public void onComplete(final WalkthroughContext walkContext) {
-        mServer.stopMedia(walkContext.getSegment());
-
-        walkContext.stop();
-
-        // Remove WalkThrough context.
-        File dir = walkContext.getOmnidirectionalImageDirectory();
-        String key = dir.getAbsolutePath();
-        mWalkContexts.remove(key);
-
-        Log.d(TAG, "ThetaWalkthrough.onComplete: contexts=" + mWalkContexts.size());
+        if (DEBUG) {
+            Log.d(TAG, "ThetaWalkthrough.onComplete: contexts=" + mWalkContexts.size());
+        }
     }
 
     @Override
     public void onExpire(final WalkthroughContext walkContext) {
+        if (DEBUG) {
+            Log.d(TAG, "onExpire: segment=" + walkContext.getSegment());
+        }
         mServer.stopMedia(walkContext.getSegment());
 
         walkContext.stop();
@@ -281,11 +281,19 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         if (target != null && request.isGet()) {
             target.restartExpireTimer();
         }
-        if (target != null) {
-            return target.getMedia();
-        } else {
-            return null;
-        }
+        return null;
+//        if (target != null) {
+//            byte[] media = target.getMedia();
+//            if (DEBUG) {
+//                Log.d(TAG, "onConnect: media = " + media);
+//            }
+//            return media;
+//        } else {
+//            if (DEBUG) {
+//                Log.d(TAG, "onConnect: NO media");
+//            }
+//            return null;
+//        }
     }
 
     @Override

@@ -238,6 +238,7 @@ public class MixedReplaceMediaServer {
     }
 
     public void stopMedia(final String segment) {
+        mLogger.info("MediaServer.stopMedia: segment=" + segment);
         synchronized (mRunnables) {
             for (ServerRunnable run : mRunnables) {
                 run.stopMedia(segment);
@@ -378,7 +379,9 @@ public class MixedReplaceMediaServer {
             mLogger.fine("accept client.");
             mRunnables.add(this);
             try {
+                mLogger.info("Getting output stream of socket...");
                 mStream = mSocket.getOutputStream();
+                mLogger.info("Got output stream of socket!");
 
                 byte[] buf = new byte[BUF_SIZE];
                 InputStream in = mSocket.getInputStream();
@@ -391,6 +394,7 @@ public class MixedReplaceMediaServer {
                 mRequest = new Request(header);
 
                 if (mRunnables.size() > MAX_CLIENT_SIZE) {
+                    mLogger.info("MAX_CLIENT_SIZE");
                     mStream.write(generateServiceUnavailable().getBytes());
                     mStream.flush();
                     return;
@@ -399,11 +403,15 @@ public class MixedReplaceMediaServer {
                     boolean isGet = header.hasParam("snapshot");
                     byte[] data = null;
                     if (mServerEventListener != null) {
+                        mLogger.info("Calling onConnect");
                         data = mServerEventListener.onConnect(mRequest);
+                        mLogger.info("Called onConnect: data = " + data);
                     }
                     if (data != null) {
                         mLogger.info("Requested media is found: " + segment);
                         offerMedia(segment, data);
+                    } else {
+                        mLogger.info("Data is null");
                     }
 
                     if (isGet) {
@@ -464,7 +472,7 @@ public class MixedReplaceMediaServer {
                     }
                 }
             } catch (Throwable e) {
-                e.printStackTrace();
+                Log.e("MixedReplaceMediaServer", "MediaServer.run(): error: ", e);
             } finally {
                 mLogger.fine("socket close.");
                 if (mServerEventListener != null && mRequest != null) {
@@ -509,6 +517,7 @@ public class MixedReplaceMediaServer {
         }
 
         private void stopMedia(final String segment) {
+            mLogger.info("ServerRunnable.stopMedia: segment=" + segment);
             mIsMediaStopped = true;
             synchronized (mMediaQueues) {
                 BlockingQueue<byte[]> mediaQueue = mMediaQueues.remove(segment);
@@ -712,7 +721,7 @@ public class MixedReplaceMediaServer {
         mServerEventListener = listener;
     }
 
-    public static interface ServerEventListener {
+    public interface ServerEventListener {
 
         byte[] onConnect(Request request);
 

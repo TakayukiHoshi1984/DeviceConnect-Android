@@ -14,6 +14,7 @@ import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
+import org.deviceconnect.android.deviceplugin.theta.utils.JpegLoader;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
@@ -32,12 +33,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
+
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
     private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
-    private static final int NUM_PRELOAD = 40;
     private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
 
@@ -45,16 +46,16 @@ public class WalkthroughContext implements SensorEventListener {
 
     private final SensorManager mSensorMgr;
     private long mLastEventTimestamp;
-    private float mEventInterval;
     private final int mDisplayRotation;
     private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
     private final File mDir;
-    private final File[] mAllFiles;
-    private final FrameLoader mFrameLoader;
+    private final VideoPlayer mVideoPlayer;
+
     private byte[] mRoi;
     private String mUri;
     private String mSegment;
+
 
     private final long mInterval; // milliseconds
     private Timer mExpireTimer;
@@ -65,48 +66,74 @@ public class WalkthroughContext implements SensorEventListener {
     private final SphereRenderer mRenderer = new SphereRenderer();
     private ByteArrayOutputStream mBaos;
     private boolean mIsStopped = true;
-    private PlayStatus mPlayStatus = new PlayStatus(0, 0);
+
+    private final Runnable mRendererTask = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                mPixelBuffer.render();
+                Bitmap result = mPixelBuffer.convertToBitmap();
+                if (result == null) {
+                    return;
+                }
+                mBaos.reset();
+                result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
+                mRoi = mBaos.toByteArray();
+
+                if (mListener != null) {
+                    mListener.onUpdate(WalkthroughContext.this, mRoi);
+                }
+            } catch (Throwable e) {
+                if (DEBUG) {
+                    Log.d(TAG, "ERROR: Executor:", e);
+                }
+            }
+        }
+    };
 
     public WalkthroughContext(final Context context, final File omniImageDir,
-                              final int width, final int height, final float fps) {
+                              final int width, final int height, final float fps) throws IOException {
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
         mDir = omniImageDir;
-        mAllFiles = loadFiles(omniImageDir);
-        mFrameLoader = new FrameLoader(mAllFiles);
-        mFrameLoader.setLoaderListener(new BitmapLoaderListener() {
+        Video video = Video.createVideo(mDir, 1024, 512, fps);
+        mVideoPlayer = new VideoPlayer(video, 20);
+        mVideoPlayer.setDisplay(new VideoPlayer.Display() {
 
             @Override
-            public void onLoad(int pos) {
+            public void onPrepared() {
                 if (DEBUG) {
-                    Log.d(TAG, "onLoad: " + pos);
+                    Log.d(TAG, "onPrepared");
                 }
+                mVideoPlayer.playBy(1);
+            }
 
-                if (pos == 0) {
-                    startRendering();
+            @Override
+            public void onDraw(final FrameJpeg jpeg) {
+                if (DEBUG) {
+                    Log.d(TAG, "onDraw");
+                }
+                mRenderer.setTexture(jpeg.toBitmap());
+                startRendering();
+            }
+
+            @Override
+            public void onFinish() {
+                if (DEBUG) {
+                    Log.d(TAG, "onFinish");
                 }
             }
 
             @Override
-            public void onComplete() {
+            public void onError(Throwable e) {
                 if (DEBUG) {
-                    Log.d(TAG, "onComplete: ");
-                }
-
-                if (mListener != null) {
-                    mListener.onComplete(WalkthroughContext.this);
-                }
-            }
-
-            @Override
-            public void onError(int pos, Exception e) {
-                if (DEBUG) {
-                    Log.e("Walk", "Error: ", e);
+                    Log.e(TAG, "onError: ", e);
                 }
             }
         });
+        mVideoPlayer.prepare();
 
         mInterval = (long) (1000.0f / fps);
 
@@ -123,34 +150,6 @@ public class WalkthroughContext implements SensorEventListener {
         param.setImageWidth(width);
         param.setImageHeight(height);
         initRendererParam(param);
-    }
-
-    private File[] loadFiles(final File dir) {
-        if (!dir.isDirectory()) {
-            throw new IllegalArgumentException("dir is not directory.");
-        }
-
-        if (DEBUG) {
-            Log.d(TAG, "Loading Omni images directory: " + dir.getAbsolutePath());
-        }
-
-        File[] files = dir.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(final File dir, final String filename) {
-                return filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg");
-            }
-        });
-
-        if (DEBUG) {
-            Log.d(TAG, "Files: " + files.length);
-        }
-
-        List<File> fileList = new ArrayList<File>();
-        for (int i = 0; i < files.length; i++) {
-            fileList.add(files[i]);
-        }
-        Collections.sort(fileList);
-        return fileList.toArray(new File[fileList.size()]);
     }
 
     private boolean startVrMode() {
@@ -293,7 +292,7 @@ public class WalkthroughContext implements SensorEventListener {
         if (mIsStopped) {
             mIsStopped = false;
             startVrMode();
-            seek(1);
+            //seek(1);
         }
     }
 
@@ -305,7 +304,6 @@ public class WalkthroughContext implements SensorEventListener {
         if (!mIsStopped) {
             stopRendering();
             stopVrMode();
-            mFrameLoader.reset();
             mPixelBuffer.destroy();
             mPlayerThread.shutdownNow();
             mIsStopped = true;
@@ -345,112 +343,11 @@ public class WalkthroughContext implements SensorEventListener {
         }
     }
 
-    public synchronized int seek(final int delta) {
+    public synchronized void seek(final int delta) {
         if (mIsStopped) {
-            return -1;
+            return;
         }
-        mPlayStatus = nextPlayStatus(delta);
-        int nextFrom = mPlayStatus.getStartFrame();
-        int nextTo = mPlayStatus.getEndFrame();
-        mFrameLoader.free(nextFrom, NUM_PRELOAD);
-        mFrameLoader.prepareBitmap(nextFrom, NUM_PRELOAD);
-
-        try {
-            if (delta > 0) {
-                for (int i = nextFrom; i < nextTo; i++) {
-                    updateTexture(mFrameLoader.pull(i));
-                }
-            } else if (delta < 0) {
-                for (int i = nextFrom - 1; i >= nextTo; i--) {
-                    updateTexture(mFrameLoader.pull(i));
-                }
-            }
-            return Math.abs(delta);
-        } catch (InterruptedException e) {
-            return -1;
-        }
-    }
-
-    private void updateTexture(final Bitmap texture) throws InterruptedException {
-        if (DEBUG) {
-            Log.d(TAG, "updateTexture: bitmap=" + texture);
-        }
-
-        long start = System.currentTimeMillis();
-        mRenderer.setTexture(texture);
-        long end = System.currentTimeMillis();
-        Thread.sleep(mInterval - (end - start));
-    }
-
-    private int getFrameCount(final int start, final int end) {
-        int startIndex = remapFrameIndex(start);
-        int endIndex = remapFrameIndex(end);
-        if (endIndex < startIndex) {
-            startIndex += getAllFrameCount();
-        }
-        return endIndex - startIndex;
-    }
-
-    private int remapFrameIndex(final int index) {
-        int count = getAllFrameCount();
-        if (index >= count) {
-            return index % count;
-        }
-        if (index < 0) {
-            int tmpIndex = index;
-            tmpIndex = tmpIndex % count;
-            tmpIndex += count;
-            return tmpIndex;
-        }
-        return index;
-    }
-
-    private int getAllFrameCount() {
-        return mAllFiles.length;
-    }
-
-    private PlayStatus nextPlayStatus(final int delta) {
-        int nowTo = mPlayStatus.getEndFrame();
-        int nextFrom = nowTo;
-        int nextTo = remapFrameIndex(nowTo + delta);
-        return new PlayStatus(nextFrom, nextTo);
-    }
-
-    private static class PlayStatus {
-        private int mStartFrame;
-        private int mEndFrame;
-        private int mCurrentFrame;
-        private boolean mIsPlaying;
-
-        public PlayStatus(final int startFrame, final int endFrame) {
-            mStartFrame = startFrame;
-            mEndFrame = endFrame;
-            mCurrentFrame = -1;
-        }
-
-        public int getStartFrame() {
-            return mStartFrame;
-        }
-
-        public int getEndFrame() {
-            return mEndFrame;
-        }
-
-        public void setCurrentFrame(final int currentFrame) {
-            mCurrentFrame = currentFrame;
-        }
-
-        public boolean isPlaying() {
-            return mIsPlaying;
-        }
-
-        public void setPlaying(final boolean isPlaying) {
-            mIsPlaying = isPlaying;
-        }
-
-        public boolean isFinished() {
-            return mCurrentFrame == mEndFrame -1;
-        }
+        mVideoPlayer.playBy(delta);
     }
 
     private void render() {
@@ -459,31 +356,12 @@ public class WalkthroughContext implements SensorEventListener {
         }
 
         if (mIsStopped) {
+            if (DEBUG) {
+                Log.w(TAG, "Walkthrough is stopped");
+            }
             return;
         }
-        mPlayerThread.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    mPixelBuffer.render();
-                    Bitmap result = mPixelBuffer.convertToBitmap();
-                    if (result == null) {
-                        return;
-                    }
-                    mBaos.reset();
-                    result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
-                    mRoi = mBaos.toByteArray();
-
-                    if (mListener != null) {
-                        mListener.onUpdate(WalkthroughContext.this, mRoi);
-                    }
-                } catch (Throwable e) {
-                    if (DEBUG) {
-                        Log.d(TAG, "ERROR: Executor:", e);
-                    }
-                }
-            }
-        });
+        mPlayerThread.execute(mRendererTask);
     }
 
     private void initRendererParam(final Param param) {
@@ -534,292 +412,12 @@ public class WalkthroughContext implements SensorEventListener {
         mListener = listener;
     }
 
-    public static interface EventListener {
+    public interface EventListener {
         void onUpdate(WalkthroughContext context, byte[] roi);
 
         void onComplete(WalkthroughContext context);
 
         void onExpire(WalkthroughContext roiContext);
-    }
-
-    private static class Frame {
-
-        private final File mFile;
-
-        private Bitmap mBitmap;
-
-        public Frame(final File file) {
-            mFile = file;
-        }
-
-        public Bitmap pull() {
-            Bitmap b = mBitmap;
-            mBitmap = null;
-            return b;
-        }
-
-        public void free() {
-            if (mBitmap != null) {
-                mBitmap.recycle();
-                mBitmap = null;
-            }
-        }
-
-        public boolean isLoaded() {
-            return mBitmap != null;
-        }
-
-        public void load() throws IOException {
-            FileInputStream fis = null;
-            try {
-                fis = new FileInputStream(mFile);
-                Bitmap bitmap = BitmapFactory.decodeStream(fis);
-                synchronized (this) {
-                    mBitmap = bitmap;
-                    notifyAll();
-                }
-            } finally {
-                if (fis != null) {
-                    fis.close();
-                }
-            }
-        }
-    }
-
-    private static class FrameRenderer {
-
-        private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
-
-        public FrameRenderer() {
-
-        }
-    }
-
-    private static class FrameLoader {
-
-        private final Frame[] mFrames;
-
-        private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
-
-        private BitmapLoaderListener mListener;
-
-        private FrameLoaderTask mTask;
-
-        public FrameLoader(final File[] files) {
-            mFrames = new Frame[files.length];
-            for (int i = 0; i < files.length; i++) {
-                mFrames[i] = new Frame(files[i]);
-            }
-        }
-
-        public void setLoaderListener(final BitmapLoaderListener listener) {
-            mListener = listener;
-        }
-
-        public int getTotalCount() {
-            return mFrames.length;
-        }
-
-        public synchronized void prepareBitmap(final int from, final int maxCount) {
-            if (mTask != null) {
-                mTask.cancel();
-                mTask = null;
-            }
-            mTask = new FrameLoaderTask();
-            mTask.setStartIndex(from);
-            mTask.setMaxCount(maxCount);
-            mTask.setBitmapLoader(this);
-            mExecutor.execute(mTask);
-        }
-
-        public void free(final int from, final int maxCount) {
-            free(loopIndexes(from, maxCount));
-        }
-
-        private void free(final int[] excludedIndexes) {
-            for (int i = 0; i < mFrames.length; i++) {
-                if (!contains(i, excludedIndexes)) {
-                    mFrames[i].free();
-                }
-            }
-        }
-
-        private boolean contains(final int targetIndex, final int[] range) {
-            for (int i = 0; i < range.length; i++) {
-                if (range[i] == targetIndex) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private int[] loopIndexes(final int from, final int delta) {
-            int length = Math.abs(delta);
-            int[] indexes = new int[length];
-            int total = getTotalCount();
-            int count = 0;
-            int origin = from;
-
-            if (delta > 0) {
-                for (int i = 0, d = 0; count < length; i++, d++, count++) {
-                    int index = origin + d;
-                    if (index >= total) {
-                        index = 0;
-                        origin = 0;
-                        d = 0;
-                    }
-                    indexes[i] = index;
-                }
-            } else if (delta < 0) {
-                for (int i = 0, d = 0; count < length; i++, d++, count++) {
-                    int index = origin - d;
-                    if (index < 0) {
-                        index = total - 1;
-                        origin = total - 1;
-                        d = 0;
-                    }
-                    indexes[i] = index;
-                }
-            }
-            return indexes;
-        }
-
-        public synchronized void reset() {
-            if (DEBUG) {
-                Log.d(TAG, "Walkthrough.reset()");
-            }
-
-            for (int i = 0; i < mFrames.length; i++) {
-                mFrames[i].free();
-            }
-        }
-
-        public synchronized Bitmap pull(int pos) throws InterruptedException {
-            if (0 > pos || pos >= getTotalCount()) {
-                Log.w(TAG, "Walkthrough.pull(): out of range");
-                return null;
-            }
-
-            if (DEBUG) {
-                Log.d(TAG, "Walkthrough.pull(): changed pos: " + pos);
-            }
-            if (pos == getTotalCount() - 1) {
-                if (mListener != null) {
-                    mListener.onComplete();
-                }
-            }
-
-            Frame frame = mFrames[pos];
-            synchronized (frame) {
-                if (!frame.isLoaded()) {
-                    loadFrame(pos);
-                    while (!frame.isLoaded()) {
-                        frame.wait(100);
-                    }
-                }
-                return frame.pull();
-            }
-        }
-
-        private void loadFrame(final int pos) {
-            if (0 > pos || pos >= getTotalCount()) {
-                return;
-            }
-
-            if (DEBUG) {
-                Log.d(TAG, "Loading bitmap: pos=" + pos);
-            }
-
-            final Frame frame = mFrames[pos];
-
-            if (frame.isLoaded()) {
-                if (DEBUG) {
-                    Log.d(TAG, "Already loaded bitmap: pos=" + pos);
-                }
-                synchronized (frame) {
-                    frame.notifyAll();
-                }
-                return;
-            }
-
-            mExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        frame.load();
-                        if (mListener != null) {
-                            mListener.onLoad(pos);
-                        }
-                    } catch (IOException e) {
-                        if (mListener != null) {
-                            mListener.onError(pos, e);
-                        }
-                    } catch (Throwable e) {
-                        if (DEBUG) {
-                            Log.d(TAG, "ERROR: loadBitmap: ", e);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    private static class FrameLoaderTask implements Runnable {
-
-        private int mStartIndex;
-        private int mMaxCount;
-        private FrameLoader mFrameLoader;
-        private boolean mIsCanceled;
-
-        public void setStartIndex(final int startIndex) {
-            mStartIndex = startIndex;
-        }
-
-        public void setMaxCount(final int maxCount) {
-            mMaxCount = maxCount;
-        }
-
-        public void setBitmapLoader(final FrameLoader loader) {
-            mFrameLoader = loader;
-        }
-
-        public void cancel() {
-            mIsCanceled = true;
-        }
-
-        private boolean isCanceled() {
-            return mIsCanceled;
-        }
-
-        @Override
-        public void run() {
-            int totalCount = mFrameLoader.getTotalCount();
-            int remainedCount = Math.abs(mMaxCount);
-            for (int i = mStartIndex; remainedCount > 0; remainedCount--) {
-
-                mFrameLoader.loadFrame(i++);
-
-                if (mMaxCount > 0 && i >= totalCount) {
-                    i -= totalCount;
-                } else if (mMaxCount < 0 && i < 0) {
-                    i += mFrameLoader.getTotalCount();
-                }
-
-                if (isCanceled()) {
-                    break;
-                }
-            }
-        }
-    }
-
-    private static interface BitmapLoaderListener {
-
-        void onLoad(int pos);
-
-        void onComplete();
-
-        void onError(int pos, Exception e);
-
     }
 
     public static class Param {
