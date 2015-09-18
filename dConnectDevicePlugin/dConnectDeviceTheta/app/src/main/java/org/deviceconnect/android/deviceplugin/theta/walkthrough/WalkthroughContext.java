@@ -37,13 +37,17 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
+    private static final float EPSILON = 0.000000001f;
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
+
+    private final float[] vGyroscope = new float[3];
+    private final float[] deltaVGyroscope = new float[4];
     private final SensorManager mSensorMgr;
     private long mLastEventTimestamp;
     private final int mDisplayRotation;
@@ -93,6 +97,8 @@ public class WalkthroughContext implements SensorEventListener {
 
     public WalkthroughContext(final Context context, final File omniImageDir,
                               final int width, final int height, final float fps) throws IOException {
+        Log.d(TAG, "WalkthroughContext: dir = " + omniImageDir);
+
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -113,10 +119,15 @@ public class WalkthroughContext implements SensorEventListener {
             @Override
             public void onDraw(final FrameJpeg jpeg) {
                 if (DEBUG) {
-                    Log.d(TAG, "onDraw");
+                    Log.d(TAG, "onDraw: jpeg = " + jpeg);
                 }
-                mRenderer.setTexture(jpeg.toBitmap());
-                startRendering();
+
+                try {
+                    mRenderer.setTexture(jpeg.toBitmap());
+                    startRendering();
+                } catch (Throwable e) {
+                    Log.e(TAG, "onDraw: ERROR: ", e);
+                }
             }
 
             @Override
@@ -133,7 +144,6 @@ public class WalkthroughContext implements SensorEventListener {
                 }
             }
         });
-        mVideoPlayer.prepare();
 
         mInterval = (long) (1000.0f / fps);
 
@@ -184,10 +194,6 @@ public class WalkthroughContext implements SensorEventListener {
     @Override
     public void onSensorChanged(final SensorEvent event) {
         if (mLastEventTimestamp != 0) {
-            float EPSILON = 0.000000001f;
-            float[] vGyroscope = new float[3];
-            float[] deltaVGyroscope = new float[4];
-            Quaternion qGyroscopeDelta;
             float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
             System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
@@ -238,22 +244,8 @@ public class WalkthroughContext implements SensorEventListener {
                     break;
             }
 
-            qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
-
+            Quaternion qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
             mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
-
-            float[] qvOrientation = new float[4];
-            qvOrientation[0] = mCurrentRotation.imaginary().x();
-            qvOrientation[1] = mCurrentRotation.imaginary().y();
-            qvOrientation[2] = mCurrentRotation.imaginary().z();
-            qvOrientation[3] = mCurrentRotation.real();
-
-            float[] rmGyroscope = new float[9];
-            SensorManager.getRotationMatrixFromVector(rmGyroscope,
-                    qvOrientation);
-
-            float[] vOrientation = new float[3];
-            SensorManager.getOrientation(rmGyroscope, vOrientation);
 
             SphereRenderer.Camera currentCamera = mRenderer.getCamera();
             SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
@@ -291,6 +283,7 @@ public class WalkthroughContext implements SensorEventListener {
 
         if (mIsStopped) {
             mIsStopped = false;
+            mVideoPlayer.prepare();
             startVrMode();
             //seek(1);
         }
@@ -313,6 +306,10 @@ public class WalkthroughContext implements SensorEventListener {
     private Thread mRendererThread;
 
     private void startRendering() {
+        if (DEBUG) {
+            Log.d(TAG, "startRendering");
+        }
+
         if (mRendererThread == null) {
             mRendererThread = new Thread(new Runnable() {
                 @Override
@@ -333,6 +330,9 @@ public class WalkthroughContext implements SensorEventListener {
                 }
             });
             mRendererThread.start();
+            Log.d(TAG, "Started renderer thread");
+        } else {
+            Log.w(TAG, "Already started renderer thread");
         }
     }
 
@@ -413,6 +413,7 @@ public class WalkthroughContext implements SensorEventListener {
     }
 
     public interface EventListener {
+
         void onUpdate(WalkthroughContext context, byte[] roi);
 
         void onComplete(WalkthroughContext context);

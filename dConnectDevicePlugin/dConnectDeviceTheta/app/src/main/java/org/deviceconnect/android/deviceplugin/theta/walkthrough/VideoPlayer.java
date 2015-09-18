@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
  */
 class VideoPlayer {
 
-    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
     private static final String TAG = "VideoPlayer";
 
     private final Video mVideo;
@@ -170,6 +170,7 @@ class VideoPlayer {
 
         public Frame nextFrame() {
             int nextPos = nextPosition();
+            Log.d(TAG, "***** nextFrame: " + nextPos);
             if (nextPos == mVideo.getLength()) {
                 return null;
             }

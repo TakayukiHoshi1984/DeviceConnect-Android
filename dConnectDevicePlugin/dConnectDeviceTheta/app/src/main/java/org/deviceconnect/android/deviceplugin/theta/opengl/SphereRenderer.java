@@ -126,7 +126,9 @@ public class SphereRenderer implements Renderer {
 
         if (mTextureUpdate && null != mTexture) {
             GLES20.glDeleteTextures(1, mTextures, 0);
-            loadTexture(mTexture);
+            synchronized (mTexture) {
+                loadTexture(mTexture);
+            }
             mTextureUpdate = false;
         }
 
@@ -201,9 +203,6 @@ public class SphereRenderer implements Renderer {
      * @param texture Photo object for texture
      */
     public void setTexture(Bitmap texture) {
-        if (mTexture != null && texture != null && mTexture != texture) {
-            mTexture.recycle();
-        }
         mTexture = texture;
         mTextureUpdate = true;
     }
