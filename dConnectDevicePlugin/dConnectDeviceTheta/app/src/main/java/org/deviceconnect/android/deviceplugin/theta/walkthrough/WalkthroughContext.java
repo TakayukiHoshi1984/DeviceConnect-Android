@@ -45,7 +45,6 @@ public class WalkthroughContext implements SensorEventListener {
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
-
     private final float[] vGyroscope = new float[3];
     private final float[] deltaVGyroscope = new float[4];
     private final SensorManager mSensorMgr;
@@ -59,7 +58,6 @@ public class WalkthroughContext implements SensorEventListener {
     private byte[] mRoi;
     private String mUri;
     private String mSegment;
-
 
     private final long mInterval; // milliseconds
     private Timer mExpireTimer;
@@ -285,7 +283,6 @@ public class WalkthroughContext implements SensorEventListener {
             mIsStopped = false;
             mVideoPlayer.prepare();
             startVrMode();
-            //seek(1);
         }
     }
 
@@ -297,6 +294,7 @@ public class WalkthroughContext implements SensorEventListener {
         if (!mIsStopped) {
             stopRendering();
             stopVrMode();
+            mVideoPlayer.destroy();
             mPixelBuffer.destroy();
             mPlayerThread.shutdownNow();
             mIsStopped = true;

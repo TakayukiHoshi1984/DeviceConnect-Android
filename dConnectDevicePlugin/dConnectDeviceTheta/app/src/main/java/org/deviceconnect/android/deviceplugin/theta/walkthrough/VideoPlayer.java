@@ -7,13 +7,7 @@ import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * 動画再生用JPEGの各フレームを管理するクラス.
- *
- * <p>
- * リクエストされたJPEGを非同期で通知する.
- * </p>
- */
+
 class VideoPlayer {
 
     private static final boolean DEBUG = true; // BuildConfig.DEBUG;
@@ -24,6 +18,7 @@ class VideoPlayer {
     private final FrameJpegBuffer mBuffer;
     private final FrameJpegLoader mPositiveLoader;
     private final FrameJpegLoader mNegativeLoader;
+    private final ExecutorService mJpegLoaderThread = Executors.newFixedThreadPool(1);
 
     private boolean isLoop = true;
     private Frame mCurrentFrame;
@@ -37,12 +32,8 @@ class VideoPlayer {
         int height = video.getHeight();
         mBuffer = new FrameJpegBuffer(bufferSize, width, height);
 
-        mPositiveLoader = new FrameJpegLoader(
-            mBuffer, FrameJpegBuffer.NEXT, FrameJpegBuffer.PREV
-        );
-        mNegativeLoader = new FrameJpegLoader(
-            mBuffer, FrameJpegBuffer.PREV, FrameJpegBuffer.NEXT
-        );
+        mPositiveLoader = new PositiveDirectionLoader();
+        mNegativeLoader = new NegativeDirectionLoader();
     }
 
     public void destroy() {
@@ -153,40 +144,32 @@ class VideoPlayer {
         }
     }
 
-    private class FrameJpegLoader {
+    private abstract class FrameJpegLoader {
 
-        private final FrameJpegBuffer mBuffer;
         private final int mNextDirection;
         private final int mPrevDirection;
-        private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
 
-        public FrameJpegLoader(final FrameJpegBuffer buffer,
-                               final int nextDirection,
-                               final int prevDirection) {
-            mBuffer = buffer;
+        protected FrameJpegLoader(final int nextDirection, final int prevDirection) {
             mNextDirection = nextDirection;
             mPrevDirection = prevDirection;
         }
 
+        protected abstract int nextFramePosition();
+
         public Frame nextFrame() {
-            int nextPos = nextPosition();
+            int nextPos = nextFramePosition();
             Log.d(TAG, "***** nextFrame: " + nextPos);
-            if (nextPos == mVideo.getLength()) {
+            if (nextPos < 0 || nextPos >= mVideo.getLength()) {
                 return null;
             }
             return mVideo.getFrame(nextPos);
         }
 
         public void load(final Frame frame) {
-            mExecutor.execute(new Runnable() {
+            mJpegLoaderThread.execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
-
-                        if (DEBUG) {
-                            mBuffer.debug();
-                        }
-
                         FrameJpeg jpeg = popNext();
 
                         if (!jpeg.isLoaded(frame)) {
@@ -200,7 +183,6 @@ class VideoPlayer {
                         if (mDisplay != null) {
                             mDisplay.onDraw(jpeg);
                         }
-
                     } catch (Throwable e) {
                         if (mDisplay != null) {
                             mDisplay.onError(e);
@@ -225,8 +207,16 @@ class VideoPlayer {
         private void pushPrev(final FrameJpeg jpeg) {
             mBuffer.getJpegList(mPrevDirection).addFirst(jpeg);
         }
+    }
 
-        private int nextPosition() {
+    private class PositiveDirectionLoader extends FrameJpegLoader {
+
+        public PositiveDirectionLoader() {
+            super(FrameJpegBuffer.NEXT, FrameJpegBuffer.PREV);
+        }
+
+        @Override
+        protected int nextFramePosition() {
             if (mCurrentFrame == null) {
                 return 0;
             }
@@ -234,6 +224,26 @@ class VideoPlayer {
             int next = current + 1;
             if (next == mVideo.getLength() && isLoop) {
                 return 0;
+            }
+            return next;
+        }
+    }
+
+    private class NegativeDirectionLoader extends FrameJpegLoader {
+
+        public NegativeDirectionLoader() {
+            super(FrameJpegBuffer.PREV, FrameJpegBuffer.NEXT);
+        }
+
+        @Override
+        protected int nextFramePosition() {
+            if (mCurrentFrame == null) {
+                return 0;
+            }
+            int current = mCurrentFrame.getPosition();
+            int next = current - 1;
+            if (next < 0 && isLoop) {
+                return mVideo.getLength() - 1;
             }
             return next;
         }
