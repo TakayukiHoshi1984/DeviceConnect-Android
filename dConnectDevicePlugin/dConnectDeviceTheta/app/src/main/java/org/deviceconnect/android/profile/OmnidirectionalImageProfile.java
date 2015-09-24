@@ -289,6 +289,14 @@ public class OmnidirectionalImageProfile extends DConnectProfile
         return parseInteger(request, PARAM_HEIGHT);
     }
 
+    public static Integer getSourceWidth(final Intent request) {
+        return parseInteger(request, PARAM_SOURCE_WIDTH);
+    }
+
+    public static Integer getSourceHeight(final Intent request) {
+        return parseInteger(request, PARAM_SOURCE_HEIGHT);
+    }
+
     /**
      * Gets flag of Stereo mode from the specified request.
      * @param request Request data

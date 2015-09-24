@@ -22,7 +22,6 @@ class FrameJpeg {
     private static final JpegLoader LOADER = new JpegLoader();
 
     private final Bitmap mBitmap;
-    private final Buffer mBuffer;
 
     private Frame mFrame;
 
@@ -31,15 +30,11 @@ class FrameJpeg {
             Log.d(TAG, "FrameJpeg(): size = " + width + " x " + height);
         }
 
-        int stride = 4;
-        ByteBuffer buffer = ByteBuffer.allocateDirect(stride * (1024 * 512));
-        buffer.order(ByteOrder.nativeOrder());
-        mBuffer = buffer.asIntBuffer();
-
-        mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
     }
 
     public void destroy() {
+        Log.d(TAG, "FrameJpeg.destroy");
         mBitmap.recycle();
     }
 
@@ -50,14 +45,7 @@ class FrameJpeg {
             throw new FileNotFoundException();
         }
         String path = file.getCanonicalPath();
-
-        if (DEBUG) {
-            Log.d(TAG, "FrameJpeg.load: address = " + mBitmap);
-        }
-
-        mBuffer.clear();
-        LOADER.loadToBuffer(path, mBuffer);
-        mBitmap.copyPixelsFromBuffer(mBuffer);
+        LOADER.load(path, mBitmap);
     }
 
     public boolean isLoaded(final Frame frame) {

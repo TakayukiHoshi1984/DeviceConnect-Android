@@ -119,19 +119,20 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
     @Override
     protected boolean onGetView(final Intent request, final Intent response, final String serviceId,
                                 final String source) {
-        requestView(response, serviceId, source, true);
+        requestView(request, response, serviceId, source, true);
         return false;
     }
 
     @Override
     protected boolean onPutView(final Intent request, final Intent response, final String serviceId,
                                 final String source) {
-        requestView(response, serviceId, source, false);
+        requestView(request, response, serviceId, source, false);
         return false;
     }
 
-    private void requestView(final Intent response, final String serviceId,
+    private void requestView(final Intent request, final Intent response, final String serviceId,
                              final String source, final boolean isGet) {
+
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -140,6 +141,18 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                     ((ThetaDeviceService) getContext()).sendResponse(response);
                     return;
                 }
+
+                final Integer sourceWidth = getSourceWidth(request);
+                final Integer sourceHeight = getSourceHeight(request);
+                if (sourceWidth != null && sourceWidth < 0) {
+                    MessageUtils.setInvalidRequestParameterError(response, "sourceWidth is negative.");
+                    return;
+                }
+                if (sourceHeight != null && sourceHeight < 0) {
+                    MessageUtils.setInvalidRequestParameterError(response, "sourceHeight is negative.");
+                    return;
+                }
+
                 try {
                     synchronized (lockObj) {
                         if (mServer == null) {
@@ -154,7 +167,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                     OmnidirectionalImage omniImage = mOmniImages.get(source);
                     if (omniImage == null) {
                         String origin = getContext().getPackageName();
-                        omniImage = new OmnidirectionalImage(source, origin);
+                        omniImage = new OmnidirectionalImage(source, origin, sourceWidth, sourceHeight);
                         mOmniImages.put(source, omniImage);
                     }
 

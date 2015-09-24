@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 
 class VideoPlayer {
 
-    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
     private static final String TAG = "VideoPlayer";
 
     private final Video mVideo;
@@ -37,6 +37,7 @@ class VideoPlayer {
     }
 
     public void destroy() {
+        Log.d(TAG, "VideoPlayer.destroy()");
         mBuffer.destroy();
     }
 
@@ -110,6 +111,7 @@ class VideoPlayer {
         }
 
         public void destroy() {
+            Log.d(TAG, "FrameJpegBuffer.destroy()");
             for (int i = 0; i < mJpegList.length; i++) {
                 for (FrameJpeg jpeg : mJpegList[i]) {
                     jpeg.destroy();
@@ -158,7 +160,11 @@ class VideoPlayer {
 
         public Frame nextFrame() {
             int nextPos = nextFramePosition();
-            Log.d(TAG, "***** nextFrame: " + nextPos);
+
+            if (DEBUG) {
+                Log.d(TAG, "***** nextFrame: " + nextPos);
+            }
+
             if (nextPos < 0 || nextPos >= mVideo.getLength()) {
                 return null;
             }
@@ -172,9 +178,13 @@ class VideoPlayer {
                     try {
                         FrameJpeg jpeg = popNext();
 
+                        long start = System.currentTimeMillis();
                         if (!jpeg.isLoaded(frame)) {
                             jpeg.load(frame);
                         }
+                        long end = System.currentTimeMillis();
+                        Log.d(TAG, "Frame = " +  frame.getPosition() + " , Load time = " + (end - start) + " msec.");
+
                         pushPrev(mBuffer.getCurrentJpeg());
 
                         mBuffer.setCurrentJpeg(jpeg);

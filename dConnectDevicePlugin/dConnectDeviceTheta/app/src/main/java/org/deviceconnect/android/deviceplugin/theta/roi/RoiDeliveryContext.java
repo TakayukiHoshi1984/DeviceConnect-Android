@@ -48,6 +48,10 @@ public class RoiDeliveryContext implements SensorEventListener {
      */
     public static final Param DEFAULT_PARAM = new Param();
 
+    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
+
+    private static final String TAG = "Roi";
+
     private static final float NS2S = 1.0f / 1000000000.0f;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
@@ -86,6 +90,8 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
+    private SphereRenderer.Camera mDefaultCamera;
+
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
     /**
@@ -102,6 +108,8 @@ public class RoiDeliveryContext implements SensorEventListener {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         mBaos = new ByteArrayOutputStream(
             mCurrentParam.getImageWidth() * mCurrentParam.getImageHeight());
+
+        initCameraRotaion();
     }
 
     public byte[] getRoi() {
@@ -184,6 +192,7 @@ public class RoiDeliveryContext implements SensorEventListener {
                         mPixelBuffer.setRenderer(mRenderer);
                         mBaos = new ByteArrayOutputStream(width * height);
                     }
+
                     if (param.isVrMode()) {
                         startVrMode();
                     } else {
@@ -193,7 +202,8 @@ public class RoiDeliveryContext implements SensorEventListener {
 
                 mCurrentParam = param;
 
-                SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
+                SphereRenderer.Camera camera = mRenderer.getCamera();
+                SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
                 builder.setPosition(new Vector3D(
                     (float) param.getCameraX(),
                     (float) param.getCameraY() * -1,
@@ -212,6 +222,16 @@ public class RoiDeliveryContext implements SensorEventListener {
                 mRenderer.setStereoMode(param.isStereoMode());
             }
         });
+    }
+
+    private void initCameraRotaion() {
+        float yaw = (float) mSource.getYaw();
+        float roll = (float) mSource.getRoll();
+        float pitch = (float) mSource.getPitch();
+        if (DEBUG) {
+            Log.d(TAG, "Exif: yaw = " + yaw + ", roll = " + roll + ", pitch = " + pitch);
+        }
+        mRenderer.rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
     }
 
     private boolean isDisplaySizeChanged(final Param newParam) {
@@ -296,7 +316,7 @@ public class RoiDeliveryContext implements SensorEventListener {
 
             SphereRenderer.Camera currentCamera = mRenderer.getCamera();
             SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(mCurrentRotation);
+            newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
             mRenderer.setCamera(newCamera.create());
 
             mEventInterval += dT;
@@ -394,7 +414,7 @@ public class RoiDeliveryContext implements SensorEventListener {
         mListener = listener;
     }
 
-    public static interface OnChangeListener {
+    public interface OnChangeListener {
 
         void onUpdate(RoiDeliveryContext roiContext, byte[] roi);
 

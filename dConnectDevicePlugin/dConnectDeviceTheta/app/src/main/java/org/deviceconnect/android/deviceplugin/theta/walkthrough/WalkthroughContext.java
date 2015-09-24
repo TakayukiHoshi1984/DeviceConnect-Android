@@ -37,7 +37,7 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
@@ -247,7 +247,7 @@ public class WalkthroughContext implements SensorEventListener {
 
             SphereRenderer.Camera currentCamera = mRenderer.getCamera();
             SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(mCurrentRotation);
+            newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
             mRenderer.setCamera(newCamera.create());
         }
         mLastEventTimestamp = event.timestamp;
@@ -328,9 +328,13 @@ public class WalkthroughContext implements SensorEventListener {
                 }
             });
             mRendererThread.start();
-            Log.d(TAG, "Started renderer thread");
+            if (DEBUG) {
+                Log.d(TAG, "Started renderer thread");
+            }
         } else {
-            Log.w(TAG, "Already started renderer thread");
+            if (DEBUG) {
+                Log.w(TAG, "Already started renderer thread");
+            }
         }
     }
 

@@ -109,6 +109,16 @@ public interface OmnidirectionalImageProfileConstants extends DConnectProfileCon
     /**
      * Parameter: {@value} .
      */
+    String PARAM_SOURCE_WIDTH = "sourceWidth";
+
+    /**
+     * Parameter: {@value} .
+     */
+    String PARAM_SOURCE_HEIGHT = "sourceHeight";
+
+    /**
+     * Parameter: {@value} .
+     */
     String PARAM_STEREO = "stereo";
 
     /**

@@ -71,6 +71,8 @@ public class SphereRenderer implements Renderer {
     private int mScreenWidth;
     private int mScreenHeight;
     private boolean mIsStereo;
+
+    private Camera mDefaultCamera = new Camera();
     private Camera mCamera = new Camera();
 
     private UVSphere mShell;
@@ -89,6 +91,10 @@ public class SphereRenderer implements Renderer {
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
     private final float[] mModelMatrix = new float[16];
+
+    private float mSphereYaw;
+    private float mSphereRoll;
+    private float mSpherePitch;
 
     /**
      * Constructor
@@ -126,9 +132,7 @@ public class SphereRenderer implements Renderer {
 
         if (mTextureUpdate && null != mTexture) {
             GLES20.glDeleteTextures(1, mTextures, 0);
-            synchronized (mTexture) {
-                loadTexture(mTexture);
-            }
+            loadTexture(mTexture);
             mTextureUpdate = false;
         }
 
@@ -147,6 +151,10 @@ public class SphereRenderer implements Renderer {
         Matrix.perspectiveM(mProjectionMatrix, 0, camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
         checkGlError(TAG, "perspectiveM");
 
+        Matrix.setRotateM(mModelMatrix, 0, mSphereRoll, 1.0f, 0.0f, 0.0f);
+        Matrix.rotateM(mModelMatrix, 0, mSphereYaw, 0.0f, 1.0f, 0.0f);
+        Matrix.rotateM(mModelMatrix, 0, mSpherePitch, 0.0f, 0.0f, 1.0f);
+
         GLES20.glUniformMatrix4fv(mModelMatrixHandle, 1, false, mModelMatrix, 0);
         GLES20.glUniformMatrix4fv(mProjectionMatrixHandle, 1, false, mProjectionMatrix, 0);
         GLES20.glUniformMatrix4fv(mViewMatrixHandle, 1, false, mViewMatrix, 0);
@@ -156,6 +164,12 @@ public class SphereRenderer implements Renderer {
         GLES20.glUniform1i(mTexHandle, 0);
 
         mShell.draw(mPositionHandle, mUVHandle);
+    }
+
+    public void rotateSphere(final float yaw, final float roll, final float pitch) {
+        mSphereYaw = yaw;
+        mSphereRoll = roll;
+        mSpherePitch = pitch;
     }
 
     /**
@@ -286,6 +300,14 @@ public class SphereRenderer implements Renderer {
         mCamera = camera;
     }
 
+    public Camera getDefaultCamera() {
+        return mDefaultCamera;
+    }
+
+    public void setDefaultCamera(final Camera camera) {
+        mDefaultCamera = camera;
+    }
+
     public static class CameraBuilder {
         private float mFovDegree;
         private Vector3D mPosition;
@@ -359,10 +381,10 @@ public class SphereRenderer implements Renderer {
             mRightDirection = rotate(mRightDirection, q);
         }
 
-        public void rotate(final Quaternion q) {
-            mFrontDirection = rotate(new Vector3D(1, 0, 0), q);
-            mUpperDirection = rotate(new Vector3D(0, 1, 0), q);
-            mRightDirection = rotate(new Vector3D(0, 0, 1), q);
+        public void rotate(final Camera defaultCamera, final Quaternion q) {
+            mFrontDirection = rotate(defaultCamera.getFrontDirection(), q);
+            mUpperDirection = rotate(defaultCamera.getUpperDirection(), q);
+            mRightDirection = rotate(defaultCamera.getRightDirection(), q);
         }
 
         private static Vector3D rotate(final Vector3D v, final Quaternion q) {
