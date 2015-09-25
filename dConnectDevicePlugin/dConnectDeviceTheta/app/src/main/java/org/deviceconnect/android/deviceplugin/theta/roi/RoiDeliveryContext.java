@@ -48,7 +48,7 @@ public class RoiDeliveryContext implements SensorEventListener {
      */
     public static final Param DEFAULT_PARAM = new Param();
 
-    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     private static final String TAG = "Roi";
 

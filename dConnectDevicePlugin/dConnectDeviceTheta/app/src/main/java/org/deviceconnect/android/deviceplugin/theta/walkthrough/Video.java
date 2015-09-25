@@ -1,5 +1,7 @@
 package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
+import android.util.Log;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -42,13 +44,21 @@ class Video {
         return mFrameInterval;
     }
 
-    public static Video createVideo(final File dir, final int width, final int height, final double fps) throws IOException {
+    public static Video createVideo(final File dir, final int width, final int height, final double fps, final double originalFps) throws IOException {
         File[] files = listFilesFromDirectory(dir);
-        Frame[] frames = new Frame[files.length];
-        for (int i = 0; i < files.length; i++) {
-            frames[i] = new Frame(i, files[i]);
+        List<Frame> frames = new ArrayList<Frame>();
+        double interval = originalFps / fps;
+        for (int i = 0; ; i++) {
+            int index = (int) Math.ceil(i * interval);
+            if (index >= files.length) {
+                break;
+            }
+            frames.add(new Frame(i, files[index]));
         }
-        return new Video(frames, width, height, fps);
+
+        Log.d("AAA", "Video: interval = " + interval + ", length = " + frames.size());
+
+        return new Video(frames.toArray(new Frame[frames.size()]), width, height, fps);
     }
 
     private static File[] listFilesFromDirectory(final File dir) throws IOException {

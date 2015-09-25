@@ -3,6 +3,7 @@ package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 import android.graphics.Bitmap;
 import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 import org.deviceconnect.android.deviceplugin.theta.utils.JpegLoader;
 
 import java.io.File;
@@ -17,7 +18,7 @@ import java.nio.IntBuffer;
 class FrameJpeg {
 
     private static final String TAG = "FrameJpeg";
-    private static final boolean DEBUG = true; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     private static final JpegLoader LOADER = new JpegLoader();
 

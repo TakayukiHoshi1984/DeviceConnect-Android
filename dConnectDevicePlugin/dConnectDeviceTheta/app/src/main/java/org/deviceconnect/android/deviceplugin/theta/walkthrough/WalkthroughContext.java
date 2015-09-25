@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
 import org.deviceconnect.android.deviceplugin.theta.utils.JpegLoader;
@@ -37,7 +38,7 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
@@ -53,7 +54,9 @@ public class WalkthroughContext implements SensorEventListener {
     private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
 
     private final File mDir;
+    private final Video mVideo;
     private final VideoPlayer mVideoPlayer;
+    private boolean mIsAutoPlay;
 
     private byte[] mRoi;
     private String mUri;
@@ -102,8 +105,8 @@ public class WalkthroughContext implements SensorEventListener {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
         mDir = omniImageDir;
-        Video video = Video.createVideo(mDir, 1024, 512, fps);
-        mVideoPlayer = new VideoPlayer(video, 20);
+        mVideo = Video.createVideo(mDir, 1024, 512, 5.0, 15.0);
+        mVideoPlayer = new VideoPlayer(mVideo, 20);
         mVideoPlayer.setDisplay(new VideoPlayer.Display() {
 
             @Override
@@ -111,18 +114,26 @@ public class WalkthroughContext implements SensorEventListener {
                 if (DEBUG) {
                     Log.d(TAG, "onPrepared");
                 }
-                mVideoPlayer.playBy(1);
+                seek(1);
             }
 
             @Override
             public void onDraw(final FrameJpeg jpeg) {
                 if (DEBUG) {
-                    Log.d(TAG, "onDraw: jpeg = " + jpeg);
+                    Log.d(TAG, "onDraw: jpeg = " + jpeg.getFrame().getPosition() + ", bitmap = " + jpeg.toBitmap());
                 }
 
                 try {
                     mRenderer.setTexture(jpeg.toBitmap());
                     startRendering();
+
+                    if (isAutoPlay()) {
+                        if (DEBUG) {
+                            Log.d(TAG, "onDraw: AutoPlay: Loop");
+                        }
+
+                        seek(1);
+                    }
                 } catch (Throwable e) {
                     Log.e(TAG, "onDraw: ERROR: ", e);
                 }
@@ -143,7 +154,7 @@ public class WalkthroughContext implements SensorEventListener {
             }
         });
 
-        mInterval = (long) (1000.0f / fps);
+        mInterval = 200; //(long) (1000.0f / fps); // TODO
 
         mBaos = new ByteArrayOutputStream(width * height);
         mPlayerThread.execute(new Runnable() {
@@ -274,6 +285,14 @@ public class WalkthroughContext implements SensorEventListener {
         return mRoi;
     }
 
+    public boolean isAutoPlay() {
+        return mIsAutoPlay;
+    }
+
+    public void setAutoPlay(final boolean isAutoPlay) {
+        mIsAutoPlay = isAutoPlay;
+    }
+
     public synchronized void start() {
         if (DEBUG) {
             Log.d(TAG, "Walkthrough.start()");
@@ -281,8 +300,7 @@ public class WalkthroughContext implements SensorEventListener {
 
         if (mIsStopped) {
             mIsStopped = false;
-            mVideoPlayer.prepare();
-            startVrMode();
+            mVideoPlayer.prepare();startVrMode();
         }
     }
 

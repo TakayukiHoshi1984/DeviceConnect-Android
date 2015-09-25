@@ -134,6 +134,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
                             walkContext.setEventListener(ThetaWalkthroughProfile.this);
                             walkContext.setUri(uri);
+                            walkContext.setAutoPlay(true);
                             walkContext.start();
                             mWalkContexts.put(key, walkContext);
                         } else {
@@ -282,18 +283,6 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             target.restartExpireTimer();
         }
         return null;
-//        if (target != null) {
-//            byte[] media = target.getMedia();
-//            if (DEBUG) {
-//                Log.d(TAG, "onConnect: media = " + media);
-//            }
-//            return media;
-//        } else {
-//            if (DEBUG) {
-//                Log.d(TAG, "onConnect: NO media");
-//            }
-//            return null;
-//        }
     }
 
     @Override

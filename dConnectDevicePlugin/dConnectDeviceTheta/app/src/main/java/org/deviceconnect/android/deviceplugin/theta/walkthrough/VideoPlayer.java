@@ -3,6 +3,8 @@ package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
 import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
+
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -10,7 +12,7 @@ import java.util.concurrent.Executors;
 
 class VideoPlayer {
 
-    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
     private static final String TAG = "VideoPlayer";
 
     private final Video mVideo;
@@ -20,7 +22,7 @@ class VideoPlayer {
     private final FrameJpegLoader mNegativeLoader;
     private final ExecutorService mJpegLoaderThread = Executors.newFixedThreadPool(1);
 
-    private boolean isLoop = true;
+    private boolean mIsLoop = true;
     private Frame mCurrentFrame;
     private Display mDisplay;
 
@@ -52,12 +54,18 @@ class VideoPlayer {
 
         try {
             long start, end;
+            long delay = 0;
             int total = Math.abs(delta);
 
-            for (int count = 0; count < total; count++) {
+            for (int count = 0; count < total; ) {
                 start = System.currentTimeMillis();
 
-                Frame frame = loader.nextFrame();
+                int num = 1;
+                if (delay > mInterval) {
+                    num = (int) Math.ceil(delay / mInterval);
+                }
+
+                Frame frame = loader.nextFrame(num);
                 if (frame == null) {
                     if (mDisplay != null) {
                         mDisplay.onFinish();
@@ -68,7 +76,13 @@ class VideoPlayer {
                 loader.load(frame);
 
                 end = System.currentTimeMillis();
-                Thread.sleep(mInterval - (end - start));
+                delay = end - start;
+
+                if (mInterval - delay > 0) {
+                    Thread.sleep(mInterval - delay);
+                }
+
+                count += num;
             }
         } catch (InterruptedException e) {
             if (mDisplay != null) {
@@ -156,10 +170,10 @@ class VideoPlayer {
             mPrevDirection = prevDirection;
         }
 
-        protected abstract int nextFramePosition();
+        protected abstract int nextFramePosition(int delta);
 
-        public Frame nextFrame() {
-            int nextPos = nextFramePosition();
+        public Frame nextFrame(int delta) {
+            int nextPos = nextFramePosition(delta);
 
             if (DEBUG) {
                 Log.d(TAG, "***** nextFrame: " + nextPos);
@@ -183,7 +197,7 @@ class VideoPlayer {
                             jpeg.load(frame);
                         }
                         long end = System.currentTimeMillis();
-                        Log.d(TAG, "Frame = " +  frame.getPosition() + " , Load time = " + (end - start) + " msec.");
+                        //Log.d(TAG, "Frame = " +  frame.getPosition() + " , Load time = " + (end - start) + " msec.");
 
                         pushPrev(mBuffer.getCurrentJpeg());
 
@@ -226,14 +240,14 @@ class VideoPlayer {
         }
 
         @Override
-        protected int nextFramePosition() {
+        protected int nextFramePosition(final int delta) {
             if (mCurrentFrame == null) {
                 return 0;
             }
             int current = mCurrentFrame.getPosition();
-            int next = current + 1;
-            if (next == mVideo.getLength() && isLoop) {
-                return 0;
+            int next = current + delta;
+            if (next >= mVideo.getLength() && mIsLoop) {
+                return next % mVideo.getLength();
             }
             return next;
         }
@@ -246,14 +260,14 @@ class VideoPlayer {
         }
 
         @Override
-        protected int nextFramePosition() {
+        protected int nextFramePosition(final int delta) {
             if (mCurrentFrame == null) {
                 return 0;
             }
             int current = mCurrentFrame.getPosition();
-            int next = current - 1;
-            if (next < 0 && isLoop) {
-                return mVideo.getLength() - 1;
+            int next = current - delta;
+            if (next < 0 && mIsLoop) {
+                return (next + mVideo.getLength()) % mVideo.getLength();
             }
             return next;
         }
