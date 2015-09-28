@@ -56,7 +56,7 @@ class Video {
             frames.add(new Frame(i, files[index]));
         }
 
-        Log.d("AAA", "Video: interval = " + interval + ", length = " + frames.size());
+        Log.d("AAA", "Video: interval = " + interval + ", length = " + frames.size() + " original fps = " + originalFps + ", fps = " + fps);
 
         return new Video(frames.toArray(new Frame[frames.size()]), width, height, fps);
     }

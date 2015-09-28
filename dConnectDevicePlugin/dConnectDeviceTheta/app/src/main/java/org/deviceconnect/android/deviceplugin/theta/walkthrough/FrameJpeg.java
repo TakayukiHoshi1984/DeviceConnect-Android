@@ -18,7 +18,7 @@ import java.nio.IntBuffer;
 class FrameJpeg {
 
     private static final String TAG = "FrameJpeg";
-    private static final boolean DEBUG = BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     private static final JpegLoader LOADER = new JpegLoader();
 

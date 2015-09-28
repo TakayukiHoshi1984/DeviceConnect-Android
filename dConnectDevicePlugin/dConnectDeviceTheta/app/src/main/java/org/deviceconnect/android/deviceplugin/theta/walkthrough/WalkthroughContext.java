@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 public class WalkthroughContext implements SensorEventListener {
 
     private static final String TAG = "Walk";
-    private static final boolean DEBUG = BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
     private static final float NS2S = 1.0f / 1000000000.0f;
@@ -66,7 +66,6 @@ public class WalkthroughContext implements SensorEventListener {
     private Timer mExpireTimer;
     private EventListener mListener;
 
-    private final ExecutorService mPlayerThread = Executors.newFixedThreadPool(1);
     private PixelBuffer mPixelBuffer;
     private final SphereRenderer mRenderer = new SphereRenderer();
     private ByteArrayOutputStream mBaos;
@@ -82,7 +81,7 @@ public class WalkthroughContext implements SensorEventListener {
                     return;
                 }
                 mBaos.reset();
-                result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
+                result.compress(Bitmap.CompressFormat.JPEG, 80, mBaos);
                 mRoi = mBaos.toByteArray();
 
                 if (mListener != null) {
@@ -96,16 +95,22 @@ public class WalkthroughContext implements SensorEventListener {
         }
     };
 
+    private final int mScreenWidth;
+    private final int mScreenHeight;
+
     public WalkthroughContext(final Context context, final File omniImageDir,
                               final int width, final int height, final float fps) throws IOException {
         Log.d(TAG, "WalkthroughContext: dir = " + omniImageDir);
+
+        mScreenWidth = width;
+        mScreenHeight = height;
 
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
         mDir = omniImageDir;
-        mVideo = Video.createVideo(mDir, 1024, 512, 5.0, 15.0);
+        mVideo = Video.createVideo(mDir, 1024, 512, fps, 15.0);
         mVideoPlayer = new VideoPlayer(mVideo, 20);
         mVideoPlayer.setDisplay(new VideoPlayer.Display() {
 
@@ -157,18 +162,18 @@ public class WalkthroughContext implements SensorEventListener {
         mInterval = 200; //(long) (1000.0f / fps); // TODO
 
         mBaos = new ByteArrayOutputStream(width * height);
-        mPlayerThread.execute(new Runnable() {
-            @Override
-            public void run() {
-                mPixelBuffer = new PixelBuffer(width, height, false);
-                mPixelBuffer.setRenderer(mRenderer);
-            }
-        });
 
         Param param = new Param();
         param.setImageWidth(width);
         param.setImageHeight(height);
         initRendererParam(param);
+    }
+
+    public void setFOV(float fov) {
+        SphereRenderer.Camera camera = mRenderer.getCamera();
+        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
+        builder.setFov(fov);
+        mRenderer.setCamera(builder.create());
     }
 
     private boolean startVrMode() {
@@ -300,7 +305,8 @@ public class WalkthroughContext implements SensorEventListener {
 
         if (mIsStopped) {
             mIsStopped = false;
-            mVideoPlayer.prepare();startVrMode();
+            mVideoPlayer.prepare();
+            startVrMode();
         }
     }
 
@@ -310,11 +316,11 @@ public class WalkthroughContext implements SensorEventListener {
         }
 
         if (!mIsStopped) {
+            stopExpireTimer();
             stopRendering();
             stopVrMode();
             mVideoPlayer.destroy();
             mPixelBuffer.destroy();
-            mPlayerThread.shutdownNow();
             mIsStopped = true;
         }
     }
@@ -331,9 +337,14 @@ public class WalkthroughContext implements SensorEventListener {
                 @Override
                 public void run() {
                     try {
+                        mPixelBuffer = new PixelBuffer(mScreenWidth, mScreenHeight, false);
+                        mPixelBuffer.setRenderer(mRenderer);
+
                         while (!mIsStopped) {
                             long start = System.currentTimeMillis();
-                            render();
+
+                            mRendererTask.run();
+
                             long end = System.currentTimeMillis();
                             long delay = mInterval - (end - start);
                             if (delay > 0) {
@@ -368,20 +379,6 @@ public class WalkthroughContext implements SensorEventListener {
             return;
         }
         mVideoPlayer.playBy(delta);
-    }
-
-    private void render() {
-        if (DEBUG) {
-            Log.d(TAG, "Walkthrough.render()");
-        }
-
-        if (mIsStopped) {
-            if (DEBUG) {
-                Log.w(TAG, "Walkthrough is stopped");
-            }
-            return;
-        }
-        mPlayerThread.execute(mRendererTask);
     }
 
     private void initRendererParam(final Param param) {
@@ -423,7 +420,7 @@ public class WalkthroughContext implements SensorEventListener {
         }
     }
 
-    public void restartExpireTimer() {
+    public synchronized void restartExpireTimer() {
         stopExpireTimer();
         startExpireTimer();
     }

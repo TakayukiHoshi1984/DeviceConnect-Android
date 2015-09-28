@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 
 class VideoPlayer {
 
-    private static final boolean DEBUG = BuildConfig.DEBUG;
+    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
     private static final String TAG = "VideoPlayer";
 
     private final Video mVideo;

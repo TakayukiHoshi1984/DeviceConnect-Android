@@ -376,12 +376,10 @@ public class MixedReplaceMediaServer {
 
         @Override
         public void run() {
-            mLogger.fine("accept client.");
+            //mLogger.fine("accept client.");
             mRunnables.add(this);
             try {
-                mLogger.info("Getting output stream of socket...");
                 mStream = mSocket.getOutputStream();
-                mLogger.info("Got output stream of socket!");
 
                 byte[] buf = new byte[BUF_SIZE];
                 InputStream in = mSocket.getInputStream();
@@ -403,15 +401,10 @@ public class MixedReplaceMediaServer {
                     boolean isGet = header.hasParam("snapshot");
                     byte[] data = null;
                     if (mServerEventListener != null) {
-                        mLogger.info("Calling onConnect");
                         data = mServerEventListener.onConnect(mRequest);
-                        mLogger.info("Called onConnect: data = " + data);
                     }
                     if (data != null) {
-                        mLogger.info("Requested media is found: " + segment);
                         offerMedia(segment, data);
-                    } else {
-                        mLogger.info("Data is null");
                     }
 
                     if (isGet) {
@@ -474,7 +467,7 @@ public class MixedReplaceMediaServer {
             } catch (Throwable e) {
                 Log.e("MixedReplaceMediaServer", "MediaServer.run(): error: ", e);
             } finally {
-                mLogger.fine("socket close.");
+                //mLogger.fine("socket close.");
                 if (mServerEventListener != null && mRequest != null) {
                     mServerEventListener.onDisconnect(mRequest);
                 }

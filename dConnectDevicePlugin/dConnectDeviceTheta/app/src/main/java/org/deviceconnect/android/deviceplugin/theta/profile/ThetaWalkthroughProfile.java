@@ -83,7 +83,9 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         final Integer width = getWidth(request);
         final Integer height = getHeight(request);
         final Double fps = getFps(request);
-        Log.d(TAG, "onPostWalker: source=" + source + " width=" + width + " height=" + height + " fps=" + fps);
+        final Double fovParam = parseDouble(request, "fov");
+        final Boolean autoPlay = parseBoolean(request, "autoPlay");
+        Log.d(TAG, "onPostWalker: source=" + source + " width=" + width + " height=" + height + " fps=" + fps + " fov=" + fovParam + " autoPlay=" + autoPlay);
 
         if (source == null) {
             MessageUtils.setInvalidRequestParameterError(response, "source is null.");
@@ -134,7 +136,12 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
                             walkContext.setEventListener(ThetaWalkthroughProfile.this);
                             walkContext.setUri(uri);
-                            walkContext.setAutoPlay(true);
+                            if (fovParam != null) {
+                                walkContext.setFOV(fovParam.floatValue());
+                            }
+                            if (autoPlay != null) {
+                                walkContext.setAutoPlay(autoPlay.booleanValue());
+                            }
                             walkContext.start();
                             mWalkContexts.put(key, walkContext);
                         } else {
@@ -170,6 +177,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         try {
             String uri = getURI(request);
             Integer deltaParam = parseInteger(request, "delta");
+            Double fovParam = parseDouble(request, "fov");
             if (deltaParam == null) {
                 MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
                 return true;
@@ -184,7 +192,12 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                 MessageUtils.setInvalidRequestParameterError(response, "the specified uri is unavailable: uri = " + uri);
                 return true;
             }
-            walkContext.seek(deltaParam);
+            if (fovParam != null) {
+                walkContext.setFOV(fovParam.floatValue());
+            }
+            if (Math.abs(deltaParam) > 0) {
+                walkContext.seek(deltaParam);
+            }
             setResult(response, DConnectMessage.RESULT_OK);
             response.putExtra("count", deltaParam);
         } catch (Throwable e) {
