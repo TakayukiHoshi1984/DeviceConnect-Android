@@ -29,8 +29,8 @@
     <string name="activity_settings_ssl">SSL</string>
     <string name="activity_settings_host">Host</string>
     <string name="activity_settings_port">Port</string>
-    <string name="activity_settings_document_root">ドキュメントルートパス</string>
     <string name="activity_settings_default_host">localhost</string>
+    <string name="activity_settings_document_root">ドキュメントルートパス</string>
     <string name="activity_settings_default_port">4035</string>
     <string name="activity_settings_local_oauth">Local OAuth</string>
     <string name="activity_settings_local_oauth_summary">ユーザによってアプリケーションを認可します。</string>
@@ -61,7 +61,12 @@
     <string name="activity_settings_yes">はい</string>
     <string name="activity_settings_no">いいえ</string>
     <string name="activity_settings_close">閉じる</string>
-    
+
+    <string name="activity_settings_web_server_settings">Webサーバ設定</string>
+    <string name="activity_settings_web_server_default_host">localhost</string>
+    <string name="activity_settings_web_server_default_port">8080</string>
+    <string name="activity_settings_web_server_document_root">ドキュメントルートパス</string>
+
     <!-- ================= SharedPreferences ================= -->
 
     <string name="key_settings_about_appinfo">settings_about_appinfo</string>
@@ -84,6 +89,9 @@
     <string name="key_settings_dconn_whitelist_origin_blocking">settings_whitelist_origin_blocking</string>
     <string name="key_settings_list_device_plugin">settings_list_device_plugin</string>
     <string name="key_settings_restart_device_plugin">settings_device_plugin</string>
+    <string name="key_settings_web_server_host">key_settings_web_server_host</string>
+    <string name="key_settings_web_server_port">key_settings_web_server_port</string>
+    <string name="key_settings_web_server_document_root_path">key_settings_web_server_document_root_path</string>
 
     <!-- ================= WhitelistActivity ================= -->
     <string name="activity_whitelist_title">Originホワイトリスト</string>
@@ -101,8 +109,12 @@
     <string name="dialog_origin_manual_entry_item_title">タイトル</string>
     <string name="dialog_origin_manual_entry_item_origin">Origin</string>
     <string name="dialog_origin_manual_entry_message">少なくともOriginを入力してください。</string>
-    <string-array name="whitelist_menu_origin">
+    <string-array name="whitelist_menu_origin_pre_marshmallow">
         <item>Chromeのブックマークから追加</item>
+        <item>インストール済みのアプリを追加</item>
+        <item>手入力で追加</item>
+    </string-array>
+    <string-array name="whitelist_menu_origin_post_marshmallow">
         <item>インストール済みのアプリを追加</item>
         <item>手入力で追加</item>
     </string-array>
@@ -129,6 +141,10 @@
     <string name="activity_warning_mess">DeviceConnect以外のアプリケーションがポートを利用しているため、d-Connectを起動することができません。</string>
     <string name="activity_warning_ok">OK</string>
     <string name="activity_warning_disable">次から表示しない</string>
+
+    <!-- ================= DConnectObservationService ================= -->
+    <string name="service_observation_warning">警告</string>
+    <string name="service_observation_msg_no_permission">ファイル読み込み権限が拒否されたため、ポート監視が中断されました。</string>
 
     <!-- =================     DebugActivity     ================= -->
 
