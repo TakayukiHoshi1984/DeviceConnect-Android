@@ -343,7 +343,7 @@ public class MixedReplaceMediaServer {
         /**
          * Defined buffer size.
          */
-        private static final int BUF_SIZE = 8192;
+        private static final int BUF_SIZE = 512;
 
         /**
          * Socket.
@@ -376,7 +376,6 @@ public class MixedReplaceMediaServer {
 
         @Override
         public void run() {
-            //mLogger.fine("accept client.");
             mRunnables.add(this);
             try {
                 mStream = mSocket.getOutputStream();
@@ -384,60 +383,49 @@ public class MixedReplaceMediaServer {
                 byte[] buf = new byte[BUF_SIZE];
                 InputStream in = mSocket.getInputStream();
                 int len = in.read(buf, 0, BUF_SIZE);
-                if (len == -1) {
-                    // error
-                    return;
-                }
-                HttpHeader header = decodeHeader(buf, len);
-                mRequest = new Request(header);
+                mRequest = decodeHeader(buf, len);
 
                 if (mRunnables.size() > MAX_CLIENT_SIZE) {
                     mLogger.info("MAX_CLIENT_SIZE");
                     mStream.write(generateServiceUnavailable().getBytes());
                     mStream.flush();
-                    return;
                 } else {
-                    String segment = Uri.parse(mRequest.getUri()).getLastPathSegment();
-                    boolean isGet = header.hasParam("snapshot");
-                    byte[] data = null;
-                    if (mServerEventListener != null) {
-                        data = mServerEventListener.onConnect(mRequest);
-                    }
-                    if (data != null) {
-                        offerMedia(segment, data);
-                    }
+                    String segment = mRequest.getLastPathSegment();
 
-                    if (isGet) {
-                        BlockingQueue<byte[]> mediaQueue = mMediaQueues.get(segment);
-                        byte[] media;
-                        if (mediaQueue != null) {
-                            media = mediaQueue.poll(30, TimeUnit.SECONDS);
-                            if (media == null) {
-                                return;
-                            }
-                        } else {
-                            media = new byte[0];
-                        }
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("HTTP/1.0 200 OK\r\n");
-                        sb.append("Server: " + mServerName + "\r\n");
-                        sb.append("Connection: close\r\n");
-                        sb.append("Content-Type: image/jpeg\r\n");
-                        sb.append("Content-Length: " + media.length + "\r\n");
-                        sb.append("\r\n");
-                        mStream.write(sb.toString().getBytes());
-                        mStream.flush();
-                        mStream.write(media);
+                    BlockingQueue<byte[]> mediaQueue = mMediaQueues.get(segment);
+                    if (mediaQueue == null) {
+                        mLogger.warning("segment not found. segment=" + segment);
+                        mStream.write(generateNotFound().getBytes());
                         mStream.flush();
                         return;
                     }
 
-                    mStream.write(generateHttpHeader().getBytes());
-                    mStream.flush();
+                    if (mServerEventListener != null) {
+                        byte[] data = mServerEventListener.onConnect(mRequest);
+                        if (data != null) {
+                            offerMedia(segment, data);
+                        }
+                    }
 
-                    while (!mIsServerStopped && !mIsMediaStopped) {
-                        BlockingQueue<byte[]> mediaQueue = mMediaQueues.get(segment);
-                        if (mediaQueue != null) {
+                    if (mRequest.isGet()) {
+                        byte[] media = mediaQueue.poll(30, TimeUnit.SECONDS);
+                        if (media == null) {
+                            mLogger.warning("Timeout of media queue.");
+                            media = new byte[0];
+                        }
+                        mStream.write("HTTP/1.0 200 OK\r\n".getBytes());
+                        mStream.write(("Server: " + mServerName + "\r\n").getBytes());
+                        mStream.write("Connection: close\r\n".getBytes());
+                        mStream.write("Content-Type: image/jpeg\r\n".getBytes());
+                        mStream.write(("Content-Length: " + media.length + "\r\n").getBytes());
+                        mStream.write("\r\n".getBytes());
+                        mStream.write(media);
+                        mStream.flush();
+                    } else {
+                        mStream.write(generateHttpHeader().getBytes());
+                        mStream.flush();
+
+                        while (!mIsServerStopped && !mIsMediaStopped) {
                             byte[] media = mediaQueue.take();
                             if (media.length > 0) {
                                 sendMedia(media);
@@ -467,7 +455,6 @@ public class MixedReplaceMediaServer {
             } catch (Throwable e) {
                 Log.e("MixedReplaceMediaServer", "MediaServer.run(): error: ", e);
             } finally {
-                //mLogger.fine("socket close.");
                 if (mServerEventListener != null && mRequest != null) {
                     mServerEventListener.onDisconnect(mRequest);
                 }
@@ -498,12 +485,10 @@ public class MixedReplaceMediaServer {
          * @throws java.io.IOException if an error occurs while sending media data.
          */
         private void sendMedia(final byte[] media) throws IOException {
-            StringBuilder sb = new StringBuilder();
-            sb.append("--" + mBoundary + "\r\n");
-            sb.append("Content-type: " + mContentType + "\r\n");
-            sb.append("Content-Length: " + media.length + "\r\n");
-            sb.append("\r\n");
-            mStream.write(sb.toString().getBytes());
+            mStream.write(("--" + mBoundary + "\r\n").getBytes());
+            mStream.write(("Content-type: " + mContentType + "\r\n").getBytes());
+            mStream.write(("Content-Length: " + media.length + "\r\n").getBytes());
+            mStream.write("\r\n".getBytes());
             mStream.write(media);
             mStream.write("\r\n\r\n".getBytes());
             mStream.flush();
@@ -537,7 +522,11 @@ public class MixedReplaceMediaServer {
          * @return HTTP header
          * @throws java.io.IOException if this http header is invalid.
          */
-        private HttpHeader decodeHeader(final byte[] buf, final int len) throws IOException {
+        private Request decodeHeader(final byte[] buf, final int len) throws IOException {
+            if (buf == null || len == -1) {
+                throw new IOException("Failed to read the http header.");
+            }
+
             HashMap<String, String> pre = new HashMap<String, String>();
             HashMap<String, String> headers = new HashMap<String, String>();
             HashMap<String, String> params = new HashMap<String, String>();
@@ -597,7 +586,7 @@ public class MixedReplaceMediaServer {
             if (segment == null) {
                 throw new IOException("Header is invalid format.");
             }
-            return new HttpHeader(uri, params);
+            return new Request(uri, segment, params);
         }
 
         /**
@@ -655,7 +644,6 @@ public class MixedReplaceMediaServer {
         sb.append("Content-Type: multipart/x-mixed-replace; ");
         sb.append("boundary=" + mBoundary + "\r\n");
         sb.append("\r\n");
-        sb.append("--" + mBoundary + "\r\n");
         return sb.toString();
     }
 
@@ -726,42 +714,34 @@ public class MixedReplaceMediaServer {
 
     public class Request {
 
-        private HttpHeader mHeader;
+        private String mPath;
+        private String mLastSegment;
+        private Map<String, String> mParams;
 
-        private Request(final HttpHeader header) {
-            mHeader = header;
+        private Request(final String path, final String segment, final Map<String, String> params) {
+            mPath = path;
+            mParams = params;
+            mLastSegment = segment;
         }
 
         public String getUri() {
-            return getUrl() + mHeader.getUri();
+            return getUrl() + mPath;
         }
 
-        public boolean isGet() {
-            return mHeader.hasParam("snapshot");
-        }
-
-    }
-
-    private static class HttpHeader {
-
-        final String mUri;
-        final Map<String, String> mParams;
-
-        HttpHeader(final String uri, final Map<String, String> params) {
-            mUri = uri;
-            mParams = params;
-        }
-
-        String getUri() {
-            return mUri;
-        }
-
-        String getParam(final String key) {
+        public String getParam(final String key) {
             return mParams.get(key);
         }
 
-        boolean hasParam(final String key) {
+        public String getLastPathSegment() {
+            return mLastSegment;
+        }
+
+        public boolean hasParam(final String key) {
             return getParam(key) != null;
+        }
+
+        public boolean isGet() {
+            return hasParam("snapshot");
         }
     }
 }
