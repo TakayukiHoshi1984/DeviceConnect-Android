@@ -159,7 +159,7 @@ public class WalkthroughContext implements SensorEventListener {
             }
         });
 
-        mInterval = 200; //(long) (1000.0f / fps); // TODO
+        mInterval = (long) (1000.0f / fps);
 
         mBaos = new ByteArrayOutputStream(width * height);
 
