@@ -343,7 +343,7 @@ public class MixedReplaceMediaServer {
         /**
          * Defined buffer size.
          */
-        private static final int BUF_SIZE = 512;
+        private static final int BUF_SIZE = 1024;
 
         /**
          * Socket.
