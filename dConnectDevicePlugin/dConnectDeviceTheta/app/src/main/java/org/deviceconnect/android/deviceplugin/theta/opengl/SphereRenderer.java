@@ -222,8 +222,17 @@ public class SphereRenderer {
      * @param texture Photo object for texture
      */
     public void setTexture(Bitmap texture) {
-        mTexture = texture;
-        mTextureUpdate = true;
+        synchronized (mLockTexture) {
+            mTexture = texture;
+            mTextureUpdate = true;
+        }
+    }
+
+    public void clearTexture() {
+        synchronized (mLockTexture) {
+            mTexture = null;
+            mTextureUpdate = false;
+        }
     }
 
     /**

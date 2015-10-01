@@ -124,6 +124,7 @@ public class RoiDeliveryContext implements SensorEventListener {
     }
 
     public void destroy() {
+        mSphericalView.getRenderer().clearTexture();
         if (mSensorMgr != null) {
             mSensorMgr.unregisterListener(RoiDeliveryContext.this);
         }

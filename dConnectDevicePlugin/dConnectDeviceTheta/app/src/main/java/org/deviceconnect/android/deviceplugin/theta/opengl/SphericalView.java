@@ -25,9 +25,11 @@ public class SphericalView {
     private ByteArrayOutputStream mBaos;
 
     private String mKey;
+
     private byte[] mRoi;
 
     private boolean mIsCreatedScreen;
+
     private boolean mIsDestroyed;
 
     private final Object mLockScreen = new Object();
@@ -113,12 +115,14 @@ public class SphericalView {
 
                         delay = mInterval - (end - start);
 
-                        if (DEBUG) {
-                            Log.i(TAG, "delay = " + delay);
-                        }
-
                         if (mListener != null) {
                             mListener.onUpdate(mKey, mRoi);
+                        } else {
+                            synchronized (mLockScreen) {
+                                while (mListener == null) {
+                                    mLockScreen.wait();
+                                }
+                            }
                         }
 
                         if (delay > 0) {
@@ -153,7 +157,10 @@ public class SphericalView {
     }
 
     public void setEventListener(final EventListener listener) {
-        mListener = listener;
+        synchronized (mLockScreen) {
+            mListener = listener;
+            mLockScreen.notifyAll();
+        }
     }
 
     public byte[] getRoi() {

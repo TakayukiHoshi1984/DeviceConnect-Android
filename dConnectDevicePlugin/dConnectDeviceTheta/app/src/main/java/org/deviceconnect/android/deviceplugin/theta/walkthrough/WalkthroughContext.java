@@ -297,6 +297,7 @@ public class WalkthroughContext implements SensorEventListener {
 
         if (!mIsStopped) {
             mIsStopped = true;
+            mSphericalView.getRenderer().clearTexture();
             stopExpireTimer();
             stopVrMode();
             mVideoPlayer.destroy();

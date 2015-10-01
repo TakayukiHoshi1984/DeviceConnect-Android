@@ -72,6 +72,7 @@ public class ThetaDeviceService extends DConnectMessageService {
 
     @Override
     public void onDestroy() {
+        mSphericalView.destroy();
         try {
             PtpipInitiator.close();
         } catch (ThetaException e) {
