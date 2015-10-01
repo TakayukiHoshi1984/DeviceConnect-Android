@@ -75,6 +75,8 @@ public abstract class DConnectProfile implements DConnectProfileConstants {
                 MessageUtils.setNotSupportActionError(response);
             }
         } catch (Exception e) {
+            e.printStackTrace();
+
             mLogger.severe("Exception occurred in the profile. " + e.getMessage());
             MessageUtils.setUnknownError(response, e.getMessage());
         }

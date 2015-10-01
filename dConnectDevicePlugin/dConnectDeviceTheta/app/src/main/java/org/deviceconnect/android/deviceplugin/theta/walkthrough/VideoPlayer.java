@@ -3,8 +3,6 @@ package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
 import android.util.Log;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
-
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -152,11 +150,6 @@ class VideoPlayer {
 
         public LinkedList<FrameJpeg> getJpegList(final int direction) {
             return mJpegList[direction];
-        }
-
-        public void debug() {
-            Log.d(TAG, "FrameJpegBuffer: next buffer = " + mJpegList[NEXT].size()
-            + ", prev buffer = " + mJpegList[PREV].size() + " current = " + mCurrentJpeg);
         }
     }
 

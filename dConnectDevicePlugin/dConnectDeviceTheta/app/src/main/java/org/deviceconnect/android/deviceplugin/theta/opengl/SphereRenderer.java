@@ -8,18 +8,14 @@ package org.deviceconnect.android.deviceplugin.theta.opengl;
 
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
-import android.opengl.GLSurfaceView.Renderer;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 import org.deviceconnect.android.deviceplugin.theta.opengl.model.UVSphere;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 
@@ -28,7 +24,7 @@ import javax.microedition.khronos.opengles.GL10;
  *
  * @author NTT DOCOMO, INC.
  */
-public class SphereRenderer implements Renderer {
+public class SphereRenderer {
 
     /**
      * Distance of left and right eye: {@value} cm.
@@ -72,7 +68,6 @@ public class SphereRenderer implements Renderer {
     private int mScreenHeight;
     private boolean mIsStereo;
 
-    private Camera mDefaultCamera = new Camera();
     private Camera mCamera = new Camera();
 
     private UVSphere mShell;
@@ -80,6 +75,10 @@ public class SphereRenderer implements Renderer {
     private Bitmap mTexture;
     private boolean mTextureUpdate = false;
     private int[] mTextures = new int[1];
+
+    private int mVShader;
+    private int mFShader;
+    private int mProgram;
 
     private int mPositionHandle;
     private int mProjectionMatrixHandle;
@@ -96,6 +95,9 @@ public class SphereRenderer implements Renderer {
     private float mSphereRoll;
     private float mSpherePitch;
 
+    private final Object mLockTexture = new Object();
+    private boolean mIsDestroyed;
+
     /**
      * Constructor
      */
@@ -108,7 +110,6 @@ public class SphereRenderer implements Renderer {
      *
      * @param gl GLObject (not used)
      */
-    @Override
     public void onDrawFrame(final GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
@@ -124,16 +125,33 @@ public class SphereRenderer implements Renderer {
         }
     }
 
+    public boolean isDestroyed() {
+        return mIsDestroyed;
+    }
+
+    public void destroy() {
+        mIsDestroyed = true;
+
+        synchronized (mLockTexture) {
+            GLES20.glDeleteTextures(1, mTextures, 0);
+        }
+        GLES20.glDeleteProgram(mProgram);
+        GLES20.glDeleteShader(mVShader);
+        GLES20.glDeleteShader(mFShader);
+    }
+
     private void draw(final Camera camera) {
         Matrix.setIdentityM(mModelMatrix, 0);
         Matrix.setIdentityM(mViewMatrix, 0);
         Matrix.setIdentityM(mProjectionMatrix, 0);
         checkGlError(TAG, "setIdentityM");
 
-        if (mTextureUpdate && null != mTexture) {
-            GLES20.glDeleteTextures(1, mTextures, 0);
-            loadTexture(mTexture);
-            mTextureUpdate = false;
+        synchronized (mLockTexture) {
+            if (mTextureUpdate && null != mTexture) {
+                GLES20.glDeleteTextures(1, mTextures, 0);
+                loadTexture(mTexture);
+                mTextureUpdate = false;
+            }
         }
 
         float x = camera.getPosition().x();
@@ -172,37 +190,24 @@ public class SphereRenderer implements Renderer {
         mSpherePitch = pitch;
     }
 
-    /**
-     * onSurfaceChanged Method
-     * @param gl GLObject (not used)
-     * @param width Screen width
-     * @param height Screen height
-     */
-    @Override
     public void onSurfaceChanged(final GL10 gl, final int width, final int height) {
     }
 
-    /**
-     * onSurfaceCreated Method
-     * @param gl GLObject (not used)
-     * @param config EGL Setting Object
-     */
-    @Override
-    public void onSurfaceCreated(final GL10 gl, final EGLConfig config) {
-        int vShader = loadShader(GLES20.GL_VERTEX_SHADER, VSHADER_SRC);
-        int fShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FSHADER_SRC);
-        int program = GLES20.glCreateProgram();
-        GLES20.glAttachShader(program, vShader);
-        GLES20.glAttachShader(program, fShader);
-        GLES20.glLinkProgram(program);
-        GLES20.glUseProgram(program);
+    public void onSurfaceCreated() {
+        mVShader = loadShader(GLES20.GL_VERTEX_SHADER, VSHADER_SRC);
+        mFShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FSHADER_SRC);
+        mProgram = GLES20.glCreateProgram();
+        GLES20.glAttachShader(mProgram, mVShader);
+        GLES20.glAttachShader(mProgram, mFShader);
+        GLES20.glLinkProgram(mProgram);
+        GLES20.glUseProgram(mProgram);
 
-        mPositionHandle = GLES20.glGetAttribLocation(program, "aPosition");
-        mUVHandle = GLES20.glGetAttribLocation(program, "aUV");
-        mProjectionMatrixHandle = GLES20.glGetUniformLocation(program, "uProjection");
-        mViewMatrixHandle = GLES20.glGetUniformLocation(program, "uView");
-        mTexHandle = GLES20.glGetUniformLocation(program, "uTex");
-        mModelMatrixHandle = GLES20.glGetUniformLocation(program, "uModel");
+        mPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
+        mUVHandle = GLES20.glGetAttribLocation(mProgram, "aUV");
+        mProjectionMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uProjection");
+        mViewMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uView");
+        mTexHandle = GLES20.glGetUniformLocation(mProgram, "uTex");
+        mModelMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uModel");
 
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
@@ -300,12 +305,8 @@ public class SphereRenderer implements Renderer {
         mCamera = camera;
     }
 
-    public Camera getDefaultCamera() {
-        return mDefaultCamera;
-    }
-
-    public void setDefaultCamera(final Camera camera) {
-        mDefaultCamera = camera;
+    public void resetCamera() {
+        mCamera = new Camera();
     }
 
     public static class CameraBuilder {

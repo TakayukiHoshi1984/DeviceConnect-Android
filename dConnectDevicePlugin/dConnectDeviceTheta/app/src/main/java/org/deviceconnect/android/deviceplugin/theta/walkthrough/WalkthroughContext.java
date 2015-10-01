@@ -1,8 +1,6 @@
 package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -12,26 +10,17 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
-import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
-import org.deviceconnect.android.deviceplugin.theta.utils.JpegLoader;
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 
@@ -58,7 +47,8 @@ public class WalkthroughContext implements SensorEventListener {
     private final VideoPlayer mVideoPlayer;
     private boolean mIsAutoPlay;
 
-    private byte[] mRoi;
+    private SphericalView mSphericalView;
+
     private String mUri;
     private String mSegment;
 
@@ -66,45 +56,10 @@ public class WalkthroughContext implements SensorEventListener {
     private Timer mExpireTimer;
     private EventListener mListener;
 
-    private PixelBuffer mPixelBuffer;
-    private final SphereRenderer mRenderer = new SphereRenderer();
-    private ByteArrayOutputStream mBaos;
     private boolean mIsStopped = true;
 
-    private final Runnable mRendererTask = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                mPixelBuffer.render();
-                Bitmap result = mPixelBuffer.convertToBitmap();
-                if (result == null) {
-                    return;
-                }
-                mBaos.reset();
-                result.compress(Bitmap.CompressFormat.JPEG, 80, mBaos);
-                mRoi = mBaos.toByteArray();
-
-                if (mListener != null) {
-                    mListener.onUpdate(WalkthroughContext.this, mRoi);
-                }
-            } catch (Throwable e) {
-                if (DEBUG) {
-                    Log.d(TAG, "ERROR: Executor:", e);
-                }
-            }
-        }
-    };
-
-    private final int mScreenWidth;
-    private final int mScreenHeight;
-
-    public WalkthroughContext(final Context context, final File omniImageDir,
-                              final int width, final int height, final float fps) throws IOException {
+    public WalkthroughContext(final Context context, final File omniImageDir, final float fps) throws IOException {
         Log.d(TAG, "WalkthroughContext: dir = " + omniImageDir);
-
-        mScreenWidth = width;
-        mScreenHeight = height;
-
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -129,8 +84,7 @@ public class WalkthroughContext implements SensorEventListener {
                 }
 
                 try {
-                    mRenderer.setTexture(jpeg.toBitmap());
-                    startRendering();
+                    mSphericalView.setTexture(jpeg.toBitmap());
 
                     if (isAutoPlay()) {
                         if (DEBUG) {
@@ -160,20 +114,42 @@ public class WalkthroughContext implements SensorEventListener {
         });
 
         mInterval = (long) (1000.0f / fps);
-
-        mBaos = new ByteArrayOutputStream(width * height);
-
-        Param param = new Param();
-        param.setImageWidth(width);
-        param.setImageHeight(height);
-        initRendererParam(param);
     }
 
     public void setFOV(float fov) {
-        SphereRenderer.Camera camera = mRenderer.getCamera();
+        SphereRenderer renderer = mSphericalView.getRenderer();
+
+        SphereRenderer.Camera camera = renderer.getCamera();
         SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
         builder.setFov(fov);
-        mRenderer.setCamera(builder.create());
+        renderer.setCamera(builder.create());
+    }
+
+    public void rotate(final int yaw, final int roll, final int pitch) {
+        if (mSphericalView != null) {
+            mSphericalView.getRenderer().rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
+        }
+    }
+
+    public void setView(final SphericalView view) {
+        mSphericalView = view;
+
+        Param param = new Param();
+        param.setImageWidth(view.getWidth());
+        param.setImageHeight(view.getHeight());
+
+        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
+        builder.setPosition(new Vector3D(
+            (float) param.getCameraX(),
+            (float) param.getCameraY() * -1,
+            (float) param.getCameraZ()));
+        builder.setFov((float) param.getCameraFov());
+
+        SphereRenderer renderer = mSphericalView.getRenderer();
+        renderer.setCamera(builder.create());
+        renderer.setSphereRadius((float) param.getSphereSize());
+        renderer.setScreenWidth(param.getImageWidth());
+        renderer.setScreenHeight(param.getImageHeight());
     }
 
     private boolean startVrMode() {
@@ -261,10 +237,11 @@ public class WalkthroughContext implements SensorEventListener {
             Quaternion qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
             mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
 
-            SphereRenderer.Camera currentCamera = mRenderer.getCamera();
+            SphereRenderer renderer = mSphericalView.getRenderer();
+            SphereRenderer.Camera currentCamera = renderer.getCamera();
             SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
             newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
-            mRenderer.setCamera(newCamera.create());
+            renderer.setCamera(newCamera.create());
         }
         mLastEventTimestamp = event.timestamp;
     }
@@ -287,7 +264,10 @@ public class WalkthroughContext implements SensorEventListener {
     }
 
     public byte[] getMedia() {
-        return mRoi;
+        if (mSphericalView == null) {
+            return null;
+        }
+        return mSphericalView.getRoi();
     }
 
     public boolean isAutoPlay() {
@@ -316,61 +296,10 @@ public class WalkthroughContext implements SensorEventListener {
         }
 
         if (!mIsStopped) {
+            mIsStopped = true;
             stopExpireTimer();
-            stopRendering();
             stopVrMode();
             mVideoPlayer.destroy();
-            mPixelBuffer.destroy();
-            mIsStopped = true;
-        }
-    }
-
-    private Thread mRendererThread;
-
-    private void startRendering() {
-        if (DEBUG) {
-            Log.d(TAG, "startRendering");
-        }
-
-        if (mRendererThread == null) {
-            mRendererThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        mPixelBuffer = new PixelBuffer(mScreenWidth, mScreenHeight, false);
-                        mPixelBuffer.setRenderer(mRenderer);
-
-                        while (!mIsStopped) {
-                            long start = System.currentTimeMillis();
-
-                            mRendererTask.run();
-
-                            long end = System.currentTimeMillis();
-                            long delay = mInterval - (end - start);
-                            if (delay > 0) {
-                                Thread.sleep(delay);
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        // Nothing to do.
-                    }
-                }
-            });
-            mRendererThread.start();
-            if (DEBUG) {
-                Log.d(TAG, "Started renderer thread");
-            }
-        } else {
-            if (DEBUG) {
-                Log.w(TAG, "Already started renderer thread");
-            }
-        }
-    }
-
-    private void stopRendering() {
-        if (mRendererThread != null) {
-            mRendererThread.interrupt();
-            mRendererThread = null;
         }
     }
 
@@ -379,19 +308,6 @@ public class WalkthroughContext implements SensorEventListener {
             return;
         }
         mVideoPlayer.playBy(delta);
-    }
-
-    private void initRendererParam(final Param param) {
-        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
-        builder.setPosition(new Vector3D(
-            (float) param.getCameraX(),
-            (float) param.getCameraY() * -1,
-            (float) param.getCameraZ()));
-        builder.setFov((float) param.getCameraFov());
-        mRenderer.setCamera(builder.create());
-        mRenderer.setSphereRadius((float) param.getSphereSize());
-        mRenderer.setScreenWidth(param.getImageWidth());
-        mRenderer.setScreenHeight(param.getImageHeight());
     }
 
     public void startExpireTimer() {
@@ -430,8 +346,6 @@ public class WalkthroughContext implements SensorEventListener {
     }
 
     public interface EventListener {
-
-        void onUpdate(WalkthroughContext context, byte[] roi);
 
         void onComplete(WalkthroughContext context);
 

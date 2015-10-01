@@ -67,19 +67,6 @@ public class Quaternion {
         return Q.rotate(point);
     }
 
-    public static Vector3D rotateXYZ(final Vector3D point, final float rotateX, final float rotateY,
-                                  final float rotateZ) {
-        Vector3D axisX = new Vector3D(1, 0, 0);
-        Vector3D axisY = new Vector3D(0, 1, 0);
-        Vector3D axisZ = new Vector3D(0, 0, 1);
-
-        Vector3D result = point;
-        result = Quaternion.rotate(result, axisX, rotateX);
-        result = Quaternion.rotate(result, axisY, rotateY);
-        result = Quaternion.rotate(result, axisZ, rotateZ);
-        return result;
-    }
-
     public static Quaternion quaternionFromAxisAndAngle(final Vector3D normalizedAxis, final float radian) {
         float c = (float) Math.cos(radian / 2.0f);
         float s = (float) Math.sin(radian / 2.0f);

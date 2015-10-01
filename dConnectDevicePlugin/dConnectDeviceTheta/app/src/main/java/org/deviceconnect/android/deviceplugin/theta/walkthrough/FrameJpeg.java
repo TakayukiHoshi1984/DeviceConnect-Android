@@ -3,16 +3,11 @@ package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
 import org.deviceconnect.android.deviceplugin.theta.utils.JpegLoader;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 
 
 class FrameJpeg {
@@ -36,17 +31,23 @@ class FrameJpeg {
 
     public void destroy() {
         Log.d(TAG, "FrameJpeg.destroy");
-        mBitmap.recycle();
+        synchronized (mBitmap) {
+            mBitmap.recycle();
+        }
     }
 
     public void load(final Frame frame) throws IOException {
         mFrame = frame;
         File file = frame.getSource();
         if (!file.exists()) {
-            throw new FileNotFoundException();
+            throw new FileNotFoundException("The specified file is not found: " + file.getAbsolutePath());
         }
         String path = file.getCanonicalPath();
-        LOADER.load(path, mBitmap);
+        synchronized (mBitmap) {
+            if (!mBitmap.isRecycled()) {
+                LOADER.load(path, mBitmap);
+            }
+        }
     }
 
     public boolean isLoaded(final Frame frame) {

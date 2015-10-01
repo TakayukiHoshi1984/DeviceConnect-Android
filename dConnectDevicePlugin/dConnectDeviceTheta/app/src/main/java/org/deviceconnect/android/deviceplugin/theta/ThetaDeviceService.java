@@ -16,6 +16,7 @@ import android.os.Bundle;
 import com.theta360.lib.PtpipInitiator;
 import com.theta360.lib.ThetaException;
 
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaBatteryProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaFileProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaMediaStreamRecordingProfile;
@@ -48,18 +49,22 @@ public class ThetaDeviceService extends DConnectMessageService {
 
     private final ThetaApiClient mClient = new ThetaApiClient();
 
+    private final SphericalView mSphericalView = new SphericalView();
+
     @Override
     public void onCreate() {
         super.onCreate();
 
         EventManager.INSTANCE.setController(new MemoryCacheController());
 
+        mSphericalView.createScreen(480, 270);
+
         FileManager fileMgr = new FileManager(this);
         addProfile(new ThetaBatteryProfile(mClient));
         addProfile(new ThetaFileProfile(mClient, fileMgr));
         addProfile(new ThetaMediaStreamRecordingProfile(mClient, fileMgr));
-        addProfile(new ThetaOmnidirectionalImageProfile());
-        addProfile(new ThetaWalkthroughProfile());
+        addProfile(new ThetaOmnidirectionalImageProfile(mSphericalView));
+        addProfile(new ThetaWalkthroughProfile(mSphericalView));
 
         WifiManager wifiMgr = (WifiManager) getContext().getSystemService(Context.WIFI_SERVICE);
         fetchThetaDevice(wifiMgr.getConnectionInfo());

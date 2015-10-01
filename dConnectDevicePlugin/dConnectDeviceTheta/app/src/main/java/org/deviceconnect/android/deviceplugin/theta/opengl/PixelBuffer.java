@@ -8,15 +8,10 @@ package org.deviceconnect.android.deviceplugin.theta.opengl;
 
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
-import android.opengl.GLSurfaceView;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
-import org.deviceconnect.android.profile.SystemProfile;
 
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 import javax.microedition.khronos.egl.EGL10;
@@ -38,9 +33,7 @@ import static javax.microedition.khronos.egl.EGL10.EGL_RED_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_RENDERABLE_TYPE;
 import static javax.microedition.khronos.egl.EGL10.EGL_STENCIL_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_WIDTH;
-import static javax.microedition.khronos.opengles.GL10.GL_RGBA;
 import static javax.microedition.khronos.opengles.GL10.GL_UNPACK_ALIGNMENT;
-import static javax.microedition.khronos.opengles.GL10.GL_UNSIGNED_BYTE;
 
 /**
  * Pixel Buffer.
@@ -55,7 +48,6 @@ public class PixelBuffer {
     private final int mHeight;
     private final EGL10 mEGL;
     private final EGLDisplay mEGLDisplay;
-//    private final EGLConfig[] mEGLConfigs;
     private final EGLConfig mEGLConfig;
     private final EGLContext mEGLContext;
     private final EGLSurface mEGLSurface;
@@ -63,7 +55,7 @@ public class PixelBuffer {
     private final String mThreadOwner;
 
     private boolean mIsDestroyed;
-    private GLSurfaceView.Renderer mRenderer;
+    private SphereRenderer mRenderer;
     private ShortBuffer mIb;
     private final Bitmap mBitmap;
 
@@ -73,7 +65,6 @@ public class PixelBuffer {
 
         Log.d("AAA", "w x h = " + width + " x " + height);
 
-//        ByteBuffer byteBuffer = ByteBuffer.allocate(2 * mWidth * mHeight);
         mIb = ShortBuffer.allocate(mWidth * mHeight);
 
         mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.RGB_565);
@@ -115,12 +106,17 @@ public class PixelBuffer {
     }
 
     public synchronized void destroy() {
-        mEGL.eglDestroyContext(mEGLDisplay, mEGLContext);
-        mBitmap.recycle();
         mIsDestroyed = true;
+        synchronized (mRenderer) {
+            mRenderer.destroy();
+        }
+        mEGL.eglDestroySurface(mEGLDisplay, mEGLSurface);
+        mEGL.eglDestroyContext(mEGLDisplay, mEGLContext);
+        mEGL.eglTerminate(mEGLDisplay);
+        mBitmap.recycle();
     }
 
-    public void setRenderer(GLSurfaceView.Renderer renderer) {
+    public void setRenderer(final SphereRenderer renderer) {
         mRenderer = renderer;
 
         if (!Thread.currentThread().getName().equals(mThreadOwner)) {
@@ -128,7 +124,11 @@ public class PixelBuffer {
             return;
         }
 
-        mRenderer.onSurfaceCreated(mGL, mEGLConfig);
+        synchronized (mRenderer) {
+            if (!mRenderer.isDestroyed()) {
+                mRenderer.onSurfaceCreated();
+            }
+        }
     }
 
     public void render() {
@@ -142,7 +142,11 @@ public class PixelBuffer {
             return;
         }
 
-        mRenderer.onDrawFrame(mGL);
+        synchronized (mRenderer) {
+            if (!mRenderer.isDestroyed()) {
+                mRenderer.onDrawFrame(mGL);
+            }
+        }
     }
 
     private EGLConfig chooseConfigs() {
