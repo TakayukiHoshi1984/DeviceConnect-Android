@@ -33,6 +33,8 @@ public class WalkthroughContext implements SensorEventListener {
     private static final float NS2S = 1.0f / 1000000000.0f;
     private static final float EPSILON = 0.000000001f;
 
+    private static final SphereRenderer.Camera DEFAULT_CAMERA = new SphereRenderer.Camera();
+
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
     private final float[] vGyroscope = new float[3];
@@ -40,7 +42,8 @@ public class WalkthroughContext implements SensorEventListener {
     private final SensorManager mSensorMgr;
     private long mLastEventTimestamp;
     private final int mDisplayRotation;
-    private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+    private float[] mCurrentRotation = new float[] {1, 0, 0, 0};
+    private float[] qGyroscopeDelta = new float[4];
 
     private final File mDir;
     private final Video mVideo;
@@ -120,9 +123,7 @@ public class WalkthroughContext implements SensorEventListener {
         SphereRenderer renderer = mSphericalView.getRenderer();
 
         SphereRenderer.Camera camera = renderer.getCamera();
-        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
-        builder.setFov(fov);
-        renderer.setCamera(builder.create());
+        camera.setFov(fov);
     }
 
     public void rotate(final int yaw, final int roll, final int pitch) {
@@ -138,23 +139,22 @@ public class WalkthroughContext implements SensorEventListener {
         param.setImageWidth(view.getWidth());
         param.setImageHeight(view.getHeight());
 
-        SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder();
-        builder.setPosition(new Vector3D(
-            (float) param.getCameraX(),
-            (float) param.getCameraY() * -1,
-            (float) param.getCameraZ()));
-        builder.setFov((float) param.getCameraFov());
-
         SphereRenderer renderer = mSphericalView.getRenderer();
-        renderer.setCamera(builder.create());
         renderer.setSphereRadius((float) param.getSphereSize());
         renderer.setScreenWidth(param.getImageWidth());
         renderer.setScreenHeight(param.getImageHeight());
+
+        SphereRenderer.Camera camera = renderer.getCamera();
+        camera.setPosition(new Vector3D(
+            (float) param.getCameraX(),
+            (float) param.getCameraY() * -1,
+            (float) param.getCameraZ()));
+        camera.setFov((float) param.getCameraFov());
     }
 
     private boolean startVrMode() {
         // Reset current rotation.
-        mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+        mCurrentRotation = new float[] {1, 0, 0, 0};
 
         List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
         if (sensors.size() == 0) {
@@ -183,67 +183,66 @@ public class WalkthroughContext implements SensorEventListener {
 
     @Override
     public void onSensorChanged(final SensorEvent event) {
-        if (mLastEventTimestamp != 0) {
-            float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+        synchronized (this) {
+            if (mLastEventTimestamp != 0) {
+                float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
-            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
-            float tmp = vGyroscope[2];
-            vGyroscope[2] = vGyroscope[0] * -1;
-            vGyroscope[0] = tmp;
+                System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+                float tmp = vGyroscope[2];
+                vGyroscope[2] = vGyroscope[0] * -1;
+                vGyroscope[0] = tmp;
 
-            float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
+                float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
                     + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
-            if (magnitude > EPSILON) {
-                vGyroscope[0] /= magnitude;
-                vGyroscope[1] /= magnitude;
-                vGyroscope[2] /= magnitude;
+                if (magnitude > EPSILON) {
+                    vGyroscope[0] /= magnitude;
+                    vGyroscope[1] /= magnitude;
+                    vGyroscope[2] /= magnitude;
+                }
+
+                float thetaOverTwo = magnitude * dT / 2.0f;
+                float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
+                float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+
+                deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
+                deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
+                deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
+                deltaVGyroscope[3] = cosThetaOverTwo;
+
+                qGyroscopeDelta[0] = deltaVGyroscope[3];
+                switch (mDisplayRotation) {
+                    case Surface.ROTATION_0:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[1];
+                        qGyroscopeDelta[3] = deltaVGyroscope[2];
+                        break;
+                    case Surface.ROTATION_90:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[2] * -1;
+                        qGyroscopeDelta[3] = deltaVGyroscope[1];
+                        break;
+                    case Surface.ROTATION_180:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[1] * -1;
+                        qGyroscopeDelta[3] = deltaVGyroscope[2];
+                        break;
+                    case Surface.ROTATION_270:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[2];
+                        qGyroscopeDelta[3] = deltaVGyroscope[1] * -1;
+                        break;
+                    default:
+                        break;
+                }
+
+                Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
+
+                SphereRenderer renderer = mSphericalView.getRenderer();
+                SphereRenderer.Camera currentCamera = renderer.getCamera();
+                currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
             }
-
-            float thetaOverTwo = magnitude * dT / 2.0f;
-            float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
-            float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
-
-            deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
-            deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
-            deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
-            deltaVGyroscope[3] = cosThetaOverTwo;
-
-            float[] delta = new float[3];
-            switch (mDisplayRotation) {
-                case Surface.ROTATION_0:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1];
-                    delta[2] = deltaVGyroscope[2];
-                    break;
-                case Surface.ROTATION_90:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2] * -1;
-                    delta[2] = deltaVGyroscope[1];
-                    break;
-                case Surface.ROTATION_180:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1] * -1;
-                    delta[2] = deltaVGyroscope[2];
-                    break;
-                case Surface.ROTATION_270:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2];
-                    delta[2] = deltaVGyroscope[1] * -1;
-                    break;
-                default:
-                    break;
-            }
-
-            Quaternion qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
-            mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
-
-            SphereRenderer renderer = mSphericalView.getRenderer();
-            SphereRenderer.Camera currentCamera = renderer.getCamera();
-            SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
-            renderer.setCamera(newCamera.create());
+            mLastEventTimestamp = event.timestamp;
         }
-        mLastEventTimestamp = event.timestamp;
     }
 
     public void setUri(final String uriString) {

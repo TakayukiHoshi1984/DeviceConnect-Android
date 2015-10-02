@@ -52,6 +52,8 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private static final float EPSILON = 0.000000001f;
 
+    private static final SphereRenderer.Camera DEFAULT_CAMERA = new SphereRenderer.Camera();
+
     private long mLastEventTimestamp;
 
     private float mEventInterval;
@@ -82,7 +84,9 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private OnChangeListener mListener;
 
-    private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+    private float[] mCurrentRotation = new float[] {1, 0, 0, 0};
+
+    private float[] qGyroscopeDelta = new float[4];
 
     private SphereRenderer.Camera mDefaultCamera;
 
@@ -147,19 +151,17 @@ public class RoiDeliveryContext implements SensorEventListener {
                 mCurrentParam = param;
 
                 SphereRenderer.Camera camera = renderer.getCamera();
-                SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
-                builder.setPosition(new Vector3D(
+                camera.setPosition(new Vector3D(
                     (float) param.getCameraX(),
                     (float) param.getCameraY() * -1,
                     (float) param.getCameraZ()));
                 if (isUserRequest) {
-                    builder.rotateByEulerAngle(
+                    camera.rotateByEulerAngle(
                         (float) param.getCameraRoll(),
                         (float) param.getCameraYaw(),
                         (float) param.getCameraPitch() * -1);
                 }
-                builder.setFov((float) param.getCameraFov());
-                renderer.setCamera(builder.create());
+                camera.setFov((float) param.getCameraFov());
                 renderer.setSphereRadius((float) param.getSphereSize());
                 renderer.setScreenWidth(param.getImageWidth());
                 renderer.setScreenHeight(param.getImageHeight());
@@ -212,40 +214,37 @@ public class RoiDeliveryContext implements SensorEventListener {
             deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
             deltaVGyroscope[3] = cosThetaOverTwo;
 
-            float[] delta = new float[3];
+            qGyroscopeDelta[0] = deltaVGyroscope[3];
             switch (mDisplayRotation) {
                 case Surface.ROTATION_0:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1];
-                    delta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[1];
+                    qGyroscopeDelta[3] = deltaVGyroscope[2];
                     break;
                 case Surface.ROTATION_90:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2] * -1;
-                    delta[2] = deltaVGyroscope[1];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[2] * -1;
+                    qGyroscopeDelta[3] = deltaVGyroscope[1];
                     break;
                 case Surface.ROTATION_180:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1] * -1;
-                    delta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[1] * -1;
+                    qGyroscopeDelta[3] = deltaVGyroscope[2];
                     break;
                 case Surface.ROTATION_270:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2];
-                    delta[2] = deltaVGyroscope[1] * -1;
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[3] = deltaVGyroscope[1] * -1;
                     break;
                 default:
                     break;
             }
 
-            Quaternion qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
-            mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
+            Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
 
             SphereRenderer renderer = mSphericalView.getRenderer();
             SphereRenderer.Camera currentCamera = renderer.getCamera();
-            SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
-            renderer.setCamera(newCamera.create());
+            currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
         }
         mLastEventTimestamp = event.timestamp;
     }
@@ -257,7 +256,7 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private boolean startVrMode() {
         // Reset current rotation.
-        mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+        mCurrentRotation = new float[] {1, 0, 0, 0};
 
         List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
         if (sensors.size() == 0) {
