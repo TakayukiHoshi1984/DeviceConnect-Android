@@ -6,12 +6,15 @@
  */
 package org.deviceconnect.android.deviceplugin.theta;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
 
 import com.theta360.lib.PtpipInitiator;
 import com.theta360.lib.ThetaException;
@@ -68,6 +71,16 @@ public class ThetaDeviceService extends DConnectMessageService {
 
         WifiManager wifiMgr = (WifiManager) getContext().getSystemService(Context.WIFI_SERVICE);
         fetchThetaDevice(wifiMgr.getConnectionInfo());
+
+        // Set this service foreground.
+        Notification notification = new NotificationCompat.Builder(this)
+            .setContentTitle("Walkthrough service")
+            .setContentText("Running")
+            .setSmallIcon(R.drawable.dconnect_icon)
+            .build();
+        NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        manager.notify(1, notification);
+        startForeground(1, notification);
     }
 
     @Override

@@ -176,11 +176,6 @@ class VideoPlayer {
 
         public Frame nextFrame(int delta) {
             int nextPos = nextFramePosition(delta);
-
-            if (DEBUG) {
-                Log.d(TAG, "***** nextFrame: " + nextPos);
-            }
-
             if (nextPos < 0 || nextPos >= mVideo.getLength()) {
                 return null;
             }

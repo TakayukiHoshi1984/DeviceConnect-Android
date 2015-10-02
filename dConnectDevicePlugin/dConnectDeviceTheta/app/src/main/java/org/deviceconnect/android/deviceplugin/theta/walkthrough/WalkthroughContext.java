@@ -66,7 +66,7 @@ public class WalkthroughContext implements SensorEventListener {
 
         mDir = omniImageDir;
         mVideo = Video.createVideo(mDir, 1024, 512, fps, 15.0);
-        mVideoPlayer = new VideoPlayer(mVideo, 20);
+        mVideoPlayer = new VideoPlayer(mVideo, 5);
         mVideoPlayer.setDisplay(new VideoPlayer.Display() {
 
             @Override
