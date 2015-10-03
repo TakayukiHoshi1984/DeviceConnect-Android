@@ -303,6 +303,11 @@ public class WalkthroughContext implements SensorEventListener {
         }
     }
 
+    public void resetCameraDirection() {
+        mSphericalView.resetCamera();
+        mCurrentRotation = new float[] {1, 0, 0, 0};
+    }
+
     public synchronized void seek(final int delta) {
         if (mIsStopped) {
             return;

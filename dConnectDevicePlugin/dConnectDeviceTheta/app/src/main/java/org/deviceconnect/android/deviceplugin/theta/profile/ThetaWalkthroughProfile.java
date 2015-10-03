@@ -210,10 +210,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             String uri = getURI(request);
             Integer deltaParam = parseInteger(request, "delta");
             Double fovParam = parseDouble(request, "fov");
-            if (deltaParam == null) {
-                MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
-                return true;
-            }
+            Boolean calibration = parseBoolean(request, "calibration");
             if (uri == null) {
                 MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
                 return true;
@@ -227,8 +224,11 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             if (fovParam != null) {
                 walkContext.setFOV(fovParam.floatValue());
             }
-            if (Math.abs(deltaParam) > 0) {
+            if (deltaParam != null && Math.abs(deltaParam) > 0) {
                 walkContext.seek(deltaParam);
+            }
+            if (calibration == Boolean.TRUE) {
+                walkContext.resetCameraDirection();
             }
             setResult(response, DConnectMessage.RESULT_OK);
             response.putExtra("count", deltaParam);

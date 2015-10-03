@@ -140,6 +140,11 @@ public class RoiDeliveryContext implements SensorEventListener {
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
+                if (param.isCalibration()) {
+                    resetCameraDirection();
+                    return; // Ignore all other parameters;
+                }
+
                 if (isUserRequest) {
                     if (param.isVrMode()) {
                         startVrMode();
@@ -278,6 +283,11 @@ public class RoiDeliveryContext implements SensorEventListener {
         mSensorMgr.unregisterListener(this);
     }
 
+    public void resetCameraDirection() {
+        mSphericalView.resetCamera();
+        mCurrentRotation = new float[] {1, 0, 0, 0};
+    }
+
     public void startExpireTimer() {
         if (mExpireTimer != null) {
             return;
@@ -344,6 +354,8 @@ public class RoiDeliveryContext implements SensorEventListener {
         boolean mStereoMode;
 
         boolean mVrMode;
+
+        boolean mCalibration;
 
         public double getCameraX() {
             return mCameraX;
@@ -439,6 +451,14 @@ public class RoiDeliveryContext implements SensorEventListener {
 
         public void setVrMode(final boolean isVr) {
             mVrMode = isVr;
+        }
+
+        public boolean isCalibration() {
+            return mCalibration;
+        }
+
+        public void setCalibration(final boolean isCalibration) {
+            mCalibration = isCalibration;
         }
     }
 

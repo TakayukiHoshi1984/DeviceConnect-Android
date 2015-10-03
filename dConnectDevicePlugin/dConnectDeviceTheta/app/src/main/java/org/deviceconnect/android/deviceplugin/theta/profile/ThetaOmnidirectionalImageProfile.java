@@ -120,6 +120,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         }));
         def.add(new BooleanParamDefinition(PARAM_STEREO));
         def.add(new BooleanParamDefinition(PARAM_VR));
+        def.add(new BooleanParamDefinition(PARAM_CALIBRATION));
         ROI_PARAM_DEFINITIONS = def;
     }
 
@@ -342,6 +343,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         Integer height = getHeight(request);
         Boolean stereo = getStereo(request);
         Boolean vr = getVR(request);
+        Boolean calibration = getCalibration(request);
 
         RoiDeliveryContext.Param param = new RoiDeliveryContext.Param();
         if (x != null) {
@@ -379,6 +381,9 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         }
         if (vr != null) {
             param.setVrMode(vr);
+        }
+        if (calibration != null) {
+            param.setCalibration(calibration);
         }
         return param;
     }

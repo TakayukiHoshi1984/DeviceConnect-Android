@@ -126,4 +126,9 @@ public interface OmnidirectionalImageProfileConstants extends DConnectProfileCon
      */
     String PARAM_VR = "vr";
 
+    /**
+     * Parameter: {@value} .
+     */
+    String PARAM_CALIBRATION = "calibration";
+
 }

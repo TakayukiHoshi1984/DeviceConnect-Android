@@ -19,14 +19,12 @@ import com.theta360.lib.rexif.entity.OmniInfo;
 import org.deviceconnect.message.DConnectMessage;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.IntBuffer;
 
 /**
  * Representation of an omnidirectional image.
@@ -122,9 +120,11 @@ public class OmnidirectionalImage {
 
             ExifReader exif = new ExifReader(file);
             OmniInfo omniInfo = exif.getOmniInfo();
-            mYaw = omniInfo.getOrientationAngle() != null ? omniInfo.getOrientationAngle() : 0.0;
-            mRoll = omniInfo.getHorizontalAngle() != null ? omniInfo.getHorizontalAngle() : 0.0;
-            mPitch = omniInfo.getElevationAngle() != null ? omniInfo.getElevationAngle() : 0.0;
+            if (omniInfo != null) {
+                mYaw = omniInfo.getOrientationAngle() != null ? omniInfo.getOrientationAngle() : 0.0;
+                mRoll = omniInfo.getHorizontalAngle() != null ? omniInfo.getHorizontalAngle() : 0.0;
+                mPitch = omniInfo.getElevationAngle() != null ? omniInfo.getElevationAngle() : 0.0;
+            }
         } catch (ExifReadException e) {
             // Nothing to do.
         } finally {

@@ -354,8 +354,6 @@ public class SphereRenderer {
         }
 
         public void reset() {
-            setFov(90);
-            setPosition(1, 0, 0);
             setFrontDirection(1, 0, 0);
             setUpperDirection(0, 1, 0);
             setRightDirection(0, 0, 1);
