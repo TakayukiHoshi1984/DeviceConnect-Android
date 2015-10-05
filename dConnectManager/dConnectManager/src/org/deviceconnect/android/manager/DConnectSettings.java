@@ -6,11 +6,11 @@
  */
 package org.deviceconnect.android.manager;
 
+import java.io.File;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Environment;
-
-import java.io.File;
 
 /**
  * DConnectの設定を保持するクラス.
@@ -91,9 +91,9 @@ public final class DConnectSettings {
         setDocumentRootPath(sp.getString(context.getString(R.string.key_settings_web_server_document_root_path),
                 file.getAbsolutePath()));
         setSSL(sp.getBoolean(context.getString(R.string.key_settings_dconn_ssl), false));
-        setUseALocalOAuth(sp.getBoolean(context.getString(R.string.key_settings_dconn_local_oauth), false));
+        setUseALocalOAuth(sp.getBoolean(context.getString(R.string.key_settings_dconn_local_oauth), true));
         setAllowExternalIP(sp.getBoolean(context.getString(R.string.key_settings_dconn_allow_external_ip), false));
-        setRequireOrigin(sp.getBoolean(context.getString(R.string.key_settings_dconn_require_origin), false));
+        setRequireOrigin(sp.getBoolean(context.getString(R.string.key_settings_dconn_require_origin), true));
         setBlockingOrigin(sp
                 .getBoolean(context.getString(R.string.key_settings_dconn_whitelist_origin_blocking), false));
         try {

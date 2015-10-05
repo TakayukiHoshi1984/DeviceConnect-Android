@@ -45,7 +45,7 @@
             android:summaryOn="@string/activity_settings_dconn_enabled"
             android:title="@string/activity_settings_allow_external_ip" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="@string/key_settings_dconn_local_oauth"
             android:summary="@string/activity_settings_local_oauth_summary"
             android:title="@string/activity_settings_local_oauth" />
@@ -56,7 +56,7 @@
                     android:targetClass="org.deviceconnect.android.localoauth.activity.AccessTokenListActivity" />
         </PreferenceScreen>
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="@string/key_settings_dconn_require_origin"
             android:summary="@string/activity_settings_require_origin_summary"
             android:title="@string/activity_settings_require_origin" />
