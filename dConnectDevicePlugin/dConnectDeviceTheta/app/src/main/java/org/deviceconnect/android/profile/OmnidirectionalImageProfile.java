@@ -297,6 +297,10 @@ public class OmnidirectionalImageProfile extends DConnectProfile
         return parseInteger(request, PARAM_SOURCE_HEIGHT);
     }
 
+    public static Boolean getCalibration(final Intent request) {
+        return parseBoolean(request, PARAM_CALIBRATION);
+    }
+
     /**
      * Gets flag of Stereo mode from the specified request.
      * @param request Request data

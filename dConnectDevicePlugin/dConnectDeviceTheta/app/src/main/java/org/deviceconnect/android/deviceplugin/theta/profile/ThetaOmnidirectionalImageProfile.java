@@ -12,7 +12,7 @@ import android.text.TextUtils;
 
 import org.deviceconnect.android.deviceplugin.theta.ThetaDeviceService;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
-import org.deviceconnect.android.deviceplugin.theta.opengl.model.UVSphere;
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.roi.OmnidirectionalImage;
 import org.deviceconnect.android.deviceplugin.theta.roi.RoiDeliveryContext;
 import org.deviceconnect.android.deviceplugin.theta.utils.MixedReplaceMediaServer;
@@ -38,7 +38,8 @@ import java.util.concurrent.Executors;
  * @author NTT DOCOMO, INC.
  */
 public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfile
-    implements RoiDeliveryContext.OnChangeListener, MixedReplaceMediaServer.ServerEventListener {
+    implements RoiDeliveryContext.OnChangeListener, MixedReplaceMediaServer.ServerEventListener,
+        SphericalView.EventListener {
 
     /**
      * The service ID of ROI Image Service.
@@ -63,6 +64,12 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         Collections.synchronizedMap(new HashMap<String, RoiDeliveryContext>());
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+
+    private SphericalView mSphericalView;
+
+    public ThetaOmnidirectionalImageProfile(final SphericalView view) {
+        mSphericalView = view;
+    }
 
     static {
         List<ParamDefinition> def = new ArrayList<ParamDefinition>();
@@ -113,6 +120,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         }));
         def.add(new BooleanParamDefinition(PARAM_STEREO));
         def.add(new BooleanParamDefinition(PARAM_VR));
+        def.add(new BooleanParamDefinition(PARAM_CALIBRATION));
         ROI_PARAM_DEFINITIONS = def;
     }
 
@@ -164,6 +172,10 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                         }
                     }
 
+                    mSphericalView.resetCamera();
+                    mSphericalView.setFrameRate(10.0);
+                    mSphericalView.setEventListener(ThetaOmnidirectionalImageProfile.this);
+
                     OmnidirectionalImage omniImage = mOmniImages.get(source);
                     if (omniImage == null) {
                         String origin = getContext().getPackageName();
@@ -174,10 +186,12 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                     RoiDeliveryContext roiContext = new RoiDeliveryContext(getContext(), omniImage);
                     String segment = UUID.randomUUID().toString();
                     String uri = mServer.getUrl() + "/" + segment;
+                    mSphericalView.setKey(segment);
+
                     roiContext.setUri(uri);
+                    roiContext.setSphericalView(mSphericalView);
                     roiContext.setOnChangeListener(ThetaOmnidirectionalImageProfile.this);
                     roiContext.changeRendererParam(RoiDeliveryContext.DEFAULT_PARAM, true);
-                    roiContext.renderWithBlocking();
                     roiContext.startExpireTimer();
                     mServer.createMediaQueue(segment);
                     mRoiContexts.put(uri, roiContext);
@@ -218,6 +232,8 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         if (roiContext != null) {
             roiContext.destroy();
             mServer.stopMedia(roiContext.getSegment());
+
+            mSphericalView.setEventListener(null);
         }
         setResult(response, DConnectMessage.RESULT_OK);
         return true;
@@ -249,8 +265,6 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
             public void run() {
                 RoiDeliveryContext.Param param = parseParam(request);
                 roiContext.changeRendererParam(param, true);
-                byte[] roi = roiContext.renderWithBlocking();
-                mServer.offerMedia(roiContext.getSegment(), roi);
             }
         });
         return true;
@@ -267,9 +281,8 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
             target.restartExpireTimer();
         } else {
             target.stopExpireTimer();
-            target.startDeliveryTimer();
         }
-        return target.getRoi();
+        return null;
     }
 
     @Override
@@ -288,8 +301,8 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
     }
 
     @Override
-    public void onUpdate(final RoiDeliveryContext roiContext, final byte[] roi) {
-        mServer.offerMedia(roiContext.getSegment(), roi);
+    public void onUpdate(final String key, final byte[] roi) {
+        mServer.offerMedia(key, roi);
     }
 
     @Override
@@ -330,6 +343,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         Integer height = getHeight(request);
         Boolean stereo = getStereo(request);
         Boolean vr = getVR(request);
+        Boolean calibration = getCalibration(request);
 
         RoiDeliveryContext.Param param = new RoiDeliveryContext.Param();
         if (x != null) {
@@ -367,6 +381,9 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         }
         if (vr != null) {
             param.setVrMode(vr);
+        }
+        if (calibration != null) {
+            param.setCalibration(calibration);
         }
         return param;
     }
@@ -500,7 +517,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
         }
     }
 
-    private static interface DoubleParamRange {
+    private interface DoubleParamRange {
         boolean validate(double value);
     }
 }

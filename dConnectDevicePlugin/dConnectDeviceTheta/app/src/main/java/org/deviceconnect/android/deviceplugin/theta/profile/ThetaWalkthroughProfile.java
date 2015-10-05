@@ -5,20 +5,15 @@ import android.os.Environment;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.theta.ThetaDeviceService;
-import org.deviceconnect.android.deviceplugin.theta.roi.OmnidirectionalImage;
-import org.deviceconnect.android.deviceplugin.theta.roi.RoiDeliveryContext;
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.utils.MixedReplaceMediaServer;
 import org.deviceconnect.android.deviceplugin.theta.walkthrough.WalkthroughContext;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.message.DConnectMessage;
 import org.deviceconnect.profile.DConnectProfileConstants;
-import org.restlet.Message;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -32,7 +27,7 @@ import java.util.concurrent.Executors;
  *
  */
 public class ThetaWalkthroughProfile extends DConnectProfile
-    implements DConnectProfileConstants, WalkthroughContext.EventListener,
+    implements DConnectProfileConstants, WalkthroughContext.EventListener, SphericalView.EventListener,
                MixedReplaceMediaServer.ServerEventListener {
 
     private static final String TAG = "Walk";
@@ -61,9 +56,37 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     private Map<String, WalkthroughContext> mWalkContexts =
         Collections.synchronizedMap(new HashMap<String, WalkthroughContext>());
 
+    private final SphericalView mSphericalView;
+
+    public ThetaWalkthroughProfile(final SphericalView view) {
+        mSphericalView = view;
+    }
+
+    public void destroy() {
+        for (WalkthroughContext walkContext : mWalkContexts.values()) {
+            mServer.stopMedia(walkContext.getSegment());
+            walkContext.stop();
+        }
+        mWalkContexts.clear();
+    }
+
     @Override
     public String getProfileName() {
         return PROFILE_NAME;
+    }
+
+    @Override
+    public boolean onRequest(final Intent request, final Intent response) {
+        String method = request.getAction();
+        String interfaceName = getInterface(request);
+        String attributeName = getAttribute(request);
+
+        if (DEBUG) {
+            Log.i(TAG, "onRequest: method = " + method + ", profile = " + getProfileName()
+                + ", interface = " + interfaceName + ", attribute = " + attributeName);
+        }
+
+        return super.onRequest(request, response);
     }
 
     @Override
@@ -85,6 +108,9 @@ public class ThetaWalkthroughProfile extends DConnectProfile
         final Double fps = getFps(request);
         final Double fovParam = parseDouble(request, "fov");
         final Boolean autoPlay = parseBoolean(request, "autoPlay");
+        final Integer yawParam = parseInteger(request, "yaw");
+        final Integer rollParam = parseInteger(request, "roll");
+        final Integer pitchParam = parseInteger(request, "pitch");
         Log.d(TAG, "onPostWalker: source=" + source + " width=" + width + " height=" + height + " fps=" + fps + " fov=" + fovParam + " autoPlay=" + autoPlay);
 
         if (source == null) {
@@ -117,23 +143,24 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             mServer.start();
                         }
 
+                        mSphericalView.resetCamera();
+                        mSphericalView.setFrameRate(fps);
+                        mSphericalView.setEventListener(ThetaWalkthroughProfile.this);
+
                         File extStore = Environment.getExternalStorageDirectory();
-                        Log.d("Walk", "extStore: " + extStore.getAbsolutePath());
-
                         File dir = new File(extStore, source);
-                        Log.d("Walk", "dir: " + dir.getAbsolutePath() + " isDir: " + dir.isDirectory());
-
                         String uri;
                         String key = dir.getCanonicalPath();
                         WalkthroughContext walkContext = mWalkContexts.get(key);
                         if (walkContext == null) {
 
-
                             String segment = UUID.randomUUID().toString();
                             uri = mServer.getUrl() + "/" + segment;
                             mServer.createMediaQueue(segment);
+                            mSphericalView.setKey(segment);
 
-                            walkContext = new WalkthroughContext(getContext(), dir, width, height, fps.floatValue());
+                            walkContext = new WalkthroughContext(getContext(), dir, fps.floatValue());
+                            walkContext.setView(mSphericalView);
                             walkContext.setEventListener(ThetaWalkthroughProfile.this);
                             walkContext.setUri(uri);
                             if (fovParam != null) {
@@ -142,7 +169,12 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             if (autoPlay != null) {
                                 walkContext.setAutoPlay(autoPlay.booleanValue());
                             }
+                            int yaw = yawParam != null ? yawParam : 0;
+                            int roll = rollParam != null ? rollParam : 0;
+                            int pitch = pitchParam != null ? pitchParam : 0;
+                            walkContext.rotate(yaw, roll, pitch);
                             walkContext.start();
+
                             mWalkContexts.put(key, walkContext);
                         } else {
                             uri = walkContext.getUri();
@@ -178,10 +210,7 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             String uri = getURI(request);
             Integer deltaParam = parseInteger(request, "delta");
             Double fovParam = parseDouble(request, "fov");
-            if (deltaParam == null) {
-                MessageUtils.setInvalidRequestParameterError(request, "delta is null.");
-                return true;
-            }
+            Boolean calibration = parseBoolean(request, "calibration");
             if (uri == null) {
                 MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
                 return true;
@@ -195,8 +224,11 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             if (fovParam != null) {
                 walkContext.setFOV(fovParam.floatValue());
             }
-            if (Math.abs(deltaParam) > 0) {
+            if (deltaParam != null && Math.abs(deltaParam) > 0) {
                 walkContext.seek(deltaParam);
+            }
+            if (calibration == Boolean.TRUE) {
+                walkContext.resetCameraDirection();
             }
             setResult(response, DConnectMessage.RESULT_OK);
             response.putExtra("count", deltaParam);
@@ -232,6 +264,8 @@ public class ThetaWalkthroughProfile extends DConnectProfile
             File dir = walkContext.getOmnidirectionalImageDirectory();
             String key = dir.getAbsolutePath();
             mWalkContexts.remove(key);
+
+            mSphericalView.setEventListener(null);
         }
         setResult(response, DConnectMessage.RESULT_OK);
         return true;
@@ -258,11 +292,11 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     }
 
     @Override
-    public void onUpdate(final WalkthroughContext walkContext, final byte[] roi) {
+    public void onUpdate(final String key, final byte[] roi) {
         if (DEBUG) {
-            Log.d(TAG, "onUpdate: " + roi + " bytes. context=" + walkContext + " server=" + mServer);
+            Log.d(TAG, "onUpdate: " + roi);
         }
-        mServer.offerMedia(walkContext.getSegment(), roi);
+        mServer.offerMedia(key, roi);
     }
 
     @Override

@@ -3,9 +3,8 @@ package org.deviceconnect.android.deviceplugin.theta.walkthrough;
 
 import android.util.Log;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
-
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -117,6 +116,7 @@ class VideoPlayer {
 
         private FrameJpeg mCurrentJpeg;
         private final LinkedList<FrameJpeg>[] mJpegList = new LinkedList[2];
+        private boolean isDestroyed;
 
         public FrameJpegBuffer(final int capacity, final int width, final int height) {
             mCurrentJpeg = new FrameJpeg(width, height);
@@ -124,10 +124,17 @@ class VideoPlayer {
             mJpegList[PREV] = createJpegList(capacity, width, height);
         }
 
-        public void destroy() {
+        public boolean isDestroyed() {
+            return isDestroyed;
+        }
+
+        public synchronized void destroy() {
+            isDestroyed = true;
+
             Log.d(TAG, "FrameJpegBuffer.destroy()");
             for (int i = 0; i < mJpegList.length; i++) {
-                for (FrameJpeg jpeg : mJpegList[i]) {
+                List<FrameJpeg> list = mJpegList[i];
+                for (FrameJpeg jpeg : list) {
                     jpeg.destroy();
                 }
             }
@@ -153,11 +160,6 @@ class VideoPlayer {
         public LinkedList<FrameJpeg> getJpegList(final int direction) {
             return mJpegList[direction];
         }
-
-        public void debug() {
-            Log.d(TAG, "FrameJpegBuffer: next buffer = " + mJpegList[NEXT].size()
-            + ", prev buffer = " + mJpegList[PREV].size() + " current = " + mCurrentJpeg);
-        }
     }
 
     private abstract class FrameJpegLoader {
@@ -174,11 +176,6 @@ class VideoPlayer {
 
         public Frame nextFrame(int delta) {
             int nextPos = nextFramePosition(delta);
-
-            if (DEBUG) {
-                Log.d(TAG, "***** nextFrame: " + nextPos);
-            }
-
             if (nextPos < 0 || nextPos >= mVideo.getLength()) {
                 return null;
             }
@@ -190,19 +187,26 @@ class VideoPlayer {
                 @Override
                 public void run() {
                     try {
-                        FrameJpeg jpeg = popNext();
+                        FrameJpeg jpeg;
+                        synchronized (mBuffer) {
+                            if (mBuffer.isDestroyed()) {
+                                return;
+                            }
 
-                        long start = System.currentTimeMillis();
-                        if (!jpeg.isLoaded(frame)) {
-                            jpeg.load(frame);
+                            jpeg = popNext();
+
+                            //long start = System.currentTimeMillis();
+                            if (!jpeg.isLoaded(frame)) {
+                                jpeg.load(frame);
+                            }
+                            //long end = System.currentTimeMillis();
+                            //Log.d(TAG, "Frame = " +  frame.getPosition() + " , Load time = " + (end - start) + " msec.");
+
+                            pushPrev(mBuffer.getCurrentJpeg());
+
+                            mBuffer.setCurrentJpeg(jpeg);
+                            pushNext(popPrev());
                         }
-                        long end = System.currentTimeMillis();
-                        //Log.d(TAG, "Frame = " +  frame.getPosition() + " , Load time = " + (end - start) + " msec.");
-
-                        pushPrev(mBuffer.getCurrentJpeg());
-
-                        mBuffer.setCurrentJpeg(jpeg);
-                        pushNext(popPrev());
 
                         if (mDisplay != null) {
                             mDisplay.onDraw(jpeg);

@@ -6,16 +6,20 @@
  */
 package org.deviceconnect.android.deviceplugin.theta;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
 
 import com.theta360.lib.PtpipInitiator;
 import com.theta360.lib.ThetaException;
 
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaBatteryProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaFileProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaMediaStreamRecordingProfile;
@@ -48,25 +52,40 @@ public class ThetaDeviceService extends DConnectMessageService {
 
     private final ThetaApiClient mClient = new ThetaApiClient();
 
+    private final SphericalView mSphericalView = new SphericalView();
+
     @Override
     public void onCreate() {
         super.onCreate();
 
         EventManager.INSTANCE.setController(new MemoryCacheController());
 
+        mSphericalView.createScreen(480, 270);
+
         FileManager fileMgr = new FileManager(this);
         addProfile(new ThetaBatteryProfile(mClient));
         addProfile(new ThetaFileProfile(mClient, fileMgr));
         addProfile(new ThetaMediaStreamRecordingProfile(mClient, fileMgr));
-        addProfile(new ThetaOmnidirectionalImageProfile());
-        addProfile(new ThetaWalkthroughProfile());
+        addProfile(new ThetaOmnidirectionalImageProfile(mSphericalView));
+        addProfile(new ThetaWalkthroughProfile(mSphericalView));
 
         WifiManager wifiMgr = (WifiManager) getContext().getSystemService(Context.WIFI_SERVICE);
         fetchThetaDevice(wifiMgr.getConnectionInfo());
+
+        // Set this service foreground.
+        Notification notification = new NotificationCompat.Builder(this)
+            .setContentTitle("Walkthrough service")
+            .setContentText("Running")
+            .setSmallIcon(R.drawable.dconnect_icon)
+            .build();
+        NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        manager.notify(1, notification);
+        startForeground(1, notification);
     }
 
     @Override
     public void onDestroy() {
+        mSphericalView.destroy();
         try {
             PtpipInitiator.close();
         } catch (ThetaException e) {

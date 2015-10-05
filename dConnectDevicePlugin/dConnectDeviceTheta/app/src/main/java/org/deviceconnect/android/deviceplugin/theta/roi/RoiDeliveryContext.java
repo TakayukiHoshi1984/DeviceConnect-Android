@@ -8,7 +8,6 @@ package org.deviceconnect.android.deviceplugin.theta.roi;
 
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -18,22 +17,17 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
-import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
-import org.deviceconnect.android.deviceplugin.theta.opengl.PixelBuffer;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
+import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
-import java.io.ByteArrayOutputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 /**
@@ -56,9 +50,17 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
 
+    private static final float EPSILON = 0.000000001f;
+
+    private static final SphereRenderer.Camera DEFAULT_CAMERA = new SphereRenderer.Camera();
+
     private long mLastEventTimestamp;
 
     private float mEventInterval;
+
+    private final float[] vGyroscope = new float[3];
+
+    private final float[] deltaVGyroscope = new float[4];
 
     private int mDisplayRotation;
 
@@ -70,9 +72,7 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private Timer mDeliveryTimer;
 
-    private PixelBuffer mPixelBuffer;
-
-    private final SphereRenderer mRenderer = new SphereRenderer();
+    private SphericalView mSphericalView;
 
     private Param mCurrentParam = DEFAULT_PARAM;
 
@@ -80,15 +80,13 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private String mSegment;
 
-    private byte[] mRoi = null;
-
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(1);
-
-    private ByteArrayOutputStream mBaos;
 
     private OnChangeListener mListener;
 
-    private Quaternion mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+    private float[] mCurrentRotation = new float[] {1, 0, 0, 0};
+
+    private float[] qGyroscopeDelta = new float[4];
 
     private SphereRenderer.Camera mDefaultCamera;
 
@@ -106,14 +104,14 @@ public class RoiDeliveryContext implements SensorEventListener {
 
         mSource = source;
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        mBaos = new ByteArrayOutputStream(
-            mCurrentParam.getImageWidth() * mCurrentParam.getImageHeight());
 
-        initCameraRotaion();
     }
 
-    public byte[] getRoi() {
-        return mRoi;
+    public void setSphericalView(final SphericalView view) {
+        mSphericalView = view;
+        mSphericalView.setTexture(mSource.getData());
+
+        initCameraRotaion();
     }
 
     public void setUri(final String uriString) {
@@ -130,69 +128,24 @@ public class RoiDeliveryContext implements SensorEventListener {
     }
 
     public void destroy() {
-        mExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                stopDeliveryTimer();
-                if (mPixelBuffer != null) {
-                    mPixelBuffer.destroy();
-                }
-                if (mSensorMgr != null) {
-                    mSensorMgr.unregisterListener(RoiDeliveryContext.this);
-                }
-            }
-        });
-    }
-
-    public byte[] renderWithBlocking() {
-        Future<byte[]> future = mExecutor.submit(new RenderingTask());
-        try {
-            return future.get();
-        } catch (ExecutionException e) {
-            // Nothing to do.
-        } catch (InterruptedException e) {
-            // Nothing to do.
+        mSphericalView.getRenderer().clearTexture();
+        if (mSensorMgr != null) {
+            mSensorMgr.unregisterListener(RoiDeliveryContext.this);
         }
-        return null;
-    }
-
-    public void render() {
-        mExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    new RenderingTask().call();
-                } catch (Exception e) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("AAA", "render: ", e);
-                    }
-                    // Nothing to do.
-                }
-            }
-        });
     }
 
     public void changeRendererParam(final Param param, final boolean isUserRequest) {
+        final SphereRenderer renderer = mSphericalView.getRenderer();
+
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                int width = param.getImageWidth();
-                int height = param.getImageHeight();
+                if (param.isCalibration()) {
+                    resetCameraDirection();
+                    return; // Ignore all other parameters;
+                }
 
                 if (isUserRequest) {
-                    if (mPixelBuffer == null) {
-                        mPixelBuffer = new PixelBuffer(width, height, param.isStereoMode());
-                        mRenderer.setTexture(mSource.getData());
-                        mPixelBuffer.setRenderer(mRenderer);
-                        mBaos = new ByteArrayOutputStream(width * height);
-                    } else if (isDisplaySizeChanged(param)) {
-                        mPixelBuffer.destroy();
-                        mPixelBuffer = new PixelBuffer(width, height, param.isStereoMode());
-                        mRenderer.setTexture(mSource.getData());
-                        mPixelBuffer.setRenderer(mRenderer);
-                        mBaos = new ByteArrayOutputStream(width * height);
-                    }
-
                     if (param.isVrMode()) {
                         startVrMode();
                     } else {
@@ -202,24 +155,22 @@ public class RoiDeliveryContext implements SensorEventListener {
 
                 mCurrentParam = param;
 
-                SphereRenderer.Camera camera = mRenderer.getCamera();
-                SphereRenderer.CameraBuilder builder = new SphereRenderer.CameraBuilder(camera);
-                builder.setPosition(new Vector3D(
+                SphereRenderer.Camera camera = renderer.getCamera();
+                camera.setPosition(new Vector3D(
                     (float) param.getCameraX(),
                     (float) param.getCameraY() * -1,
                     (float) param.getCameraZ()));
                 if (isUserRequest) {
-                    builder.rotateByEulerAngle(
+                    camera.rotateByEulerAngle(
                         (float) param.getCameraRoll(),
                         (float) param.getCameraYaw(),
                         (float) param.getCameraPitch() * -1);
                 }
-                builder.setFov((float) param.getCameraFov());
-                mRenderer.setCamera(builder.create());
-                mRenderer.setSphereRadius((float) param.getSphereSize());
-                mRenderer.setScreenWidth(param.getImageWidth());
-                mRenderer.setScreenHeight(param.getImageHeight());
-                mRenderer.setStereoMode(param.isStereoMode());
+                camera.setFov((float) param.getCameraFov());
+                renderer.setSphereRadius((float) param.getSphereSize());
+                renderer.setScreenWidth(param.getImageWidth());
+                renderer.setScreenHeight(param.getImageHeight());
+                renderer.setStereoMode(param.isStereoMode());
             }
         });
     }
@@ -231,7 +182,8 @@ public class RoiDeliveryContext implements SensorEventListener {
         if (DEBUG) {
             Log.d(TAG, "Exif: yaw = " + yaw + ", roll = " + roll + ", pitch = " + pitch);
         }
-        mRenderer.rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
+
+        mSphericalView.getRenderer().rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
     }
 
     private boolean isDisplaySizeChanged(final Param newParam) {
@@ -243,10 +195,6 @@ public class RoiDeliveryContext implements SensorEventListener {
     @Override
     public void onSensorChanged(final SensorEvent event) {
         if (mLastEventTimestamp != 0) {
-            float EPSILON = 0.000000001f;
-            float[] vGyroscope = new float[3];
-            float[] deltaVGyroscope = new float[4];
-            Quaternion qGyroscopeDelta;
             float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
             System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
@@ -271,59 +219,37 @@ public class RoiDeliveryContext implements SensorEventListener {
             deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
             deltaVGyroscope[3] = cosThetaOverTwo;
 
-            float[] delta = new float[3];
+            qGyroscopeDelta[0] = deltaVGyroscope[3];
             switch (mDisplayRotation) {
                 case Surface.ROTATION_0:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1];
-                    delta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[1];
+                    qGyroscopeDelta[3] = deltaVGyroscope[2];
                     break;
                 case Surface.ROTATION_90:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2] * -1;
-                    delta[2] = deltaVGyroscope[1];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[2] * -1;
+                    qGyroscopeDelta[3] = deltaVGyroscope[1];
                     break;
                 case Surface.ROTATION_180:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[1] * -1;
-                    delta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[1] * -1;
+                    qGyroscopeDelta[3] = deltaVGyroscope[2];
                     break;
                 case Surface.ROTATION_270:
-                    delta[0] = deltaVGyroscope[0];
-                    delta[1] = deltaVGyroscope[2];
-                    delta[2] = deltaVGyroscope[1] * -1;
+                    qGyroscopeDelta[1] = deltaVGyroscope[0];
+                    qGyroscopeDelta[2] = deltaVGyroscope[2];
+                    qGyroscopeDelta[3] = deltaVGyroscope[1] * -1;
                     break;
                 default:
                     break;
             }
 
-            qGyroscopeDelta = new Quaternion(deltaVGyroscope[3], new Vector3D(delta));
+            Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
 
-            mCurrentRotation = qGyroscopeDelta.multiply(mCurrentRotation);
-
-            float[] qvOrientation = new float[4];
-            qvOrientation[0] = mCurrentRotation.imaginary().x();
-            qvOrientation[1] = mCurrentRotation.imaginary().y();
-            qvOrientation[2] = mCurrentRotation.imaginary().z();
-            qvOrientation[3] = mCurrentRotation.real();
-
-            float[] rmGyroscope = new float[9];
-            SensorManager.getRotationMatrixFromVector(rmGyroscope,
-                qvOrientation);
-
-            float[] vOrientation = new float[3];
-            SensorManager.getOrientation(rmGyroscope, vOrientation);
-
-            SphereRenderer.Camera currentCamera = mRenderer.getCamera();
-            SphereRenderer.CameraBuilder newCamera = new SphereRenderer.CameraBuilder(currentCamera);
-            newCamera.rotate(new SphereRenderer.Camera(), mCurrentRotation);
-            mRenderer.setCamera(newCamera.create());
-
-            mEventInterval += dT;
-            if (mEventInterval >= 0.1f) {
-                mEventInterval = 0;
-                render();
-            }
+            SphereRenderer renderer = mSphericalView.getRenderer();
+            SphereRenderer.Camera currentCamera = renderer.getCamera();
+            currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
         }
         mLastEventTimestamp = event.timestamp;
     }
@@ -335,7 +261,7 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private boolean startVrMode() {
         // Reset current rotation.
-        mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+        mCurrentRotation = new float[] {1, 0, 0, 0};
 
         List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
         if (sensors.size() == 0) {
@@ -355,6 +281,11 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private void stopVrMode() {
         mSensorMgr.unregisterListener(this);
+    }
+
+    public void resetCameraDirection() {
+        mSphericalView.resetCamera();
+        mCurrentRotation = new float[] {1, 0, 0, 0};
     }
 
     public void startExpireTimer() {
@@ -388,35 +319,11 @@ public class RoiDeliveryContext implements SensorEventListener {
         startExpireTimer();
     }
 
-    public void startDeliveryTimer() {
-        if (mDeliveryTimer != null) {
-            return;
-        }
-        mDeliveryTimer = new Timer();
-        mDeliveryTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                if (mListener != null) {
-                    mListener.onUpdate(RoiDeliveryContext.this, getRoi());
-                }
-            }
-        }, 250, 1000);
-    }
-
-    public void stopDeliveryTimer() {
-        if (mDeliveryTimer != null) {
-            mDeliveryTimer.cancel();
-            mDeliveryTimer = null;
-        }
-    }
-
     public void setOnChangeListener(final OnChangeListener listener) {
         mListener = listener;
     }
 
     public interface OnChangeListener {
-
-        void onUpdate(RoiDeliveryContext roiContext, byte[] roi);
 
         void onExpire(RoiDeliveryContext roiContext);
 
@@ -447,6 +354,8 @@ public class RoiDeliveryContext implements SensorEventListener {
         boolean mStereoMode;
 
         boolean mVrMode;
+
+        boolean mCalibration;
 
         public double getCameraX() {
             return mCameraX;
@@ -543,27 +452,14 @@ public class RoiDeliveryContext implements SensorEventListener {
         public void setVrMode(final boolean isVr) {
             mVrMode = isVr;
         }
-    }
 
-    private class RenderingTask implements Callable<byte[]> {
+        public boolean isCalibration() {
+            return mCalibration;
+        }
 
-        @Override
-        public byte[] call() throws Exception {
-            mPixelBuffer.render();
-            Bitmap result = mPixelBuffer.convertToBitmap();
-            if (result == null) {
-                return null;
-            }
-
-            mBaos.reset();
-            result.compress(Bitmap.CompressFormat.JPEG, 100, mBaos);
-            byte[] roi = mBaos.toByteArray();
-
-            mRoi = roi;
-            if (mListener != null) {
-                mListener.onUpdate(RoiDeliveryContext.this, roi);
-            }
-            return roi;
+        public void setCalibration(final boolean isCalibration) {
+            mCalibration = isCalibration;
         }
     }
+
 }
