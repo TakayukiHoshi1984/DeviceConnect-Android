@@ -21,6 +21,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 
@@ -77,7 +79,12 @@ public class WalkthroughContext implements SensorEventListener {
                 if (DEBUG) {
                     Log.d(TAG, "onPrepared");
                 }
-                seek(1);
+
+                if (isAutoPlay()) {
+                    mVideoPlayer.playAuto();
+                } else {
+                    mVideoPlayer.playBy(1);
+                }
             }
 
             @Override
@@ -88,14 +95,6 @@ public class WalkthroughContext implements SensorEventListener {
 
                 try {
                     mSphericalView.setTexture(jpeg.toBitmap());
-
-                    if (isAutoPlay()) {
-                        if (DEBUG) {
-                            Log.d(TAG, "onDraw: AutoPlay: Loop");
-                        }
-
-                        seek(1);
-                    }
                 } catch (Throwable e) {
                     Log.e(TAG, "onDraw: ERROR: ", e);
                 }
@@ -308,11 +307,18 @@ public class WalkthroughContext implements SensorEventListener {
         mCurrentRotation = new float[] {1, 0, 0, 0};
     }
 
+    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+
     public synchronized void seek(final int delta) {
         if (mIsStopped) {
             return;
         }
-        mVideoPlayer.playBy(delta);
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                mVideoPlayer.playBy(delta);
+            }
+        });
     }
 
     public void startExpireTimer() {

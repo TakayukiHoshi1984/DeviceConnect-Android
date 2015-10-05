@@ -39,6 +39,8 @@ class VideoPlayer {
 
     public void destroy() {
         Log.d(TAG, "VideoPlayer.destroy()");
+        mAutoPlayerThread.interrupt();
+        mIsAutoPlaying = false;
         mBuffer.destroy();
     }
 
@@ -46,6 +48,60 @@ class VideoPlayer {
         if (mDisplay != null) {
             mDisplay.onPrepared();
         }
+    }
+
+    private boolean mIsAutoPlaying = false;
+
+    private Thread mAutoPlayerThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            FrameJpegLoader loader = mPositiveLoader;
+
+            try {
+                long start, end;
+                long delay = 0;
+
+                while (mIsAutoPlaying) {
+                    start = System.currentTimeMillis();
+
+                    int num = 1;
+                    if (delay > mInterval) {
+                        num = (int) Math.ceil(delay / mInterval);
+                    }
+
+                    Frame frame = loader.nextFrame(num);
+                    if (frame == null) {
+                        if (mDisplay != null) {
+                            mDisplay.onFinish();
+                        }
+                        break;
+                    }
+                    mCurrentFrame = frame;
+                    loader.load(frame);
+
+                    end = System.currentTimeMillis();
+                    delay = end - start;
+
+                    if (mInterval - delay > 0) {
+                        Thread.sleep(mInterval - delay);
+                    }
+                }
+            } catch (InterruptedException e) {
+                if (mDisplay != null) {
+                    mDisplay.onError(e);
+                }
+            }
+
+            Log.i(TAG, "Auto play thread is finished.");
+        }
+    });
+
+    public synchronized void playAuto() {
+        if (mIsAutoPlaying) {
+            return;
+        }
+        mIsAutoPlaying = true;
+        mAutoPlayerThread.start();
     }
 
     public synchronized void playBy(final int delta) {
