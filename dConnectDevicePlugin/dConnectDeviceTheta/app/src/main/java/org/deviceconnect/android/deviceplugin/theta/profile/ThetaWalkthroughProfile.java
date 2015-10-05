@@ -253,9 +253,14 @@ public class ThetaWalkthroughProfile extends DConnectProfile
     protected boolean onDeleteWalker(final Intent request, final Intent response) {
         String uri = getURI(request);
         if (uri == null) {
-            MessageUtils.setInvalidRequestParameterError(response, "uri is null.");
+            for (WalkthroughContext walkContext : mWalkContexts.values()) {
+                walkContext.stop();
+            }
+            mWalkContexts.clear();
+            mSphericalView.setEventListener(null);
             return true;
         }
+        
         WalkthroughContext walkContext = findContextByUri(uri);
         if (walkContext != null) {
             walkContext.stop();
