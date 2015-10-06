@@ -13,7 +13,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
-import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
@@ -110,8 +109,6 @@ public class RoiDeliveryContext implements SensorEventListener {
     public void setSphericalView(final SphericalView view) {
         mSphericalView = view;
         mSphericalView.setTexture(mSource.getData());
-
-        initCameraRotaion();
     }
 
     public void setUri(final String uriString) {
@@ -173,17 +170,6 @@ public class RoiDeliveryContext implements SensorEventListener {
                 renderer.setStereoMode(param.isStereoMode());
             }
         });
-    }
-
-    private void initCameraRotaion() {
-        float yaw = (float) mSource.getYaw();
-        float roll = (float) mSource.getRoll();
-        float pitch = (float) mSource.getPitch();
-        if (DEBUG) {
-            Log.d(TAG, "Exif: yaw = " + yaw + ", roll = " + roll + ", pitch = " + pitch);
-        }
-
-        mSphericalView.getRenderer().rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
     }
 
     private boolean isDisplaySizeChanged(final Param newParam) {

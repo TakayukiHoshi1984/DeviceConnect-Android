@@ -169,10 +169,10 @@ public class ThetaWalkthroughProfile extends DConnectProfile
                             if (autoPlay != null) {
                                 walkContext.setAutoPlay(autoPlay.booleanValue());
                             }
-                            int yaw = yawParam != null ? yawParam : 0;
-                            int roll = rollParam != null ? rollParam : 0;
-                            int pitch = pitchParam != null ? pitchParam : 0;
-                            walkContext.rotate(yaw, roll, pitch);
+//                            int yaw = yawParam != null ? yawParam : 0;
+//                            int roll = rollParam != null ? rollParam : 0;
+//                            int pitch = pitchParam != null ? pitchParam : 0;
+//                            walkContext.rotate(yaw, roll, pitch);
                             walkContext.start();
 
                             mWalkContexts.put(key, walkContext);

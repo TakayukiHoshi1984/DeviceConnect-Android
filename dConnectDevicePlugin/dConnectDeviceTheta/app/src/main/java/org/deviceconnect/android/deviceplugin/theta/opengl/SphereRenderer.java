@@ -91,10 +91,6 @@ public class SphereRenderer {
     private final float[] mViewMatrix = new float[16];
     private final float[] mModelMatrix = new float[16];
 
-    private float mSphereYaw;
-    private float mSphereRoll;
-    private float mSpherePitch;
-
     private final Object mLockTexture = new Object();
     private boolean mIsDestroyed;
 
@@ -169,10 +165,6 @@ public class SphereRenderer {
         Matrix.perspectiveM(mProjectionMatrix, 0, camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
         checkGlError(TAG, "perspectiveM");
 
-        Matrix.setRotateM(mModelMatrix, 0, mSphereRoll, 1.0f, 0.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, mSphereYaw, 0.0f, 1.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, mSpherePitch, 0.0f, 0.0f, 1.0f);
-
         GLES20.glUniformMatrix4fv(mModelMatrixHandle, 1, false, mModelMatrix, 0);
         GLES20.glUniformMatrix4fv(mProjectionMatrixHandle, 1, false, mProjectionMatrix, 0);
         GLES20.glUniformMatrix4fv(mViewMatrixHandle, 1, false, mViewMatrix, 0);
@@ -182,12 +174,6 @@ public class SphereRenderer {
         GLES20.glUniform1i(mTexHandle, 0);
 
         mShell.draw(mPositionHandle, mUVHandle);
-    }
-
-    public void rotateSphere(final float yaw, final float roll, final float pitch) {
-        mSphereYaw = yaw;
-        mSphereRoll = roll;
-        mSpherePitch = pitch;
     }
 
     public void onSurfaceChanged(final GL10 gl, final int width, final int height) {

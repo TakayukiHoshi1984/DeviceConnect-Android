@@ -125,11 +125,11 @@ public class WalkthroughContext implements SensorEventListener {
         camera.setFov(fov);
     }
 
-    public void rotate(final int yaw, final int roll, final int pitch) {
-        if (mSphericalView != null) {
-            mSphericalView.getRenderer().rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
-        }
-    }
+//    public void rotate(final int yaw, final int roll, final int pitch) {
+//        if (mSphericalView != null) {
+//            mSphericalView.getRenderer().rotateSphere(-1 * yaw, -1 * roll, -1 * pitch);
+//        }
+//    }
 
     public void setView(final SphericalView view) {
         mSphericalView = view;

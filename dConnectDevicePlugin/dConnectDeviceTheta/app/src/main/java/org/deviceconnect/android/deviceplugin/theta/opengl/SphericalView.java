@@ -83,7 +83,6 @@ public class SphericalView {
 
     public void resetCamera() {
         mRenderer.resetCamera();
-        mRenderer.rotateSphere(0, 0, 0);
     }
 
     private void start() {
