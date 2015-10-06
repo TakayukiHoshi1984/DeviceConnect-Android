@@ -489,7 +489,7 @@ public class SphereRenderer {
 
         public void rotate(final Camera defaultCamera, final float[] rotation) {
             Quaternion.rotate(defaultCamera.getFrontDirection(), rotation, mFrontDirection);
-            Quaternion.rotate(defaultCamera.getUpperDirection(), rotation, mUpperDirection);
+            //Quaternion.rotate(defaultCamera.getUpperDirection(), rotation, mUpperDirection);
             Quaternion.rotate(defaultCamera.getRightDirection(), rotation, mRightDirection);
         }
 

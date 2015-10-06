@@ -13,6 +13,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
+import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
@@ -22,7 +23,6 @@ import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
@@ -246,22 +246,18 @@ public class RoiDeliveryContext implements SensorEventListener {
     }
 
     private boolean startVrMode() {
+        Log.d(TAG, "ROI startVrMode()");
+
         // Reset current rotation.
         mCurrentRotation = new float[] {1, 0, 0, 0};
 
-        List<Sensor> sensors = mSensorMgr.getSensorList(Sensor.TYPE_ALL);
-        if (sensors.size() == 0) {
-            mLogger.warning("Failed to start VR mode: any sensor is NOT found.");
-            return false;
+        Sensor gyroSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        if (gyroSensor != null) {
+            Log.d(TAG, "Default gyro sensor: " + gyroSensor.getName());
+            mSensorMgr.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        } else {
+            Log.e(TAG, "Failed to start VR mode: Default GYROSCOPE sensor is NOT found.");
         }
-        for (Sensor sensor : sensors) {
-            if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                mLogger.info("Started VR mode: GYROSCOPE sensor is found.");
-                mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-                return true;
-            }
-        }
-        mLogger.warning("Failed to start VR mode: GYROSCOPE sensor is NOT found.");
         return false;
     }
 
