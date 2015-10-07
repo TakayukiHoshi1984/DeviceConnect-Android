@@ -23,6 +23,7 @@ import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
@@ -251,14 +252,35 @@ public class RoiDeliveryContext implements SensorEventListener {
         // Reset current rotation.
         mCurrentRotation = new float[] {1, 0, 0, 0};
 
-        Sensor gyroSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        if (gyroSensor != null) {
-            Log.d(TAG, "Default gyro sensor: " + gyroSensor.getName());
-            mSensorMgr.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        Sensor defaultSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        Sensor notDefaultSensor = chooseNotDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        if (notDefaultSensor != null) {
+            Log.d(TAG, "Target gyro sensor: " + notDefaultSensor.getName());
+            mSensorMgr.registerListener(this, notDefaultSensor, SensorManager.SENSOR_DELAY_NORMAL);
         } else {
-            Log.e(TAG, "Failed to start VR mode: Default GYROSCOPE sensor is NOT found.");
+            Log.e(TAG, "Failed to start VR mode: Target GYROSCOPE sensor is NOT found.");
+        }
+        if (defaultSensor != null) {
+            Log.d(TAG, "Default gyro sensor: " + defaultSensor.getName());
+        } else {
+            Log.d(TAG, "Default gyro sensor is not found");
         }
         return false;
+    }
+
+    private Sensor chooseNotDefaultSensor(final int type) {
+        Sensor defaultSensor = mSensorMgr.getDefaultSensor(type);
+        if (defaultSensor != null) {
+            List<Sensor> sensors = mSensorMgr.getSensorList(type);
+            if (sensors != null) {
+                for (Sensor sensor : sensors) {
+                    if (!sensor.getName().equals(defaultSensor.getName())) {
+                        return sensor;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void stopVrMode() {
