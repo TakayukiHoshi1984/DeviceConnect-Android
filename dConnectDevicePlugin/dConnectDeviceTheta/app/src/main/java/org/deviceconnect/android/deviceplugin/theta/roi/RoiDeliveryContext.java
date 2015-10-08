@@ -17,8 +17,9 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import org.deviceconnect.android.deviceplugin.theta.BuildConfig;
+import org.deviceconnect.android.deviceplugin.theta.opengl.Overlay;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphereRenderer;
-import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
@@ -34,22 +35,22 @@ import java.util.logging.Logger;
  *
  * @author NTT DOCOMO, INC.
  */
-public class RoiDeliveryContext implements SensorEventListener {
+public class RoiDeliveryContext implements SensorEventListener, Overlay.EventListener {
 
     /**
      * The default parameter of ROI Settings API.
      */
     public static final Param DEFAULT_PARAM = new Param();
 
-    private static final boolean DEBUG = false; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     private static final String TAG = "Roi";
 
-    private static final float NS2S = 1.0f / 1000000000.0f;
+    private static final double NS2S = 1.0d / 1000000000.0d;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
 
-    private static final float EPSILON = 0.000000001f;
+    private static final double EPSILON = 0.000000001d;
 
     private static final SphereRenderer.Camera DEFAULT_CAMERA = new SphereRenderer.Camera();
 
@@ -57,21 +58,15 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private float mEventInterval;
 
-    private final float[] vGyroscope = new float[3];
+    private final double[] vGyroscope = new double[3];
 
-    private final float[] deltaVGyroscope = new float[4];
+    private final double[] deltaVGyroscope = new double[4];
 
     private int mDisplayRotation;
-
-    private final OmnidirectionalImage mSource;
 
     private final SensorManager mSensorMgr;
 
     private Timer mExpireTimer;
-
-    private Timer mDeliveryTimer;
-
-    private SphericalView mSphericalView;
 
     private Param mCurrentParam = DEFAULT_PARAM;
 
@@ -83,32 +78,48 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     private OnChangeListener mListener;
 
-    private float[] mCurrentRotation = new float[] {1, 0, 0, 0};
+    private double[] mCurrentRotation = new double[] {1, 0, 0, 0};
 
-    private float[] qGyroscopeDelta = new float[4];
+    private double[] qGyroscopeDelta = new double[4];
 
     private SphereRenderer.Camera mDefaultCamera;
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
-    /**
-     * Constructor.
-     *
-     * @param context an instance of {@link Context}
-     * @param source an instance of {@link OmnidirectionalImage} to create ROI image
-     */
-    public RoiDeliveryContext(final Context context, final OmnidirectionalImage source) {
+    private Overlay mOverlay;
+
+    private final Object mLockObj = new Object();
+
+    public RoiDeliveryContext(final Context context, final Overlay overlay) {
         WindowManager windowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mDisplayRotation = windowMgr.getDefaultDisplay().getRotation();
 
-        mSource = source;
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-
+        mOverlay = overlay;
+        mOverlay.setEventListener(this);
     }
 
-    public void setSphericalView(final SphericalView view) {
-        mSphericalView = view;
-        mSphericalView.setTexture(mSource.getData());
+    public void setFOV(float fov) {
+        if (mOverlay == null) {
+            return;
+        }
+        SphereRenderer renderer = mOverlay.getRenderer();
+        if (renderer == null) {
+            return;
+        }
+        SphereRenderer.Camera camera = renderer.getCamera();
+        camera.setFov(fov);
+    }
+
+    @Override
+    public void onClose() {
+        stopVrMode();
+    }
+
+    @Override
+    public void onClick() {
+        mOverlay.resetCamera();
+        mCurrentRotation = new double[] {1, 0, 0, 0};
     }
 
     public void setUri(final String uriString) {
@@ -125,14 +136,13 @@ public class RoiDeliveryContext implements SensorEventListener {
     }
 
     public void destroy() {
-        mSphericalView.getRenderer().clearTexture();
         if (mSensorMgr != null) {
             mSensorMgr.unregisterListener(RoiDeliveryContext.this);
         }
     }
 
     public void changeRendererParam(final Param param, final boolean isUserRequest) {
-        final SphereRenderer renderer = mSphericalView.getRenderer();
+        final SphereRenderer renderer = mOverlay.getRenderer();
 
         mExecutor.execute(new Runnable() {
             @Override
@@ -180,15 +190,23 @@ public class RoiDeliveryContext implements SensorEventListener {
 
     @Override
     public void onSensorChanged(final SensorEvent event) {
+        if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE) {
+            return;
+        }
         if (mLastEventTimestamp != 0) {
-            float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+            double dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
-            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
-            float tmp = vGyroscope[2];
-            vGyroscope[2] = vGyroscope[0] * -1;
-            vGyroscope[0] = tmp;
 
-            float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
+            vGyroscope[0] = event.values[2];
+            vGyroscope[1] = event.values[1];
+            vGyroscope[2] = event.values[0];
+
+//            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+//            double tmp = vGyroscope[2];
+//            vGyroscope[2] = vGyroscope[0];
+//            vGyroscope[0] = tmp;
+
+            double magnitude = Math.sqrt(Math.pow(vGyroscope[0], 2)
                 + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
             if (magnitude > EPSILON) {
                 vGyroscope[0] /= magnitude;
@@ -196,9 +214,9 @@ public class RoiDeliveryContext implements SensorEventListener {
                 vGyroscope[2] /= magnitude;
             }
 
-            float thetaOverTwo = magnitude * dT / 2.0f;
-            float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
-            float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+            double thetaOverTwo = magnitude * dT / 2.0f;
+            double sinThetaOverTwo = Math.sin(thetaOverTwo);
+            double cosThetaOverTwo = Math.cos(thetaOverTwo);
 
             deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
             deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
@@ -233,9 +251,12 @@ public class RoiDeliveryContext implements SensorEventListener {
 
             Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
 
-            SphereRenderer renderer = mSphericalView.getRenderer();
-            SphereRenderer.Camera currentCamera = renderer.getCamera();
-            currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
+            if (mOverlay.isShow()) {
+                SphereRenderer renderer = mOverlay.getRenderer();
+                SphereRenderer.Camera currentCamera = renderer.getCamera();
+                currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
+            }
+
         }
         mLastEventTimestamp = event.timestamp;
     }
@@ -245,16 +266,16 @@ public class RoiDeliveryContext implements SensorEventListener {
         // Nothing to do.
     }
 
-    private boolean startVrMode() {
+    public boolean startVrMode() {
         Log.d(TAG, "ROI startVrMode()");
 
         // Reset current rotation.
-        mCurrentRotation = new float[] {1, 0, 0, 0};
+        mCurrentRotation = new double[] {1, 0, 0, 0};
 
         Sensor gyroSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         if (gyroSensor != null) {
             Log.d(TAG, "Default gyro sensor: " + gyroSensor.getName());
-            mSensorMgr.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL);
+            mSensorMgr.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
         } else {
             Log.e(TAG, "Failed to start VR mode: Default GYROSCOPE sensor is NOT found.");
         }
@@ -262,12 +283,13 @@ public class RoiDeliveryContext implements SensorEventListener {
     }
 
     private void stopVrMode() {
+        Log.d(TAG, "stopVrMode");
         mSensorMgr.unregisterListener(this);
     }
 
     public void resetCameraDirection() {
-        mSphericalView.resetCamera();
-        mCurrentRotation = new float[] {1, 0, 0, 0};
+        mOverlay.resetCamera();
+        mCurrentRotation = new double[] {1, 0, 0, 0};
     }
 
     public void startExpireTimer() {

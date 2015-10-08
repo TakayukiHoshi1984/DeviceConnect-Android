@@ -19,6 +19,7 @@ import android.support.v4.app.NotificationCompat;
 import com.theta360.lib.PtpipInitiator;
 import com.theta360.lib.ThetaException;
 
+import org.deviceconnect.android.deviceplugin.theta.opengl.Overlay;
 import org.deviceconnect.android.deviceplugin.theta.opengl.SphericalView;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaBatteryProfile;
 import org.deviceconnect.android.deviceplugin.theta.profile.ThetaFileProfile;
@@ -52,6 +53,8 @@ public class ThetaDeviceService extends DConnectMessageService {
 
     private final ThetaApiClient mClient = new ThetaApiClient();
 
+    private Overlay mOverlay;
+
     private final SphericalView mSphericalView = new SphericalView();
 
     @Override
@@ -60,13 +63,15 @@ public class ThetaDeviceService extends DConnectMessageService {
 
         EventManager.INSTANCE.setController(new MemoryCacheController());
 
+        mOverlay = new Overlay(this);
+
         mSphericalView.createScreen(480, 270);
 
         FileManager fileMgr = new FileManager(this);
         addProfile(new ThetaBatteryProfile(mClient));
         addProfile(new ThetaFileProfile(mClient, fileMgr));
         addProfile(new ThetaMediaStreamRecordingProfile(mClient, fileMgr));
-        addProfile(new ThetaOmnidirectionalImageProfile(mSphericalView));
+        addProfile(new ThetaOmnidirectionalImageProfile(mOverlay));
         addProfile(new ThetaWalkthroughProfile(mSphericalView));
 
         WifiManager wifiMgr = (WifiManager) getContext().getSystemService(Context.WIFI_SERVICE);

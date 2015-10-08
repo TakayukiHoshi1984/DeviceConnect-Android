@@ -126,7 +126,7 @@ public class PixelBuffer {
 
         synchronized (mRenderer) {
             if (!mRenderer.isDestroyed()) {
-                mRenderer.onSurfaceCreated();
+                mRenderer.onSurfaceCreated(null, null);
             }
         }
     }

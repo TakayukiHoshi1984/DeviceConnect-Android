@@ -160,7 +160,7 @@ public class OmnidirectionalImage {
      * Gets the bitmap data of this omnidirectional image.
      * @return the bitmap data of this omnidirectional image.
      */
-    Bitmap getData() {
+    public Bitmap getData() {
         return mBitmap;
     }
 

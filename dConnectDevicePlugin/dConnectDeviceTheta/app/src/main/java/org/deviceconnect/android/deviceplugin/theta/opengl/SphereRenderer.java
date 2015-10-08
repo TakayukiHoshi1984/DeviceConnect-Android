@@ -8,6 +8,7 @@ package org.deviceconnect.android.deviceplugin.theta.opengl;
 
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
+import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -16,6 +17,7 @@ import org.deviceconnect.android.deviceplugin.theta.opengl.model.UVSphere;
 import org.deviceconnect.android.deviceplugin.theta.utils.Quaternion;
 import org.deviceconnect.android.deviceplugin.theta.utils.Vector3D;
 
+import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 
@@ -24,7 +26,7 @@ import javax.microedition.khronos.opengles.GL10;
  *
  * @author NTT DOCOMO, INC.
  */
-public class SphereRenderer {
+public class SphereRenderer implements GLSurfaceView.Renderer {
 
     /**
      * Distance of left and right eye: {@value} cm.
@@ -109,6 +111,9 @@ public class SphereRenderer {
     public void onDrawFrame(final GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
+//        if (BuildConfig.DEBUG) {
+//            Log.d("SphereRenderer", "Screen : width = " + mScreenWidth + ", height = " + mScreenHeight);
+//        }
         if (mIsStereo) {
             SphereRenderer.Camera[] cameras = mCamera.getCamerasForStereo(DISTANCE_EYES);
             GLES20.glViewport(0, 0, mScreenWidth, mScreenHeight);
@@ -150,19 +155,19 @@ public class SphereRenderer {
             }
         }
 
-        float x = camera.getPositionX();
-        float y = camera.getPositionY();
-        float z = camera.getPositionZ();
-        float frontX = camera.getFrontDirectionX();
-        float frontY = camera.getFrontDirectionY();
-        float frontZ = camera.getFrontDirectionZ();
-        float upX = camera.getUpperDirectionX();
-        float upY = camera.getUpperDirectionY();
-        float upZ = camera.getUpperDirectionZ();
+        float x = (float) camera.getPositionX();
+        float y = (float) camera.getPositionY();
+        float z = (float) camera.getPositionZ();
+        float frontX = (float) camera.getFrontDirectionX();
+        float frontY = (float) camera.getFrontDirectionY();
+        float frontZ = (float) camera.getFrontDirectionZ();
+        float upX = (float) camera.getUpperDirectionX();
+        float upY = (float) camera.getUpperDirectionY();
+        float upZ = (float) camera.getUpperDirectionZ();
         Matrix.setLookAtM(mViewMatrix, 0, x, y, z, frontX, frontY, frontZ, upX, upY, upZ);
         checkGlError(TAG, "setLookAtM");
 
-        Matrix.perspectiveM(mProjectionMatrix, 0, camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
+        Matrix.perspectiveM(mProjectionMatrix, 0, (float) camera.mFovDegree, getScreenAspect(), Z_NEAR, Z_FAR);
         checkGlError(TAG, "perspectiveM");
 
         GLES20.glUniformMatrix4fv(mModelMatrixHandle, 1, false, mModelMatrix, 0);
@@ -176,10 +181,14 @@ public class SphereRenderer {
         mShell.draw(mPositionHandle, mUVHandle);
     }
 
+    @Override
     public void onSurfaceChanged(final GL10 gl, final int width, final int height) {
+        setScreenWidth(width);
+        setScreenHeight(height);
     }
 
-    public void onSurfaceCreated() {
+    @Override
+    public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
         mVShader = loadShader(GLES20.GL_VERTEX_SHADER, VSHADER_SRC);
         mFShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FSHADER_SRC);
         mProgram = GLES20.glCreateProgram();
@@ -301,15 +310,15 @@ public class SphereRenderer {
     }
 
     public static class Camera {
-        private float mFovDegree;
-        private final float[] mPosition;
-        private final float[] mFrontDirection;
-        private final float[] mUpperDirection;
-        private final float[] mRightDirection;
+        private double mFovDegree;
+        private final double[] mPosition;
+        private final double[] mFrontDirection;
+        private final double[] mUpperDirection;
+        private final double[] mRightDirection;
 
-        public Camera(final float fovDegree, final float[] position,
-                      final float[] frontDirection, final float[] upperDirection,
-                      final float[] rightDirection) {
+        public Camera(final double fovDegree, final double[] position,
+                      final double[] frontDirection, final double[] upperDirection,
+                      final double[] rightDirection) {
             mFovDegree = fovDegree;
             mPosition = position;
             mFrontDirection = frontDirection;
@@ -325,18 +334,18 @@ public class SphereRenderer {
                 copyVector(camera.mRightDirection));
         }
 
-        private static float[] copyVector(final float[] vector) {
-            float[] result = new float[vector.length];
+        private static double[] copyVector(final double[] vector) {
+            double[] result = new double[vector.length];
             System.arraycopy(vector, 0, result, 0, result.length);
             return result;
         }
 
         public Camera() {
             this(90.0f,
-                new float[]{0, 0, 0, 0},
-                new float[]{0, 1, 0, 0},
-                new float[]{0, 0, 1, 0},
-                new float[]{0, 0, 0, 1});
+                new double[]{0, 0, 0, 0},
+                new double[]{0, 1, 0, 0},
+                new double[]{0, 0, 1, 0},
+                new double[]{0, 0, 0, 1});
         }
 
         public void reset() {
@@ -345,98 +354,98 @@ public class SphereRenderer {
             setRightDirection(0, 0, 1);
         }
 
-        public float[] getPosition() {
+        public double[] getPosition() {
             return mPosition;
         }
 
-        public float getPositionX() {
+        public double getPositionX() {
             return mPosition[1];
         }
 
-        public float getPositionY() {
+        public double getPositionY() {
             return mPosition[2];
         }
 
-        public float getPositionZ() {
+        public double getPositionZ() {
             return mPosition[3];
         }
 
-        public void setPosition(final float x, final float y, final float z) {
+        public void setPosition(final double x, final double y, final double z) {
             mPosition[1] = x;
             mPosition[2] = y;
             mPosition[3] = z;
         }
 
-        public float[] getFrontDirection() {
+        public double[] getFrontDirection() {
             return mFrontDirection;
         }
 
-        public float getFrontDirectionX() {
+        public double getFrontDirectionX() {
             return mFrontDirection[1];
         }
 
-        public float getFrontDirectionY() {
+        public double getFrontDirectionY() {
             return mFrontDirection[2];
         }
 
-        public float getFrontDirectionZ() {
+        public double getFrontDirectionZ() {
             return mFrontDirection[3];
         }
 
-        public void setFrontDirection(final float x, final float y, final float z) {
+        public void setFrontDirection(final double x, final double y, final double z) {
             mFrontDirection[1] = x;
             mFrontDirection[2] = y;
             mFrontDirection[3] = z;
         }
 
-        public float[] getUpperDirection() {
+        public double[] getUpperDirection() {
             return mUpperDirection;
         }
 
-        public float getUpperDirectionX() {
+        public double getUpperDirectionX() {
             return mUpperDirection[1];
         }
 
-        public float getUpperDirectionY() {
+        public double getUpperDirectionY() {
             return mUpperDirection[2];
         }
 
-        public float getUpperDirectionZ() {
+        public double getUpperDirectionZ() {
             return mUpperDirection[3];
         }
 
-        public void setUpperDirection(final float x, final float y, final float z) {
+        public void setUpperDirection(final double x, final double y, final double z) {
             mUpperDirection[1] = x;
             mUpperDirection[2] = y;
             mUpperDirection[3] = z;
         }
 
-        public float[] getRightDirection() {
+        public double[] getRightDirection() {
             return mRightDirection;
         }
 
-        public float getRightDirectionX() {
+        public double getRightDirectionX() {
             return mRightDirection[1];
         }
 
-        public float getRightDirectionY() {
+        public double getRightDirectionY() {
             return mRightDirection[2];
         }
 
-        public float getRightDirectionZ() {
+        public double getRightDirectionZ() {
             return mRightDirection[3];
         }
 
-        public void setRightDirection(final float x, final float y, final float z) {
+        public void setRightDirection(final double x, final double y, final double z) {
             mRightDirection[1] = x;
             mRightDirection[2] = y;
             mRightDirection[3] = z;
         }
 
         public void slideHorizontal(final float delta) {
-            float x = getPositionX();
-            float y = getPositionY();
-            float z = getPositionZ();
+            double x = getPositionX();
+            double y = getPositionY();
+            double z = getPositionZ();
             setPosition(
                 delta * getRightDirectionX() + x,
                 delta * getRightDirectionY() + y,
@@ -453,25 +462,25 @@ public class SphereRenderer {
         }
 
         public void rotateByEulerAngle(final float roll, final float yaw, final float pitch) {
-            float currentX = getFrontDirectionX();
-            float currentY = getFrontDirectionY();
-            float currentZ = getFrontDirectionZ();
-            float radianPerDegree = (float) (Math.PI / 180.0);
+            double currentX = getFrontDirectionX();
+            double currentY = getFrontDirectionY();
+            double currentZ = getFrontDirectionZ();
+            double radianPerDegree = (Math.PI / 180.0);
 
-            float lat = (90.0f - pitch) * radianPerDegree;
-            float lng = yaw * radianPerDegree;
-            float x = (float) (Math.sin(lat) * Math.cos(lng));
-            float y = (float) (Math.cos(lat));
-            float z = (float) (Math.sin(lat) * Math.sin(lng));
+            double lat = (90.0f - pitch) * radianPerDegree;
+            double lng = yaw * radianPerDegree;
+            double x = (double) (Math.sin(lat) * Math.cos(lng));
+            double y = (double) (Math.cos(lat));
+            double z = (double) (Math.sin(lat) * Math.sin(lng));
             setFrontDirection(x, y, z);
 
-            float dx = getFrontDirectionX() - currentX;
-            float dy = getFrontDirectionY() - currentY;
-            float dz = getFrontDirectionZ() - currentZ;
+            double dx = getFrontDirectionX() - currentX;
+            double dy = getFrontDirectionY() - currentY;
+            double dz = getFrontDirectionZ() - currentZ;
 
-            float theta = (roll * radianPerDegree) / 2.0f;
-            float sin = (float) Math.sin(theta);
-            float[] q = new float[] {
+            double theta = (roll * radianPerDegree) / 2.0f;
+            double sin = (double) Math.sin(theta);
+            double[] q = new double[] {
                 (float) Math.cos(theta),
                 sin * getFrontDirectionX(),
                 sin * getFrontDirectionY(),
@@ -487,7 +496,7 @@ public class SphereRenderer {
             Quaternion.rotate(mRightDirection, q, mRightDirection);
         }
 
-        public void rotate(final Camera defaultCamera, final float[] rotation) {
+        public void rotate(final Camera defaultCamera, final double[] rotation) {
             Quaternion.rotate(defaultCamera.getFrontDirection(), rotation, mFrontDirection);
             //Quaternion.rotate(defaultCamera.getUpperDirection(), rotation, mUpperDirection);
             Quaternion.rotate(defaultCamera.getRightDirection(), rotation, mRightDirection);

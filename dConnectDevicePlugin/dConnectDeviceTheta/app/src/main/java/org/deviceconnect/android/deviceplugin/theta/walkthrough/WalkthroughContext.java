@@ -31,20 +31,20 @@ public class WalkthroughContext implements SensorEventListener {
     private static final boolean DEBUG = false; // BuildConfig.DEBUG;
 
     private static final long EXPIRE_INTERVAL = 10 * 1000;
-    private static final float NS2S = 1.0f / 1000000000.0f;
-    private static final float EPSILON = 0.000000001f;
+    private static final double NS2S = 1.0d / 1000000000.0d;
+    private static final double EPSILON = 0.000000001d;
 
     private static final SphereRenderer.Camera DEFAULT_CAMERA = new SphereRenderer.Camera();
 
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
-    private final float[] vGyroscope = new float[3];
-    private final float[] deltaVGyroscope = new float[4];
+    private final double[] vGyroscope = new double[3];
+    private final double[] deltaVGyroscope = new double[4];
     private final SensorManager mSensorMgr;
     private long mLastEventTimestamp;
     private final int mDisplayRotation;
-    private float[] mCurrentRotation = new float[] {1, 0, 0, 0};
-    private float[] qGyroscopeDelta = new float[4];
+    private double[] mCurrentRotation = new double[] {1, 0, 0, 0};
+    private double[] qGyroscopeDelta = new double[4];
 
     private final File mDir;
     private final Video mVideo;
@@ -154,7 +154,7 @@ public class WalkthroughContext implements SensorEventListener {
         Log.d(TAG, "Walk startVrMode()");
 
         // Reset current rotation.
-        mCurrentRotation = new float[] {1, 0, 0, 0};
+        mCurrentRotation = new double[] {1, 0, 0, 0};
 
         Sensor gyroSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         if (gyroSensor != null) {
@@ -179,14 +179,14 @@ public class WalkthroughContext implements SensorEventListener {
     public void onSensorChanged(final SensorEvent event) {
         synchronized (this) {
             if (mLastEventTimestamp != 0) {
-                float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+                double dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
                 System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
-                float tmp = vGyroscope[2];
+                double tmp = vGyroscope[2];
                 vGyroscope[2] = vGyroscope[0] * -1;
                 vGyroscope[0] = tmp;
 
-                float magnitude = (float) Math.sqrt(Math.pow(vGyroscope[0], 2)
+                double magnitude = Math.sqrt(Math.pow(vGyroscope[0], 2)
                     + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
                 if (magnitude > EPSILON) {
                     vGyroscope[0] /= magnitude;
@@ -194,9 +194,9 @@ public class WalkthroughContext implements SensorEventListener {
                     vGyroscope[2] /= magnitude;
                 }
 
-                float thetaOverTwo = magnitude * dT / 2.0f;
-                float sinThetaOverTwo = (float) Math.sin(thetaOverTwo);
-                float cosThetaOverTwo = (float) Math.cos(thetaOverTwo);
+                double thetaOverTwo = magnitude * dT / 2.0f;
+                double sinThetaOverTwo = Math.sin(thetaOverTwo);
+                double cosThetaOverTwo = Math.cos(thetaOverTwo);
 
                 deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
                 deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
@@ -299,7 +299,7 @@ public class WalkthroughContext implements SensorEventListener {
 
     public void resetCameraDirection() {
         mSphericalView.resetCamera();
-        mCurrentRotation = new float[] {1, 0, 0, 0};
+        mCurrentRotation = new double[] {1, 0, 0, 0};
     }
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();

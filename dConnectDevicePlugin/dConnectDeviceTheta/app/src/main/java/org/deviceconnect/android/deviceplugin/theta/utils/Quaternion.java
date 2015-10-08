@@ -12,7 +12,7 @@ public final class Quaternion {
     private Quaternion() {
     }
 
-    public static void rotate(final float[] target, final float[] rotation, final float[] result) {
+    public static void rotate(final double[] target, final double[] rotation, final double[] result) {
         multiply(
             target[0], target[1], target[2], target[3],
             rotation[0], -1 * rotation[1], -1 * rotation[2], -1 * rotation[3],
@@ -23,13 +23,13 @@ public final class Quaternion {
             result);
     }
 
-    public static void multiply(final float[] a, final float b[], final float[] result) {
+    public static void multiply(final double[] a, final double b[], final double[] result) {
         multiply(a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], result);
     }
 
-    public static void multiply(final float a0, final float a1, final float a2, final float a3,
-                                final float b0, final float b1, final float b2, final float b3,
-                                final float[] result) {
+    public static void multiply(final double a0, final double a1, final double a2, final double a3,
+                                final double b0, final double b1, final double b2, final double b3,
+                                final double[] result) {
         // Real part:
         result[0] = a0 * b0 - (a1 * b1 + a2 * b2 + a3 * b3);
 
