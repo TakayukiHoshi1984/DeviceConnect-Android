@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Typeface;
+import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
@@ -103,10 +104,28 @@ public class Overlay {
             mPreview.setOmnidirectionalImage(image);
         }
         mPreview.setOnClickListener(new View.OnClickListener() {
+
+            private int i = 0;
+
             @Override
             public void onClick(final View v) {
-                if (mEventListener != null) {
-                    mEventListener.onClick();
+                i++;
+                Handler handler = new Handler();
+                Runnable r = new Runnable() {
+
+                    @Override
+                    public void run() {
+                        i = 0;
+                    }
+                };
+
+                if (i == 1) {
+                    handler.postDelayed(r, 300);
+                } else if (i == 2) {
+                    i = 0;
+                    if (mEventListener != null) {
+                        mEventListener.onClick();
+                    }
                 }
             }
         });
