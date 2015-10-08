@@ -177,11 +177,17 @@ public class WalkthroughContext implements SensorEventListener {
 
     @Override
     public void onSensorChanged(final SensorEvent event) {
+        if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE) {
+            return;
+        }
         synchronized (this) {
             if (mLastEventTimestamp != 0) {
                 double dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
-                System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+                vGyroscope[0] = event.values[2];
+                vGyroscope[1] = event.values[1];
+                vGyroscope[2] = event.values[0];
+
                 double tmp = vGyroscope[2];
                 vGyroscope[2] = vGyroscope[0] * -1;
                 vGyroscope[0] = tmp;

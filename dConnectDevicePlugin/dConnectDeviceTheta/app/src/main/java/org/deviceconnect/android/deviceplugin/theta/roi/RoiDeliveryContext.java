@@ -164,14 +164,14 @@ public class RoiDeliveryContext implements SensorEventListener, Overlay.EventLis
 
                 SphereRenderer.Camera camera = renderer.getCamera();
                 camera.setPosition(new Vector3D(
-                    (float) param.getCameraX(),
-                    (float) param.getCameraY() * -1,
-                    (float) param.getCameraZ()));
+                        (float) param.getCameraX(),
+                        (float) param.getCameraY() * -1,
+                        (float) param.getCameraZ()));
                 if (isUserRequest) {
                     camera.rotateByEulerAngle(
-                        (float) param.getCameraRoll(),
-                        (float) param.getCameraYaw(),
-                        (float) param.getCameraPitch() * -1);
+                            (float) param.getCameraRoll(),
+                            (float) param.getCameraYaw(),
+                            (float) param.getCameraPitch() * -1);
                 }
                 camera.setFov((float) param.getCameraFov());
                 renderer.setSphereRadius((float) param.getSphereSize());
@@ -184,91 +184,82 @@ public class RoiDeliveryContext implements SensorEventListener, Overlay.EventLis
 
     private boolean isDisplaySizeChanged(final Param newParam) {
         return newParam.isStereoMode() != mCurrentParam.isStereoMode()
-            || newParam.getImageWidth() != mCurrentParam.getImageWidth()
-            || newParam.getImageHeight() != mCurrentParam.getImageHeight();
+                || newParam.getImageWidth() != mCurrentParam.getImageWidth()
+                || newParam.getImageHeight() != mCurrentParam.getImageHeight();
     }
-
-    private float[] mRotationMatrix = new float[9];
-    private float[] mOrientation = new float[3];
-    private Float mLastPitch;
 
     @Override
     public void onSensorChanged(final SensorEvent event) {
-        if (event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
-            if (DEBUG) {
-                Log.w(TAG, "Sensor event: UNRELIABLE");
-            }
+        if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE) {
             return;
         }
-        switch (event.sensor.getType()) {
-            case Sensor.TYPE_ROTATION_VECTOR: {
-                SensorManager.getRotationMatrixFromVector(mRotationMatrix, event.values);
-                SensorManager.getOrientation(mRotationMatrix, mOrientation);
-                if (mLastPitch != null) {
-                    double thetaOverTwo = (mRotationMatrix[0] - mLastPitch) / 2.0;
-                    double sinThetaOverTwo = Math.sin(thetaOverTwo);
-                    double cosThetaOverTwo = Math.cos(thetaOverTwo);
-                    Quaternion.multiply(mCurrentRotation, new double[]{
-                            cosThetaOverTwo,
-                            sinThetaOverTwo,
-                            0,
-                            0
-                    }, mCurrentRotation);
+        synchronized (this) {
+            if (mLastEventTimestamp != 0) {
+                double dT = (event.timestamp - mLastEventTimestamp) * NS2S;
+
+                vGyroscope[0] = event.values[2];
+                vGyroscope[1] = event.values[1];
+                vGyroscope[2] = event.values[0];
+
+//            System.arraycopy(event.values, 0, vGyroscope, 0, vGyroscope.length);
+//            double tmp = vGyroscope[2];
+//            vGyroscope[2] = vGyroscope[0];
+//            vGyroscope[0] = tmp;
+
+                double magnitude = Math.sqrt(Math.pow(vGyroscope[0], 2)
+                        + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
+                if (magnitude > EPSILON) {
+                    vGyroscope[0] /= magnitude;
+                    vGyroscope[1] /= magnitude;
+                    vGyroscope[2] /= magnitude;
                 }
-                mLastPitch = mRotationMatrix[0];
 
-                if (DEBUG) {
-                    Log.d(TAG, "Last pitch: " + (mLastPitch * (180.0 / Math.PI)) + " (degrees)");
+                double thetaOverTwo = magnitude * dT / 2.0f;
+                double sinThetaOverTwo = Math.sin(thetaOverTwo);
+                double cosThetaOverTwo = Math.cos(thetaOverTwo);
+
+                deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
+                deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
+                deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
+                deltaVGyroscope[3] = cosThetaOverTwo;
+
+                qGyroscopeDelta[0] = deltaVGyroscope[3];
+                switch (mDisplayRotation) {
+                    case Surface.ROTATION_0:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[1];
+                        qGyroscopeDelta[3] = deltaVGyroscope[2];
+                        break;
+                    case Surface.ROTATION_90:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[2] * -1;
+                        qGyroscopeDelta[3] = deltaVGyroscope[1];
+                        break;
+                    case Surface.ROTATION_180:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[1] * -1;
+                        qGyroscopeDelta[3] = deltaVGyroscope[2];
+                        break;
+                    case Surface.ROTATION_270:
+                        qGyroscopeDelta[1] = deltaVGyroscope[0];
+                        qGyroscopeDelta[2] = deltaVGyroscope[2];
+                        qGyroscopeDelta[3] = deltaVGyroscope[1] * -1;
+                        break;
+                    default:
+                        break;
                 }
 
-            }   break;
+                Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
 
-            case Sensor.TYPE_GYROSCOPE: {
-                if (mLastEventTimestamp != 0) {
-                    double dT = (event.timestamp - mLastEventTimestamp) * NS2S;
-
-                    vGyroscope[0] = event.values[2];
-                    vGyroscope[1] = event.values[1];
-                    vGyroscope[2] = event.values[0];
-
-                    double magnitude = Math.sqrt(Math.pow(vGyroscope[0], 2)
-                            + Math.pow(vGyroscope[1], 2) + Math.pow(vGyroscope[2], 2));
-                    if (magnitude > EPSILON) {
-                        vGyroscope[0] /= magnitude;
-                        vGyroscope[1] /= magnitude;
-                        vGyroscope[2] /= magnitude;
-                    }
-
-                    double thetaOverTwo = magnitude * dT / 2.0f;
-                    double sinThetaOverTwo = Math.sin(thetaOverTwo);
-                    double cosThetaOverTwo = Math.cos(thetaOverTwo);
-
-                    deltaVGyroscope[0] = sinThetaOverTwo * vGyroscope[0];
-                    deltaVGyroscope[1] = sinThetaOverTwo * vGyroscope[1];
-                    deltaVGyroscope[2] = sinThetaOverTwo * vGyroscope[2];
-                    deltaVGyroscope[3] = cosThetaOverTwo;
-
-                    qGyroscopeDelta[0] = deltaVGyroscope[3];
-                    qGyroscopeDelta[1] = 0; //deltaVGyroscope[0];
-                    qGyroscopeDelta[2] = deltaVGyroscope[1];
-                    qGyroscopeDelta[3] = deltaVGyroscope[2];
-
-                    Quaternion.multiply(mCurrentRotation, qGyroscopeDelta, mCurrentRotation);
-
-                    if (mOverlay.isShow()) {
-                        SphereRenderer renderer = mOverlay.getRenderer();
-                        SphereRenderer.Camera currentCamera = renderer.getCamera();
-                        currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
-                    }
-
+                if (mOverlay.isShow()) {
+                    SphereRenderer renderer = mOverlay.getRenderer();
+                    SphereRenderer.Camera currentCamera = renderer.getCamera();
+                    currentCamera.rotate(DEFAULT_CAMERA, mCurrentRotation);
                 }
-                mLastEventTimestamp = event.timestamp;
-            }    break;
 
-            default:
-                break;
+            }
+            mLastEventTimestamp = event.timestamp;
         }
-
     }
 
     @Override
@@ -276,7 +267,7 @@ public class RoiDeliveryContext implements SensorEventListener, Overlay.EventLis
         // Nothing to do.
     }
 
-    public void startVrMode() {
+    public boolean startVrMode() {
         Log.d(TAG, "ROI startVrMode()");
 
         // Reset current rotation.
@@ -289,14 +280,7 @@ public class RoiDeliveryContext implements SensorEventListener, Overlay.EventLis
         } else {
             Log.e(TAG, "Failed to start VR mode: Default GYROSCOPE sensor is NOT found.");
         }
-
-        Sensor rotationSensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        if (rotationSensor != null) {
-            Log.d(TAG, "Default rotation sensor: " + rotationSensor.getName());
-//            mSensorMgr.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
-        } else {
-            Log.e(TAG, "Failed to start VR mode: Default ROTATION_VECTOR sensor is NOT found.");
-        }
+        return false;
     }
 
     private void stopVrMode() {
