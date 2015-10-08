@@ -13,7 +13,10 @@ import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
+
+import org.deviceconnect.android.deviceplugin.theta.R;
 
 public class Overlay {
 
@@ -26,8 +29,9 @@ public class Overlay {
     /** プレビュー画面. */
     private WalkthroughView mPreview;
 
-    /** 表示用のテキスト. */
-    private TextView mTextView;
+    private Button mZoomInBtn;
+
+    private Button mZoomOutBtn;
 
     /**
      * 画面回転のイベントを受け付けるレシーバー.
@@ -41,7 +45,6 @@ public class Overlay {
             String action = intent.getAction();
             if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
                 updatePosition(mPreview);
-                updatePosition(mTextView);
             }
         }
     };
@@ -119,7 +122,7 @@ public class Overlay {
         });
         mPreview.setScreenSize(size.x, size.y);
         int pt = (int) (5 * getScaledDensity());
-        WindowManager.LayoutParams l = new WindowManager.LayoutParams(
+        final WindowManager.LayoutParams l = new WindowManager.LayoutParams(
             size.x, //pt,
             size.y, //pt,
             WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
@@ -132,28 +135,55 @@ public class Overlay {
         l.y = -size.y / 2;
         mWinMgr.addView(mPreview, l);
 
-        mTextView = new TextView(mContext);
-        mTextView.setVisibility(View.GONE);
-//        mTextView.setText("WALKTHROUGH");
-        mTextView.setTextColor(Color.RED);
-        mTextView.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        mTextView.setClickable(true);
-        mTextView.setOnClickListener(new View.OnClickListener() {
+        mZoomOutBtn = new Button(mContext);
+        mZoomOutBtn.setBackgroundResource(R.drawable.button_zoom_out);
+        mZoomOutBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View v) {
-                hide();
+                SphereRenderer.Camera camera = mPreview.getRenderer().getCamera();
+                double fov = camera.getFov();
+
+                double nextFov = fov + 5.0;
+                if (nextFov <= 130.0) {
+                    camera.setFov(nextFov);
+                }
             }
         });
-        WindowManager.LayoutParams l2 = new WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT);
-        l2.x = -size.x / 2;
-        l2.y = -size.y / 2;
-        mWinMgr.addView(mTextView, l2);
+        final WindowManager.LayoutParams l4 = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT);
+        l4.x = size.x / 2 - 50;
+        l4.y = size.y / 2;
+        mWinMgr.addView(mZoomOutBtn, l4);
+
+        mZoomInBtn = new Button(mContext);
+        mZoomInBtn.setBackgroundResource(R.drawable.button_zoom_in);
+        mZoomInBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(final View v) {
+                SphereRenderer.Camera camera = mPreview.getRenderer().getCamera();
+                double fov = camera.getFov();
+
+                double nextFov = fov - 5.0;
+                if (nextFov >= 40.0) {
+                    camera.setFov(nextFov);
+                }
+            }
+        });
+        final WindowManager.LayoutParams l3 = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT);
+        l3.x = size.x / 2 - 50;
+        l3.y = (size.y / 2) - 280;
+        mWinMgr.addView(mZoomInBtn, l3);
 
         mIsAttachedView = true;
 
@@ -170,9 +200,13 @@ public class Overlay {
             mWinMgr.removeView(mPreview);
             mPreview = null;
         }
-        if (mTextView != null) {
-            mWinMgr.removeView(mTextView);
-            mTextView = null;
+        if (mZoomInBtn != null) {
+            mWinMgr.removeView(mZoomInBtn);
+            mZoomInBtn = null;
+        }
+        if (mZoomOutBtn != null) {
+            mWinMgr.removeView(mZoomOutBtn);
+            mZoomOutBtn = null;
         }
         mIsAttachedView = false;
 //        mContext.unregisterReceiver(mOrientReceiver);
