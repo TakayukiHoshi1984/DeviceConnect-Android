@@ -354,6 +354,10 @@ public class SphereRenderer implements GLSurfaceView.Renderer {
             setRightDirection(0, 0, 1);
         }
 
+        public double getFov() {
+            return mFovDegree;
+        }
+
         public double[] getPosition() {
             return mPosition;
         }
@@ -453,7 +457,7 @@ public class SphereRenderer implements GLSurfaceView.Renderer {
             );
         }
 
-        public void setFov(float degree) {
+        public void setFov(double degree) {
             mFovDegree = degree;
         }
 
