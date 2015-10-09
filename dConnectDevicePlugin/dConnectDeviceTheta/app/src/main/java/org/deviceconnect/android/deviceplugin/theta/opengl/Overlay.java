@@ -4,10 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
-import android.graphics.Typeface;
 import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -15,7 +13,6 @@ import android.view.Display;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.TextView;
 
 import org.deviceconnect.android.deviceplugin.theta.R;
 
@@ -88,6 +85,12 @@ public class Overlay {
 
     private boolean mIsAttachedView;
 
+    private boolean mShowZoomButton;
+
+    public void setShowZoomButton(final boolean isShow) {
+        mShowZoomButton = isShow;
+    }
+
     /**
      * Overlayを表示する.
      */
@@ -155,6 +158,9 @@ public class Overlay {
         mWinMgr.addView(mPreview, l);
 
         mZoomOutBtn = new Button(mContext);
+        if (!mShowZoomButton) {
+            mZoomOutBtn.setVisibility(View.GONE);
+        }
         mZoomOutBtn.setBackgroundResource(R.drawable.button_zoom_out);
         mZoomOutBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -176,10 +182,13 @@ public class Overlay {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
         l4.x = size.x / 2 - 50;
-        l4.y = size.y / 2;
+        l4.y = 80;
         mWinMgr.addView(mZoomOutBtn, l4);
 
         mZoomInBtn = new Button(mContext);
+        if (!mShowZoomButton) {
+            mZoomInBtn.setVisibility(View.GONE);
+        }
         mZoomInBtn.setBackgroundResource(R.drawable.button_zoom_in);
         mZoomInBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -201,7 +210,7 @@ public class Overlay {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
         l3.x = size.x / 2 - 50;
-        l3.y = (size.y / 2) - 280;
+        l3.y = -40;
         mWinMgr.addView(mZoomInBtn, l3);
 
         mIsAttachedView = true;

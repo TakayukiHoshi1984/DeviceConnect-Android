@@ -152,6 +152,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                 final Integer sourceWidth = getSourceWidth(request);
                 final Integer sourceHeight = getSourceHeight(request);
                 final Double fov = getFOV(request);
+                final Boolean showZoomButton = parseBoolean(request, "showZoomButton");
                 if (sourceWidth != null && sourceWidth < 0) {
                     MessageUtils.setInvalidRequestParameterError(response, "sourceWidth is negative.");
                     return;
@@ -177,6 +178,7 @@ public class ThetaOmnidirectionalImageProfile extends OmnidirectionalImageProfil
                             if (mOverlay.isShow()) {
                                 mOverlay.hide();
                             }
+                            mOverlay.setShowZoomButton(showZoomButton != null ? showZoomButton : false);
                             mOverlay.show(data);
 
                             synchronized (lockObj) {
