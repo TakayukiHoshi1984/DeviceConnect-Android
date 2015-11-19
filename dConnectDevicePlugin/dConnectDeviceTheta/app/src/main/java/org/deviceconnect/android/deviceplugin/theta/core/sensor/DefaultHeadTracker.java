@@ -170,7 +170,8 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     float[] mI = new float[16];
     boolean mInitAccelSensor = false;
     boolean mInitGeoSensor = false;
-    Quaternion mTmpQ;
+    boolean mInitAccelGeoQuaternion = false;
+    Quaternion mAccelGeoQuaternion;
 
     void onAccelMagSensorChanged(final SensorEvent event) {
         final float alpha = 0.93f;
@@ -212,14 +213,15 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             delta[2] = mAttitude[1];
             Quaternion qAtitude = new Quaternion(1, new Vector3D(delta));
 
-            if (mTmpQ == null) {
-                mTmpQ = new Quaternion(1, new Vector3D(delta)).conjugate();
+            if (!mInitAccelGeoQuaternion) {
+                mAccelGeoQuaternion = new Quaternion(1, new Vector3D(delta)).conjugate();
+                mInitAccelGeoQuaternion = true;
             }
             Quaternion deltaQ = new Quaternion(1, new Vector3D(0, 0, 0));
             float[] tmpVec = new float[3];
-            tmpVec[0] = mTmpQ.imaginary().x() + qAtitude.imaginary().x();
-            tmpVec[1] = mTmpQ.imaginary().y() + qAtitude.imaginary().y();
-            tmpVec[2] = mTmpQ.imaginary().z() + qAtitude.imaginary().z();
+            tmpVec[0] = mAccelGeoQuaternion.imaginary().x() + qAtitude.imaginary().x();
+            tmpVec[1] = mAccelGeoQuaternion.imaginary().y() + qAtitude.imaginary().y();
+            tmpVec[2] = mAccelGeoQuaternion.imaginary().z() + qAtitude.imaginary().z();
 
             deltaQ = deltaQ.multiply(new Quaternion(1, new Vector3D(tmpVec)));
 
@@ -234,6 +236,9 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     @Override
     public void reset() {
         mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+        mInitGeoSensor = false;
+        mInitAccelSensor = false;
+        mInitAccelGeoQuaternion = false;
     }
 
 }
