@@ -26,11 +26,11 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     private float[] mCurrentGyroscope = new float[3];
 
-    private boolean mInitFlag = false;
-
     private Logger mLogger = Logger.getLogger("theta.dplugin");
 
     private final WindowManager mWindowMgr;
+
+    private int mAccCnt = 0;
 
     public DefaultHeadTracker(final Context context) {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -48,10 +48,27 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             return;
         }
         mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME);
-        mInitFlag = false;
         for (int i = 0; i < mCurrentGyroscope.length; i++) {
             mCurrentGyroscope[i] = 0.0f;
         }
+
+        sensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        if (sensor == null) {
+            mSensorMgr.unregisterListener(this);
+            mInitAccelSensor = false;
+            mLogger.warning("Failed to start: any sensor is NOT found.");
+            return;
+        }
+        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
+
+        sensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        if (sensor == null) {
+            mSensorMgr.unregisterListener(this);
+            mInitGeoSensor = false;
+            mLogger.warning("Failed to start: any sensor is NOT found.");
+            return;
+        }
+        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
     }
 
     @Override
@@ -66,6 +83,20 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     @Override
     public void onSensorChanged(final SensorEvent event) {
+        switch (event.sensor.getType()) {
+            case Sensor.TYPE_GYROSCOPE:
+                onGyroSensorChanged(event);
+                break;
+            case Sensor.TYPE_ACCELEROMETER:
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                onAccelMagSensorChanged(event);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void onGyroSensorChanged(final SensorEvent event) {
         if (mLastEventTimestamp != 0) {
             float[] values = new float[3];
             int displayOrientation = mWindowMgr.getDefaultDisplay().getRotation();
@@ -100,18 +131,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             Quaternion qGyroscopeDelta;
             float dT = (event.timestamp - mLastEventTimestamp) * NS2S;
 
-            final float alpha = 0.8f;
-            if (!mInitFlag) {
-                System.arraycopy(values, 0, vGyroscope, 0, vGyroscope.length);
-                System.arraycopy(values, 0, mCurrentGyroscope, 0, values.length);
-                mInitFlag = true;
-            } else {
-                vGyroscope[0] = alpha * mCurrentGyroscope[0] + (1.0f - alpha) * values[0];
-                vGyroscope[1] = alpha * mCurrentGyroscope[1] + (1.0f - alpha) * values[1];
-                vGyroscope[2] = alpha * mCurrentGyroscope[2] + (1.0f - alpha) * values[2];
-                System.arraycopy(vGyroscope, 0, mCurrentGyroscope, 0, vGyroscope.length);
-            }
-
+            System.arraycopy(values, 0, vGyroscope, 0, vGyroscope.length);
             float tmp = vGyroscope[2];
             vGyroscope[2] = vGyroscope[0] * -1;
             vGyroscope[0] = tmp;
@@ -138,6 +158,77 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             notifyHeadRotation(mCurrentRotation);
         }
         mLastEventTimestamp = event.timestamp;
+    }
+
+    float[] mGeomagnetic = new float[3];
+    float[] mGravity = new float[3];
+    float[] mCurrentgeomagnetic = new float[3];
+    float[] mCurrentgravity = new  float[3];
+    float[] mAttitude = new float[3];
+    float[] mInR = new float[16];
+    float[] mOutR = new float[16];
+    float[] mI = new float[16];
+    boolean mInitAccelSensor = false;
+    boolean mInitGeoSensor = false;
+    Quaternion mTmpQ;
+
+    void onAccelMagSensorChanged(final SensorEvent event) {
+        final float alpha = 0.93f;
+        switch (event.sensor.getType()) {
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                if (!mInitGeoSensor) {
+                    mCurrentgeomagnetic = event.values.clone();
+                    mInitGeoSensor = true;
+                }
+                mGeomagnetic = event.values.clone();
+                break;
+            case Sensor.TYPE_ACCELEROMETER:
+                if (!mInitAccelSensor) {
+                    mCurrentgravity = event.values.clone();
+                    mInitAccelSensor = true;
+                }
+                mGravity = event.values.clone();
+                break;
+            default:
+                return;
+        }
+
+        if (mInitAccelSensor && mInitGeoSensor) {
+
+            mCurrentgeomagnetic[0] = alpha * mCurrentgeomagnetic[0] + (1.0f - alpha) * mGeomagnetic[0];
+            mCurrentgeomagnetic[1] = alpha * mCurrentgeomagnetic[1] + (1.0f - alpha) * mGeomagnetic[1];
+            mCurrentgeomagnetic[2] = alpha * mCurrentgeomagnetic[2] + (1.0f - alpha) * mGeomagnetic[2];
+            mCurrentgravity[0] = alpha * mCurrentgravity[0] + (1.0f - alpha) * mGravity[0];
+            mCurrentgravity[1] = alpha * mCurrentgravity[1] + (1.0f - alpha) * mGravity[1];
+            mCurrentgravity[2] = alpha * mCurrentgravity[2] + (1.0f - alpha) * mGravity[2];
+
+            SensorManager.getRotationMatrix(mInR, mI, mCurrentgravity, mCurrentgeomagnetic);
+            SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mOutR);
+            SensorManager.getOrientation(mOutR, mAttitude);
+
+            float[] delta = new float[3];
+            delta[0] = mAttitude[2] * -1;
+            delta[1] = (mAttitude[0] - (float) (Math.PI / 2f)) * -1;
+            delta[2] = mAttitude[1];
+            Quaternion qAtitude = new Quaternion(1, new Vector3D(delta));
+
+            if (mTmpQ == null) {
+                mTmpQ = new Quaternion(1, new Vector3D(delta)).conjugate();
+            }
+            Quaternion deltaQ = new Quaternion(1, new Vector3D(0, 0, 0));
+            float[] tmpVec = new float[3];
+            tmpVec[0] = mTmpQ.imaginary().x() + qAtitude.imaginary().x();
+            tmpVec[1] = mTmpQ.imaginary().y() + qAtitude.imaginary().y();
+            tmpVec[2] = mTmpQ.imaginary().z() + qAtitude.imaginary().z();
+
+            deltaQ = deltaQ.multiply(new Quaternion(1, new Vector3D(tmpVec)));
+
+            if (mAccCnt % 8 == 0) {
+                mCurrentRotation = deltaQ;
+                notifyHeadRotation(mCurrentRotation);
+            }
+            mAccCnt++;
+        }
     }
 
     @Override
