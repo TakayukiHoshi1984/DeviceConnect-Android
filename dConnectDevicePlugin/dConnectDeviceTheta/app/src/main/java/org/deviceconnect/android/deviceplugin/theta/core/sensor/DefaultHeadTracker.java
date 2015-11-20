@@ -59,7 +59,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             mLogger.warning("Failed to start: any sensor is NOT found.");
             return;
         }
-        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
+        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME);
 
         sensor = mSensorMgr.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         if (sensor == null) {
@@ -68,7 +68,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
             mLogger.warning("Failed to start: any sensor is NOT found.");
             return;
         }
-        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
+        mSensorMgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
@@ -162,8 +162,6 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     float[] mGeomagnetic = new float[3];
     float[] mGravity = new float[3];
-    float[] mCurrentgeomagnetic = new float[3];
-    float[] mCurrentgravity = new  float[3];
     float[] mAttitude = new float[3];
     float[] mInR = new float[16];
     float[] mOutR = new float[16];
@@ -173,37 +171,79 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     boolean mInitAccelGeoQuaternion = false;
     Quaternion mAccelGeoQuaternion;
 
+    static final int GEO_COUNT = 25;
+    float[][] mGeoData = new float[GEO_COUNT][3];
+    int mGeoListCount = 0;
+    static final int ACC_COUNT = 25;
+    float[][] mAccData = new float[ACC_COUNT][3];
+    int mAccListCount = 0;
+
     void onAccelMagSensorChanged(final SensorEvent event) {
-        final float alpha = 0.93f;
         switch (event.sensor.getType()) {
             case Sensor.TYPE_MAGNETIC_FIELD:
-                if (!mInitGeoSensor) {
-                    mCurrentgeomagnetic = event.values.clone();
-                    mInitGeoSensor = true;
+                for (int i = 0; i < GEO_COUNT - 1; i++) {
+                    mGeoData[i][0] = mGeoData[i + 1][0];
+                    mGeoData[i][1] = mGeoData[i + 1][1];
+                    mGeoData[i][2] = mGeoData[i + 1][2];
                 }
-                mGeomagnetic = event.values.clone();
+                mGeoData[GEO_COUNT - 1] = event.values.clone();
+
+                if (!mInitGeoSensor) {
+                    mGeoListCount++;
+                    if (mGeoListCount >= GEO_COUNT) {
+                        mInitGeoSensor = true;
+                    } else {
+                        return;
+                    }
+                }
+
+                mGeomagnetic[0] = 0.0f;
+                mGeomagnetic[1] = 0.0f;
+                mGeomagnetic[2] = 0.0f;
+                for (int i = 0; i < GEO_COUNT; i++) {
+                    mGeomagnetic[0] += mGeoData[i][0];
+                    mGeomagnetic[1] += mGeoData[i][1];
+                    mGeomagnetic[2] += mGeoData[i][2];
+                }
+                mGeomagnetic[0] /= GEO_COUNT;
+                mGeomagnetic[1] /= GEO_COUNT;
+                mGeomagnetic[2] /= GEO_COUNT;
                 break;
             case Sensor.TYPE_ACCELEROMETER:
-                if (!mInitAccelSensor) {
-                    mCurrentgravity = event.values.clone();
-                    mInitAccelSensor = true;
+                for (int i = 0; i < ACC_COUNT - 1; i++) {
+                    mAccData[i][0] = mAccData[i + 1][0];
+                    mAccData[i][1] = mAccData[i + 1][1];
+                    mAccData[i][2] = mAccData[i + 1][2];
                 }
-                mGravity = event.values.clone();
+                mAccData[GEO_COUNT - 1] = event.values.clone();
+
+                if (!mInitAccelSensor) {
+                    mAccListCount++;
+                    if (mAccListCount >= ACC_COUNT) {
+                        mInitAccelSensor = true;
+                    } else {
+                        return;
+                    }
+                }
+
+                mGravity[0] = 0.0f;
+                mGravity[1] = 0.0f;
+                mGravity[2] = 0.0f;
+                for (int i = 0; i < ACC_COUNT; i++) {
+                    mGravity[0] += mAccData[i][0];
+                    mGravity[1] += mAccData[i][1];
+                    mGravity[2] += mAccData[i][2];
+                }
+                mGravity[0] /= ACC_COUNT;
+                mGravity[1] /= ACC_COUNT;
+                mGravity[2] /= ACC_COUNT;
                 break;
             default:
                 return;
         }
 
         if (mInitAccelSensor && mInitGeoSensor) {
-
-            mCurrentgeomagnetic[0] = alpha * mCurrentgeomagnetic[0] + (1.0f - alpha) * mGeomagnetic[0];
-            mCurrentgeomagnetic[1] = alpha * mCurrentgeomagnetic[1] + (1.0f - alpha) * mGeomagnetic[1];
-            mCurrentgeomagnetic[2] = alpha * mCurrentgeomagnetic[2] + (1.0f - alpha) * mGeomagnetic[2];
-            mCurrentgravity[0] = alpha * mCurrentgravity[0] + (1.0f - alpha) * mGravity[0];
-            mCurrentgravity[1] = alpha * mCurrentgravity[1] + (1.0f - alpha) * mGravity[1];
-            mCurrentgravity[2] = alpha * mCurrentgravity[2] + (1.0f - alpha) * mGravity[2];
-
-            SensorManager.getRotationMatrix(mInR, mI, mCurrentgravity, mCurrentgeomagnetic);
+            SensorManager.getRotationMatrix(mInR, mI, mGravity, mGeomagnetic);
             SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mOutR);
             SensorManager.getOrientation(mOutR, mAttitude);
 
@@ -225,7 +265,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
             deltaQ = deltaQ.multiply(new Quaternion(1, new Vector3D(tmpVec)));
 
-            if (mAccCnt % 8 == 0) {
+            if (mAccCnt % 6 == 0) {
                 mCurrentRotation = deltaQ;
                 notifyHeadRotation(mCurrentRotation);
             }
@@ -239,6 +279,8 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
         mInitGeoSensor = false;
         mInitAccelSensor = false;
         mInitAccelGeoQuaternion = false;
+        mGeoListCount = 0;
+        mAccListCount = 0;
     }
 
 }
