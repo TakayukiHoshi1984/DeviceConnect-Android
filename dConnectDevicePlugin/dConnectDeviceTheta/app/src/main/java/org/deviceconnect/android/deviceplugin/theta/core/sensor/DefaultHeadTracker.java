@@ -32,6 +32,10 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     private int mAccCnt = 0;
 
+    private boolean mInitParameter = false;
+
+    private float[] mInitAngle = new float[3];
+
     public DefaultHeadTracker(final Context context) {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         mWindowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -171,12 +175,13 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     boolean mInitAccelGeoQuaternion = false;
     Quaternion mAccelGeoQuaternion;
 
-    static final int GEO_COUNT = 25;
+    static final int GEO_COUNT = 15;
     float[][] mGeoData = new float[GEO_COUNT][3];
     int mGeoListCount = 0;
-    static final int ACC_COUNT = 25;
+    static final int ACC_COUNT = 15;
     float[][] mAccData = new float[ACC_COUNT][3];
     int mAccListCount = 0;
+    float degree[] = new float[3];
 
     void onAccelMagSensorChanged(final SensorEvent event) {
         switch (event.sensor.getType()) {
@@ -244,12 +249,54 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
         if (mInitAccelSensor && mInitGeoSensor) {
             SensorManager.getRotationMatrix(mInR, mI, mGravity, mGeomagnetic);
-            SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mOutR);
+            int displayOrientation = mWindowMgr.getDefaultDisplay().getRotation();
+            switch (displayOrientation) {
+                case Surface.ROTATION_0:
+                    SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mOutR);
+                    break;
+                case Surface.ROTATION_90:
+                    SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_Z, SensorManager.AXIS_X, mOutR);
+                    break;
+                case Surface.ROTATION_180:
+                    float[] outR2 = new float[16];
+                    SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_Z, SensorManager.AXIS_X, outR2);
+                    SensorManager.remapCoordinateSystem(outR2, SensorManager.AXIS_Z, SensorManager.AXIS_X, mOutR);
+                    break;
+                case Surface.ROTATION_270:
+                    SensorManager.remapCoordinateSystem(mInR, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, mOutR);
+                    break;
+                default:
+                    break;
+            }
             SensorManager.getOrientation(mOutR, mAttitude);
+
+            if (!mInitParameter) {
+                for (int i = 0; i < 3; i++) {
+                    mInitAngle[i] = (float) (mAttitude[i] * 180 / Math.PI);
+                }
+                mInitParameter = true;
+            }
+
+            for (int i = 0; i < 3; i++) {
+                degree[i] = (float) (mAttitude[i] * 180 / Math.PI);
+            }
+
+            boolean adjustFlag = true;
+            if (degree[0] < mInitAngle[0] - 120.0f || degree[0] > mInitAngle[0] + 120.0f) {
+                adjustFlag = false;
+            }
+
+            if (degree[1] < mInitAngle[1] - 15.0f || degree[1] > mInitAngle[1] + 15.0f) {
+                adjustFlag = false;
+            }
+
+            if (degree[2] < mInitAngle[2] - 15.0f || degree[2] > mInitAngle[2] + 15.0f) {
+                adjustFlag = false;
+            }
 
             float[] delta = new float[3];
             delta[0] = mAttitude[2] * -1;
-            delta[1] = (mAttitude[0] - (float) (Math.PI / 2f)) * -1;
+            delta[1] = mAttitude[0] * -1;
             delta[2] = mAttitude[1];
             Quaternion qAtitude = new Quaternion(1, new Vector3D(delta));
 
@@ -265,7 +312,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
             deltaQ = deltaQ.multiply(new Quaternion(1, new Vector3D(tmpVec)));
 
-            if (mAccCnt % 6 == 0) {
+            if (mAccCnt % 4 == 0 && adjustFlag) {
                 mCurrentRotation = deltaQ;
                 notifyHeadRotation(mCurrentRotation);
             }
@@ -281,6 +328,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
         mInitAccelGeoQuaternion = false;
         mGeoListCount = 0;
         mAccListCount = 0;
+        mInitParameter = false;
     }
 
 }
