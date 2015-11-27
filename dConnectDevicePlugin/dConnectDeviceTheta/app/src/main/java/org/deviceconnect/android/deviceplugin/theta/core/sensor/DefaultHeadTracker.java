@@ -36,6 +36,38 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     private float[] mInitAngle = new float[3];
 
+    boolean mInitGyroSensor = false;
+    boolean mInitAccelSensor = false;
+    boolean mInitGeoSensor = false;
+    boolean mInitAccelGeoQuaternion = false;
+
+    static final int IDX_GYRO = 0;
+    static final int IDX_GEO = 1;
+    static final int IDX_ACC = 2;
+
+    static final int GYRO_COUNT = 20;
+    static final int GEO_COUNT = 20;
+    static final int ACC_COUNT = 20;
+
+    int[] mListCount = {0, 0, 0};
+
+    float[][] mGyroData = new float[GYRO_COUNT][3];
+    float[][] mGeoData = new float[GEO_COUNT][3];
+    float[][] mAccData = new float[ACC_COUNT][3];
+
+    float[] mGeomagnetic = new float[3];
+    float[] mGravity = new float[3];
+    float[] mAttitude = new float[3];
+
+    float[] mInR = new float[16];
+    float[] mOutR = new float[16];
+    float[] mI = new float[16];
+
+    Quaternion mAccelGeoQuaternion;
+
+    float degree[] = new float[3];
+
+
     public DefaultHeadTracker(final Context context) {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         mWindowMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -101,29 +133,59 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     }
 
     void onGyroSensorChanged(final SensorEvent event) {
+
+        for (int i = 0; i < GYRO_COUNT - 1; i++) {
+            mGyroData[i][0] = mGyroData[i + 1][0];
+            mGyroData[i][1] = mGyroData[i + 1][1];
+            mGyroData[i][2] = mGyroData[i + 1][2];
+        }
+        mGyroData[GYRO_COUNT - 1] = event.values.clone();
+
+        if (!mInitGyroSensor) {
+            mListCount[IDX_GYRO]++;
+            if (mListCount[IDX_GYRO] >= GYRO_COUNT) {
+                mInitGyroSensor = true;
+            } else {
+                return;
+            }
+        }
+
+        float[] mGyro = new float[3];
+        mGyro[0] = 0.0f;
+        mGyro[1] = 0.0f;
+        mGyro[2] = 0.0f;
+        for (int i = 0; i < GEO_COUNT; i++) {
+            mGyro[0] += mGyroData[i][0];
+            mGyro[1] += mGyroData[i][1];
+            mGyro[2] += mGyroData[i][2];
+        }
+        mGyro[0] /= GYRO_COUNT;
+        mGyro[1] /= GYRO_COUNT;
+        mGyro[2] /= GYRO_COUNT;
+
         if (mLastEventTimestamp != 0) {
             float[] values = new float[3];
             int displayOrientation = mWindowMgr.getDefaultDisplay().getRotation();
             switch (displayOrientation) {
                 case Surface.ROTATION_0:
-                    values[0] = event.values[0];
-                    values[1] = event.values[1];
-                    values[2] = event.values[2];
+                    values[0] = mGyro[0];
+                    values[1] = mGyro[1];
+                    values[2] = mGyro[2];
                     break;
                 case Surface.ROTATION_90:
-                    values[0] = event.values[1] * -1;
-                    values[1] = event.values[0];
-                    values[2] = event.values[2];
+                    values[0] = mGyro[1] * -1;
+                    values[1] = mGyro[0];
+                    values[2] = mGyro[2];
                     break;
                 case Surface.ROTATION_180:
-                    values[0] = event.values[0] * -1;
-                    values[1] = event.values[1] * -1;
-                    values[2] = event.values[2];
+                    values[0] = mGyro[0] * -1;
+                    values[1] = mGyro[1] * -1;
+                    values[2] = mGyro[2];
                     break;
                 case Surface.ROTATION_270:
-                    values[0] = event.values[1];
-                    values[1] = event.values[0] * -1;
-                    values[2] = event.values[2];
+                    values[0] = mGyro[1];
+                    values[1] = mGyro[0] * -1;
+                    values[2] = mGyro[2];
                     break;
                 default:
                     break;
@@ -164,25 +226,6 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
         mLastEventTimestamp = event.timestamp;
     }
 
-    float[] mGeomagnetic = new float[3];
-    float[] mGravity = new float[3];
-    float[] mAttitude = new float[3];
-    float[] mInR = new float[16];
-    float[] mOutR = new float[16];
-    float[] mI = new float[16];
-    boolean mInitAccelSensor = false;
-    boolean mInitGeoSensor = false;
-    boolean mInitAccelGeoQuaternion = false;
-    Quaternion mAccelGeoQuaternion;
-
-    static final int GEO_COUNT = 15;
-    float[][] mGeoData = new float[GEO_COUNT][3];
-    int mGeoListCount = 0;
-    static final int ACC_COUNT = 15;
-    float[][] mAccData = new float[ACC_COUNT][3];
-    int mAccListCount = 0;
-    float degree[] = new float[3];
-
     void onAccelMagSensorChanged(final SensorEvent event) {
         switch (event.sensor.getType()) {
             case Sensor.TYPE_MAGNETIC_FIELD:
@@ -194,8 +237,8 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
                 mGeoData[GEO_COUNT - 1] = event.values.clone();
 
                 if (!mInitGeoSensor) {
-                    mGeoListCount++;
-                    if (mGeoListCount >= GEO_COUNT) {
+                    mListCount[IDX_GEO]++;
+                    if (mListCount[IDX_GEO] >= GEO_COUNT) {
                         mInitGeoSensor = true;
                     } else {
                         return;
@@ -223,8 +266,8 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
                 mAccData[GEO_COUNT - 1] = event.values.clone();
 
                 if (!mInitAccelSensor) {
-                    mAccListCount++;
-                    if (mAccListCount >= ACC_COUNT) {
+                    mListCount[IDX_ACC]++;
+                    if (mListCount[IDX_ACC] >= ACC_COUNT) {
                         mInitAccelSensor = true;
                     } else {
                         return;
@@ -286,11 +329,11 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
                 adjustFlag = false;
             }
 
-            if (degree[1] < mInitAngle[1] - 15.0f || degree[1] > mInitAngle[1] + 15.0f) {
+            if (degree[1] < mInitAngle[1] - 17.5f || degree[1] > mInitAngle[1] + 17.5f) {
                 adjustFlag = false;
             }
 
-            if (degree[2] < mInitAngle[2] - 15.0f || degree[2] > mInitAngle[2] + 15.0f) {
+            if (degree[2] < mInitAngle[2] - 25.0f || degree[2] > mInitAngle[2] + 25.0f) {
                 adjustFlag = false;
             }
 
@@ -323,11 +366,13 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
     @Override
     public void reset() {
         mCurrentRotation = new Quaternion(1, new Vector3D(0, 0, 0));
+        mInitGyroSensor = false;
         mInitGeoSensor = false;
         mInitAccelSensor = false;
         mInitAccelGeoQuaternion = false;
-        mGeoListCount = 0;
-        mAccListCount = 0;
+        mListCount[IDX_GYRO] = 0;
+        mListCount[IDX_GEO] = 0;
+        mListCount[IDX_ACC] = 0;
         mInitParameter = false;
     }
 
