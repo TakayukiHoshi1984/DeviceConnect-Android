@@ -65,8 +65,6 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
 
     Quaternion mAccelGeoQuaternion;
 
-    float degree[] = new float[3];
-
 
     public DefaultHeadTracker(final Context context) {
         mSensorMgr = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -320,6 +318,7 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
                 mInitParameter = true;
             }
 
+            float[] degree = new float[3];
             for (int i = 0; i < 3; i++) {
                 degree[i] = (float) (mAttitude[i] * 180 / Math.PI);
             }
@@ -329,11 +328,11 @@ public class DefaultHeadTracker extends AbstractHeadTracker implements SensorEve
                 adjustFlag = false;
             }
 
-            if (degree[1] < mInitAngle[1] - 17.5f || degree[1] > mInitAngle[1] + 17.5f) {
+            if (degree[1] < mInitAngle[1] - 15.0f || degree[1] > mInitAngle[1] + 15.0f) {
                 adjustFlag = false;
             }
 
-            if (degree[2] < mInitAngle[2] - 25.0f || degree[2] > mInitAngle[2] + 25.0f) {
+            if (degree[2] < mInitAngle[2] - 15.0f || degree[2] > mInitAngle[2] + 15.0f) {
                 adjustFlag = false;
             }
 
