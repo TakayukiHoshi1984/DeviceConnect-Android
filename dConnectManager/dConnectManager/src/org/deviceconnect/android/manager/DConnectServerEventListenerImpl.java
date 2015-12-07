@@ -89,6 +89,12 @@ public class DConnectServerEventListenerImpl implements
     /** ロックオブジェクト. */
     private final Object mLockObj = new Object();
 
+    /** 計測試験用KEY(manager_request_time). */
+    private static final String PARAM_MGR_REQUEST_TIME = "mgr_request_time";
+
+    /** 計測試験用KEY(manager_response_time). */
+    private static final String PARAM_MGR_RESPONSE_TIME = "mgr_response_time";
+
     /**
      * コンストラクタ.
      * @param context このクラスが属するコンテキスト
@@ -204,6 +210,7 @@ public class DConnectServerEventListenerImpl implements
                 intent.putExtra(key, uri.getQueryParameter(key));
             }
         }
+        intent.putExtra(PARAM_MGR_REQUEST_TIME, String.valueOf(System.currentTimeMillis()));
 
         // アプリケーションのオリジン解析
         parseOriginHeader(request, intent);
@@ -575,6 +582,7 @@ public class DConnectServerEventListenerImpl implements
      */
     private void convertResponse(final HttpResponse response, final String prof,
             final String att, final Intent resp) throws JSONException, UnsupportedEncodingException {
+        resp.putExtra(PARAM_MGR_RESPONSE_TIME, String.valueOf(System.currentTimeMillis()));
         if (DConnectFilesProfile.PROFILE_NAME.equals(prof)) {
             byte[] data = resp.getByteArrayExtra(DConnectFilesProfile.PARAM_DATA);
             if (data == null) {

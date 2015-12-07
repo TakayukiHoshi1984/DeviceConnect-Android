@@ -26,6 +26,7 @@ import org.deviceconnect.android.deviceplugin.test.profile.TestSettingsProfile;
 import org.deviceconnect.android.deviceplugin.test.profile.TestSystemProfile;
 import org.deviceconnect.android.deviceplugin.test.profile.TestVibrationProfile;
 import org.deviceconnect.android.deviceplugin.test.profile.unique.TestJSONConversionProfile;
+import org.deviceconnect.android.deviceplugin.test.profile.unique.TestMeasurementProfile;
 import org.deviceconnect.android.deviceplugin.test.profile.unique.TestUniqueProfile;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.event.cache.db.DBCacheController;
@@ -71,6 +72,7 @@ public class DeviceTestService extends DConnectMessageService {
         // 独自プロファイル
         addProfile(new TestUniqueProfile());
         addProfile(new TestJSONConversionProfile());
+        addProfile(new TestMeasurementProfile());
     }
 
     @Override

@@ -36,6 +36,9 @@ public class DConnectService extends DConnectMessageService {
     /** 通信相手がWebアプリケーションであることを示す定数. */
     public static final String INNER_APP_TYPE_WEB = "web";
 
+    /** 計測試験用KEY(manager_event_time). */
+    private static final String PARAM_MGR_EVENT_TIME = "mgr_event_time";
+
     /** RESTfulサーバ. */
     private DConnectServer mRESTfulServer;
 
@@ -77,6 +80,7 @@ public class DConnectService extends DConnectMessageService {
 
     @Override
     public void sendEvent(final String receiver, final Intent event) {
+        event.putExtra(PARAM_MGR_EVENT_TIME, String.valueOf(System.currentTimeMillis()));
         if (receiver == null || receiver.length() <= 0) {
             String key = event.getStringExtra(DConnectMessage.EXTRA_SESSION_KEY);
             try {
