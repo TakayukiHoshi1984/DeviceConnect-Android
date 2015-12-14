@@ -62,6 +62,21 @@ public class TestMeasurementProfile extends DConnectProfile {
     /**
      * Parameter: {@value}.
      */
+    public static final String PARAM_MGR_REQUEST_NANOTIME = "mgr_request_nanotime";
+
+    /**
+     * Parameter: {@value}.
+     */
+    private static final String PARAM_MGR_REQ_PROCESS_TIME = "mgr_req_process_time";
+
+    /**
+     * Parameter: {@value}.
+     */
+    private static final String PARAM_MGR_REQ_PROCESS_NANOTIME = "mgr_req_process_nanotime";
+
+    /**
+     * Parameter: {@value}.
+     */
     public static final String PARAM_PLUGIN_RESPONSE_TIME = "plugin_response_time";
 
     /**
@@ -160,6 +175,9 @@ public class TestMeasurementProfile extends DConnectProfile {
             setPath(response, path);
             response.putExtra(PARAM_REQUEST_TIME, request.getStringExtra(PARAM_REQUEST_TIME));
             response.putExtra(PARAM_MGR_REQUEST_TIME, request.getStringExtra(PARAM_MGR_REQUEST_TIME));
+            response.putExtra(PARAM_MGR_REQUEST_NANOTIME, request.getStringExtra(PARAM_MGR_REQUEST_NANOTIME));
+            response.putExtra(PARAM_MGR_REQ_PROCESS_TIME, request.getStringExtra(PARAM_MGR_REQ_PROCESS_TIME));
+            response.putExtra(PARAM_MGR_REQ_PROCESS_NANOTIME, request.getStringExtra(PARAM_MGR_REQ_PROCESS_NANOTIME));
             response.putExtra(PARAM_PLUGIN_RESPONSE_TIME, System.currentTimeMillis());
             return true;
         } else {

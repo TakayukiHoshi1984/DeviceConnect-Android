@@ -92,6 +92,15 @@ public class DConnectServerEventListenerImpl implements
     /** 計測試験用KEY(manager_request_time). */
     private static final String PARAM_MGR_REQUEST_TIME = "mgr_request_time";
 
+    /** 計測試験用KEY(manager_request_nanotime). */
+    private static final String PARAM_MGR_REQUEST_NANOTIME = "mgr_request_nanotime";
+
+    /** 計測試験用KEY(manager_req_process_time). */
+    private static final String PARAM_MGR_REQ_PROCESS_TIME = "mgr_req_process_time";
+
+    /** 計測試験用KEY(manager_req_process_nanotime). */
+    private static final String PARAM_MGR_REQ_PROCESS_NANOTIME = "mgr_req_process_nanotime";
+
     /** 計測試験用KEY(manager_response_time). */
     private static final String PARAM_MGR_RESPONSE_TIME = "mgr_response_time";
 
@@ -155,6 +164,7 @@ public class DConnectServerEventListenerImpl implements
 
         long start = System.currentTimeMillis();
         mLogger.info("@@@ Request URI: " + method + " " + uri);
+        long st = System.nanoTime();
 
         if (segments.size() == SEGMENT_PROFILE) {
             api = segments.get(0);
@@ -196,6 +206,8 @@ public class DConnectServerEventListenerImpl implements
         }
 
         Intent intent = new Intent(action);
+        intent.putExtra(PARAM_MGR_REQUEST_TIME, String.valueOf(System.currentTimeMillis()));
+        intent.putExtra(PARAM_MGR_REQUEST_NANOTIME, String.valueOf(st));
         intent.setClass(mContext, DConnectService.class);
         intent.putExtra(IntentDConnectMessage.EXTRA_API, api);
         intent.putExtra(IntentDConnectMessage.EXTRA_PROFILE, profile);
@@ -210,7 +222,7 @@ public class DConnectServerEventListenerImpl implements
                 intent.putExtra(key, uri.getQueryParameter(key));
             }
         }
-        intent.putExtra(PARAM_MGR_REQUEST_TIME, String.valueOf(System.currentTimeMillis()));
+//        intent.putExtra(PARAM_MGR_REQUEST_TIME, String.valueOf(start));
 
         // アプリケーションのオリジン解析
         parseOriginHeader(request, intent);
@@ -225,6 +237,8 @@ public class DConnectServerEventListenerImpl implements
         intent.putExtra(IntentDConnectMessage.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(DConnectService.EXTRA_INNER_TYPE,
                 DConnectService.INNER_TYPE_HTTP);
+        intent.putExtra(PARAM_MGR_REQ_PROCESS_TIME, String.valueOf(System.currentTimeMillis()));
+        intent.putExtra(PARAM_MGR_REQ_PROCESS_NANOTIME, String.valueOf(System.nanoTime()));
         mContext.startService(intent);
 
         // レスポンスが返ってくるまで待つ

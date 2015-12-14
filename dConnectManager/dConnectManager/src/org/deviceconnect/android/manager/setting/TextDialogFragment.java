@@ -48,7 +48,7 @@ public class TextDialogFragment extends DialogFragment {
                 }
                 os.write(buf, 0, len);
             }
-            text.setText(new String(os.toByteArray(), "UTF_8"));
+            text.setText(new String(os.toByteArray(), "UTF-8"));
         } catch (IOException e) {
             mLogger.warning(e.toString());
         } finally {
