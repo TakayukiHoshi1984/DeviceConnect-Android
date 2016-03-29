@@ -11,12 +11,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.RemoteException;
 
+import org.deviceconnect.android.manager.util.DConnectNsdManager;
 import org.deviceconnect.android.manager.util.DConnectUtil;
 import org.deviceconnect.message.DConnectMessage;
-
 import org.deviceconnect.server.DConnectServer;
 import org.deviceconnect.server.DConnectServerConfig;
 import org.deviceconnect.server.nanohttpd.DConnectServerNanoHttpd;
@@ -46,6 +47,7 @@ public class DConnectService extends DConnectMessageService {
 
     /** RESTfulサーバからのイベントを受領するリスナー. */
     private DConnectServerEventListenerImpl mWebServerListener;
+    private DConnectNsdManager mDConnectNsdManager;
 
     @Override
     public IBinder onBind(final Intent intent) {
@@ -60,6 +62,10 @@ public class DConnectService extends DConnectMessageService {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            mDConnectNsdManager = new DConnectNsdManager(this);
+        }
     }
 
     @Override
@@ -137,6 +143,10 @@ public class DConnectService extends DConnectMessageService {
             IntentFilter filter = new IntentFilter();
             filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
             registerReceiver(mWiFiReceiver, filter);
+
+            if (mDConnectNsdManager != null && mSettings.allowExternalIP()) {
+                mDConnectNsdManager.registerService(mSettings.getPort());
+            }
         }
     }
 
@@ -145,6 +155,9 @@ public class DConnectService extends DConnectMessageService {
      */
     private void stopRESTfulServer() {
         if (mRESTfulServer != null) {
+            if (mDConnectNsdManager != null) {
+                mDConnectNsdManager.unregisterService();
+            }
             unregisterReceiver(mWiFiReceiver);
             mRESTfulServer.shutdown();
             mRESTfulServer = null;
