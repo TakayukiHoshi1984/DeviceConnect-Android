@@ -13,7 +13,7 @@ public class TestOmnidirectionalImageProfile extends DConnectProfile {
     /**
      * Profile name: {@value} .
      */
-    public static final String PROFILE_NAME = "omnidirectionalImage";
+    public static final String PROFILE_NAME = "omnidirectional_image";
 
     /**
      * Interface name: {@value} .
@@ -93,7 +93,7 @@ public class TestOmnidirectionalImageProfile extends DConnectProfile {
             return true;
         }
         setResult(response, DConnectMessage.RESULT_OK);
-        return false;
+        return true;
     }
 
     protected boolean onDeleteView(final Intent request, final Intent response, final String serviceId,

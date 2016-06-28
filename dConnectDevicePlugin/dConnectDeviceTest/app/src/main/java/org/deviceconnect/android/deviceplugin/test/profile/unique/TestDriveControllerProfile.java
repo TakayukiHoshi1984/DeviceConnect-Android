@@ -13,7 +13,7 @@ public class TestDriveControllerProfile extends DConnectProfile {
     /**
      * プロファイル名.
      */
-    public static final String PROFILE_NAME = "driveController";
+    public static final String PROFILE_NAME = "drive_controller";
 
     /**
      * アトリビュート : {@value} .

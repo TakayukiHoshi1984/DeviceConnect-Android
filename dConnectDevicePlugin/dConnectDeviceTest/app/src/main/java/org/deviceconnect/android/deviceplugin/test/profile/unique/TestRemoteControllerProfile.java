@@ -14,7 +14,7 @@ import org.json.JSONObject;
 public class TestRemoteControllerProfile extends DConnectProfile {
 
     /** プロファイル名. */
-    public static final String PROFILE_NAME = "remoteController";
+    public static final String PROFILE_NAME = "remote_controller";
 
     /**
      * パラメータ: {@value} .
