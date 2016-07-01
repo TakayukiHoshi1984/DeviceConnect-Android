@@ -13,8 +13,6 @@ import android.content.Intent;
 import android.media.MediaMetadataRetriever;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.provider.MediaStore.Audio;
-import android.provider.MediaStore.Video;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -33,6 +31,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +51,8 @@ public class HostFileProfile extends FileProfile {
 
     /** SimpleDataFormat. */
     private SimpleDateFormat mDataFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+
+    private ExecutorService mImageService = Executors.newSingleThreadExecutor();
 
     /**
      * コンストラクタ.
@@ -367,7 +369,7 @@ public class HostFileProfile extends FileProfile {
 
     @Override
     protected boolean onPostSend(final Intent request, final Intent response, final String serviceId, final String path,
-            final String mimeType, final byte[] data) {
+            final String mimeType, final byte[] data, final String uri) {
 
         if (serviceId == null) {
             createEmptyServiceId(response);
@@ -375,86 +377,104 @@ public class HostFileProfile extends FileProfile {
             createNotFoundService(response);
         } else if (path == null) {
             MessageUtils.setInvalidRequestParameterError(response);
-        } else if (data == null) {
-            MessageUtils.setInvalidRequestParameterError(response, "data is null.");
-            return true;
         } else {
-            getFileManager().saveFile(path, data, new FileManager.SaveFileCallback() {
-                @Override
-                public void onSuccess(@NonNull final String uri) {
-                    String mMineType = getMIMEType(getFileManager().getBasePath() + "/" + path);
-
-                    if (BuildConfig.DEBUG) {
-                        Log.i(TAG, "mMineType:" + mMineType);
-                    }
-
-                    // MimeTypeが不明の場合はエラーを返す
-                    if (mMineType == null) {
-                        MessageUtils.setInvalidRequestParameterError(response, "Not support format");
-                        setResult(response, DConnectMessage.RESULT_ERROR);
-                        sendResponse(response);
-                        return;
-                    }
-                    // 音楽データに関してはContents Providerに登録
-                    if (mMineType.endsWith("audio/mpeg") || mMineType.endsWith("audio/x-wav")
-                            || mMineType.endsWith("audio/mp4") || mMineType.endsWith("audio/ogg")
-                            || mMineType.endsWith("audio/mp3") || mMineType.endsWith("audio/x-ms-wma")) {
-
-                        MediaMetadataRetriever mMediaMeta = new MediaMetadataRetriever();
-                        mMediaMeta.setDataSource(getFileManager().getBasePath() + "/" + path);
-                        String mTitle = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
-                        String mComposer = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER);
-                        String mArtist = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
-                        String mDuration = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                        ContentResolver mContentResolver = getContext().getApplicationContext().getContentResolver();
-                        ContentValues mValues = new ContentValues();
-
-                        if (mTitle == null) {
-                            String[] array = path.split("/");
-                            mTitle = array[array.length - 1];
+            if (data == null) {
+                mImageService.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        byte[] result = getData(uri);
+                        if (result == null) {
+                            MessageUtils.setInvalidRequestParameterError(response, "could not get image from uri.");
+                            sendResponse(response);
+                            return;
                         }
-                        mValues.put(Audio.Media.TITLE, mTitle);
-                        mValues.put(Audio.Media.DISPLAY_NAME, mTitle);
-                        mValues.put(Audio.Media.COMPOSER, mComposer);
-                        mValues.put(Audio.Media.ARTIST, mArtist);
-                        mValues.put(Audio.Media.DURATION, mDuration);
-                        mValues.put(Audio.Media.MIME_TYPE, mMineType);
-                        mValues.put(Audio.Media.DATA, getFileManager().getBasePath() + "/" + path);
-                        mContentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mValues);
-                    } else if (mMineType.endsWith("video/mp4") || mMineType.endsWith("video/3gpp")
-                            || mMineType.endsWith("video/3gpp2") || mMineType.endsWith("video/mpeg")
-                            || mMineType.endsWith("video/m4v")) {
-                        MediaMetadataRetriever mMediaMeta = new MediaMetadataRetriever();
-                        mMediaMeta.setDataSource(getFileManager().getBasePath() + "/" + path);
-                        String mTitle = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
-                        String mArtist = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
-                        String mDuration = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                        ContentResolver mContentResolver = getContext().getApplicationContext().getContentResolver();
-                        ContentValues mValues = new ContentValues();
-
-                        mValues.put(Video.Media.TITLE, mTitle);
-                        mValues.put(Video.Media.DISPLAY_NAME, mTitle);
-                        mValues.put(Video.Media.ARTIST, mArtist);
-                        mValues.put(Video.Media.DURATION, mDuration);
-                        mValues.put(Video.Media.MIME_TYPE, mMineType);
-                        mValues.put(Video.Media.DATA, getFileManager().getBasePath() + "/" + path);
-                        mContentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, mValues);
+                        saveFile(response, path, result);
+                        sendResponse(response);
                     }
+                });
+                return false;
+            }
 
-                    setResult(response, DConnectMessage.RESULT_OK);
-                    sendResponse(response);
-                }
-
-                @Override
-                public void onFail(@NonNull final Throwable throwable) {
-                    setResult(response, DConnectMessage.RESULT_ERROR);
-                    MessageUtils.setInvalidRequestParameterError(response, "Path is null, you must input path.");
-                    sendResponse(response);
-                }
-            });
+            saveFile(response, path, data);
             return false;
         }
         return true;
+    }
+
+    private void saveFile(final Intent response, final String path, final byte[] data) {
+        getFileManager().saveFile(path, data, new FileManager.SaveFileCallback() {
+            @Override
+            public void onSuccess(@NonNull final String uri) {
+                String mMineType = getMIMEType(getFileManager().getBasePath() + "/" + path);
+
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "mMineType:" + mMineType);
+                }
+
+                // MimeTypeが不明の場合はエラーを返す
+                if (mMineType == null) {
+                    MessageUtils.setInvalidRequestParameterError(response, "Not support format");
+                    setResult(response, DConnectMessage.RESULT_ERROR);
+                    sendResponse(response);
+                    return;
+                }
+                // 音楽データに関してはContents Providerに登録
+                if (mMineType.endsWith("audio/mpeg") || mMineType.endsWith("audio/x-wav")
+                    || mMineType.endsWith("audio/mp4") || mMineType.endsWith("audio/ogg")
+                    || mMineType.endsWith("audio/mp3") || mMineType.endsWith("audio/x-ms-wma")) {
+
+                    MediaMetadataRetriever mMediaMeta = new MediaMetadataRetriever();
+                    mMediaMeta.setDataSource(getFileManager().getBasePath() + "/" + path);
+                    String mTitle = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                    String mComposer = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER);
+                    String mArtist = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                    String mDuration = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    ContentResolver mContentResolver = getContext().getApplicationContext().getContentResolver();
+                    ContentValues mValues = new ContentValues();
+
+                    if (mTitle == null) {
+                        String[] array = path.split("/");
+                        mTitle = array[array.length - 1];
+                    }
+                    mValues.put(MediaStore.Audio.Media.TITLE, mTitle);
+                    mValues.put(MediaStore.Audio.Media.DISPLAY_NAME, mTitle);
+                    mValues.put(MediaStore.Audio.Media.COMPOSER, mComposer);
+                    mValues.put(MediaStore.Audio.Media.ARTIST, mArtist);
+                    mValues.put(MediaStore.Audio.Media.DURATION, mDuration);
+                    mValues.put(MediaStore.Audio.Media.MIME_TYPE, mMineType);
+                    mValues.put(MediaStore.Audio.Media.DATA, getFileManager().getBasePath() + "/" + path);
+                    mContentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mValues);
+                } else if (mMineType.endsWith("video/mp4") || mMineType.endsWith("video/3gpp")
+                    || mMineType.endsWith("video/3gpp2") || mMineType.endsWith("video/mpeg")
+                    || mMineType.endsWith("video/m4v")) {
+                    MediaMetadataRetriever mMediaMeta = new MediaMetadataRetriever();
+                    mMediaMeta.setDataSource(getFileManager().getBasePath() + "/" + path);
+                    String mTitle = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                    String mArtist = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                    String mDuration = mMediaMeta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    ContentResolver mContentResolver = getContext().getApplicationContext().getContentResolver();
+                    ContentValues mValues = new ContentValues();
+
+                    mValues.put(MediaStore.Video.Media.TITLE, mTitle);
+                    mValues.put(MediaStore.Video.Media.DISPLAY_NAME, mTitle);
+                    mValues.put(MediaStore.Video.Media.ARTIST, mArtist);
+                    mValues.put(MediaStore.Video.Media.DURATION, mDuration);
+                    mValues.put(MediaStore.Video.Media.MIME_TYPE, mMineType);
+                    mValues.put(MediaStore.Video.Media.DATA, getFileManager().getBasePath() + "/" + path);
+                    mContentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, mValues);
+                }
+
+                setResult(response, DConnectMessage.RESULT_OK);
+                sendResponse(response);
+            }
+
+            @Override
+            public void onFail(@NonNull final Throwable throwable) {
+                setResult(response, DConnectMessage.RESULT_ERROR);
+                MessageUtils.setInvalidRequestParameterError(response, "Path is null, you must input path.");
+                sendResponse(response);
+            }
+        });
     }
 
     @Override

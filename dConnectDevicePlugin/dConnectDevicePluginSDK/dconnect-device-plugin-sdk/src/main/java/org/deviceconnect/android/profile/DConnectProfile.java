@@ -22,6 +22,8 @@ import org.deviceconnect.profile.DConnectProfileConstants;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.logging.Logger;
 
 /**
@@ -580,7 +582,7 @@ public abstract class DConnectProfile implements DConnectProfileConstants {
     }
 
     /**
-     * リクエストからDeviceConnectManagerのバージョン名を設定する.
+     * メッセージにDeviceConnectManagerのバージョン名を設定する.
      * 
      * @param message メッセージパラメータ
      * @param version DeviceConnectManagerのバージョン名
@@ -601,7 +603,7 @@ public abstract class DConnectProfile implements DConnectProfileConstants {
     }
 
     /**
-     * リクエストからDeviceConnectManagerのアプリ名を設定する.
+     * メッセージにDeviceConnectManagerのアプリ名を設定する.
      * 
      * @param message メッセージパラメータ
      * @param product DeviceConnectManagerのアプリ名
@@ -701,4 +703,46 @@ public abstract class DConnectProfile implements DConnectProfileConstants {
             }
         }
     }
+
+    protected byte[] getData(String uri) {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        byte[] data = null;
+        try {
+            URL url = new URL(uri);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.connect();
+            inputStream = connection.getInputStream();
+            data = readAll(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException exception) {
+                exception.printStackTrace();
+            }
+        }
+        return data;
+    }
+
+    private byte[] readAll(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        while (true) {
+            int len = inputStream.read(buffer);
+            if (len < 0) {
+                break;
+            }
+            bout.write(buffer, 0, len);
+        }
+        return bout.toByteArray();
+    }
+
 }

@@ -6,15 +6,15 @@
  */
 package org.deviceconnect.android.profile;
 
-import java.io.IOException;
-import java.util.List;
+import android.content.Intent;
+import android.os.Bundle;
 
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.provider.FileManager;
 import org.deviceconnect.profile.FileProfileConstants;
 
-import android.content.Intent;
-import android.os.Bundle;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * File プロファイル.
@@ -32,7 +32,7 @@ import android.os.Bundle;
  * </p>
  * <ul>
  * <li>File Send API [POST] :
- * {@link FileProfile#onPostSend(Intent, Intent, String, String, String, byte[])}</li>
+ * {@link FileProfile#onPostSend(Intent, Intent, String, String, String, byte[], String)}</li>
  * <li>Make Directory API [POST] :
  * {@link FileProfile#onPostMkdir(Intent, Intent, String, String)}</li>
  * <li>File Receive API [GET] :
@@ -98,14 +98,20 @@ public abstract class FileProfile extends DConnectProfile implements FileProfile
 
         if (ATTRIBUTE_SEND.equals(attribute)) {
             String uri = request.getStringExtra(FileProfile.PARAM_URI);
-            byte[] data = getContentData(uri);
-            if (data == null) {
+            byte[] data = null;
+            if (uri != null) {
+                if (uri.startsWith("content://")) {
+                    data = getContentData(uri);
+                    uri = null;
+                }
+            }
+            if (data == null && uri == null) {
                 MessageUtils.setInvalidRequestParameterError(response);
             } else {
                 String serviceId = getServiceID(request);
                 String path = getPath(request);
                 String mimeType = getMIMEType(request);
-                result = onPostSend(request, response, serviceId, path, mimeType, data);
+                result = onPostSend(request, response, serviceId, path, mimeType, data, uri);
             }
         } else if (ATTRIBUTE_MKDIR.equals(attribute)) {
             String path = getPath(request);
@@ -208,11 +214,12 @@ public abstract class FileProfile extends DConnectProfile implements FileProfile
      * @param serviceId サービスID
      * @param path ファイルパス。ファイル名を保存する。
      * @param mimeType ファイルのマイムタイプ。省略された場合はnullが渡される。
-     * @param data uriパラメータから取得できるファイルのデータ。uriパラメータが省略された場合はnullが渡される。
+     * @param data ファイルのデータ。
+     * @param uri ファイルのURI。
      * @return レスポンスパラメータを送信するか否か
      */
     protected boolean onPostSend(final Intent request, final Intent response, final String serviceId, 
-            final String path, final String mimeType, final byte[] data) {
+            final String path, final String mimeType, final byte[] data, final String uri) {
         setUnsupportedError(response);
         return true;
     }
@@ -492,5 +499,15 @@ public abstract class FileProfile extends DConnectProfile implements FileProfile
      */
     protected FileManager getFileManager() {
         return mFileMgr;
+    }
+
+    private void setContentDataToRequest(final Intent request) {
+        String uri = getURI(request);
+        if (uri != null && uri.startsWith("content://")) {
+            byte[] data = getContentData(uri);
+            if (data != null) {
+
+            }
+        }
     }
 }
