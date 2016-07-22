@@ -8,10 +8,12 @@
 package org.deviceconnect.android.deviceplugin.host.profile;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.v4.app.NotificationCompat;
 
 import org.deviceconnect.android.activity.PermissionUtility;
 import org.deviceconnect.android.deviceplugin.host.HostDevicePreviewServer;
@@ -19,6 +21,7 @@ import org.deviceconnect.android.deviceplugin.host.HostDeviceRecorder;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceRecorderManager;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceStreamRecorder;
+import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraOverlay;
 import org.deviceconnect.android.deviceplugin.host.camera.HostDeviceCameraRecorder;
 import org.deviceconnect.android.deviceplugin.host.camera.HostDevicePhotoRecorder;
@@ -37,6 +40,7 @@ import org.deviceconnect.message.DConnectMessage;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,6 +53,9 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings("deprecation")
 public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProfile {
+
+    /** Notification ID.*/
+    private static final int ONGOING_NOTIFICATION_ID = UUID.randomUUID().hashCode();
 
     private final HostDeviceRecorderManager mRecorderMgr;
 
@@ -319,6 +326,8 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
             server.startWebServer(new HostDevicePhotoRecorder.OnWebServerStartCallback() {
                 @Override
                 public void onStart(@NonNull String uri) {
+                    showNotification();
+
                     setResult(response, DConnectMessage.RESULT_OK);
                     setUri(response, uri);
                     sendResponse(response);
@@ -351,10 +360,37 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
             }
 
             server.stopWebServer();
+            hideNotification();
+
             setResult(response, DConnectMessage.RESULT_OK);
             return true;
         }
     };
+
+    /**
+     * サービスをフォアグランドに設定する。
+     */
+    protected void showNotification() {
+        Intent notificationIntent = new Intent(getContext().getApplicationContext(),
+            ((HostDeviceService) getContext()).getClass());
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            getContext().getApplicationContext(), 0, notificationIntent, 0);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getContext().getApplicationContext());
+        builder.setContentIntent(pendingIntent);
+        builder.setTicker(getContext().getString(R.string.app_name));
+        builder.setContentTitle(getContext().getString(R.string.app_name));
+        builder.setContentText("Preview is running.");
+        builder.setSmallIcon(R.drawable.dconnect_icon);
+
+        ((HostDeviceService) getContext()).startForeground(ONGOING_NOTIFICATION_ID, builder.build());
+    }
+
+    /**
+     * フォアグランドを停止する。
+     */
+    protected void hideNotification() {
+        ((HostDeviceService) getContext()).stopForeground(true);
+    }
 
     private final DConnectApi mPostRecordApi = new PostApi() {
 
