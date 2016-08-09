@@ -6,6 +6,8 @@
  */
 package org.deviceconnect.android.profile.spec;
 
+import android.os.Bundle;
+
 /**
  * Device Connect APIのリクエストパラメータの仕様定義.
  *
@@ -67,16 +69,20 @@ public abstract class DConnectParameterSpec<T extends DConnectDataSpec> implemen
         return mIsRequired != null ? mIsRequired : false;
     }
 
-    /**
-     * リクエストパラメータとして入力された値が仕様に反していないことを確認する.
-     * @param param リクエストパラメータとして入力された値
-     * @return 仕様に反していない場合は<code>true</code>. そうでない場合は<code>false</code>
-     */
-    public final boolean validate(final Object param) {
+    private final boolean validate(final Object param) {
         if (param == null) {
             return !isRequired();
         }
         return mDataSpec.validate(param);
+    }
+
+    /**
+     * リクエストパラメータとして入力された値が仕様に反していないことを確認する.
+     * @param parameters リクエストパラメータとして入力された値
+     * @return 仕様に反していない場合は<code>true</code>. そうでない場合は<code>false</code>
+     */
+    public boolean validate(final Bundle parameters) {
+        return validate(parameters.get(mName));
     }
 
     abstract static class BaseBuilder<T extends BaseBuilder<T>> {

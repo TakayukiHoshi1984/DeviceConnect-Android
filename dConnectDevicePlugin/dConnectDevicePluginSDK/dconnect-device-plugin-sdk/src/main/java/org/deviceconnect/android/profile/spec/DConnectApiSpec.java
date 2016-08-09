@@ -122,8 +122,7 @@ public class DConnectApiSpec implements DConnectSpecConstants {
     public boolean validate(final Intent request) {
         Bundle extras = request.getExtras();
         for (DConnectParameterSpec paramSpec : getRequestParamList()) {
-            Object paramValue = extras.get(paramSpec.getName());
-            if (!paramSpec.validate(paramValue)) {
+            if (!paramSpec.validate(extras)) {
                 return false;
             }
         }

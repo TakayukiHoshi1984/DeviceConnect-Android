@@ -7,6 +7,10 @@
 package org.deviceconnect.android.profile.spec;
 
 
+import android.os.Bundle;
+
+import org.deviceconnect.android.profile.DConnectProfile;
+
 /**
  * File型リクエストパラメータの仕様.
  *
@@ -19,6 +23,15 @@ public class FileParameterSpec extends DConnectParameterSpec<FileDataSpec> {
      */
     FileParameterSpec() {
         super(new FileDataSpec());
+    }
+
+    @Override
+    public boolean validate(final Bundle parameters) {
+        String uri = parameters.getString(DConnectProfile.PARAM_URI);
+        if (uri == null) {
+            return !isRequired();
+        }
+        return true;
     }
 
     /**
