@@ -375,7 +375,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         if (name == null) {
             return null;
         }
-        //XXXX パスの大文字小文字の無視
+        //MEMO [命名規則] パスの大文字小文字の無視
         return mProfileMap.get(name.toLowerCase());
     }
 
@@ -390,7 +390,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         String profileName = profile.getProfileName().toLowerCase();
         profile.setContext(this);
         profile.setProfileSpec(mPluginSpec.findProfileSpec(profileName));
-        //XXXX パスの大文字小文字の無視
+        //MEMO [命名規則] パスの大文字小文字の無視
         mProfileMap.put(profileName, profile);
     }
 
@@ -402,7 +402,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         if (profile == null) {
             return;
         }
-        //XXXX パスの大文字小文字の無視
+        //MEMO [命名規則] パスの大文字小文字の無視
         mProfileMap.remove(profile.getProfileName().toLowerCase());
     }
 

@@ -67,7 +67,7 @@ public class GetAccessTokenRequest extends DConnectRequest {
         String applicationName = mRequest.getStringExtra(AuthorizationProfile.PARAM_APPLICATION_NAME);
 
         if (scopeParam != null) {
-            scopes = parseScopes(scopeParam.toLowerCase()); // XXXX パスの大文字小文字を無視
+            scopes = parseScopes(scopeParam.toLowerCase()); // MEMO [命名規則] パスの大文字小文字を無視
         }
 
         // TODO _typeからアプリorデバイスプラグインかを判別できる？

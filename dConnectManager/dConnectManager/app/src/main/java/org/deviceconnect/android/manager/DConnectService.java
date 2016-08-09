@@ -255,7 +255,7 @@ public class DConnectService extends DConnectMessageService {
     protected String parseProfileName(final Intent request) {
         String profileName = super.parseProfileName(request);
         if (profileName != null) {
-            //XXXX パスの大文字小文字を無視
+            //MEMO [命名規則] パスの大文字小文字を無視
             profileName = profileName.toLowerCase();
         }
         return profileName;
@@ -265,7 +265,7 @@ public class DConnectService extends DConnectMessageService {
     public void addProfile(final DConnectProfile profile) {
         if (profile != null) {
             profile.setContext(this);
-            //XXXX パスの大文字小文字を無視
+            //MEMO [命名規則] パスの大文字小文字を無視
             mProfileMap.put(profile.getProfileName().toLowerCase(), profile);
         }
     }
@@ -273,7 +273,7 @@ public class DConnectService extends DConnectMessageService {
     @Override
     public void removeProfile(final DConnectProfile profile) {
         if (profile != null) {
-            //XXXX パスの大文字小文字を無視
+            //MEMO [命名規則] パスの大文字小文字を無視
             mProfileMap.remove(profile.getProfileName().toLowerCase());
         }
     }
@@ -283,13 +283,13 @@ public class DConnectService extends DConnectMessageService {
         if (name == null) {
             return null;
         }
-        //XXXX パスの大文字小文字を無視
+        //MEMO [命名規則] パスの大文字小文字を無視
         return mProfileMap.get(name.toLowerCase());
     }
 
     @Override
     protected void sendDeliveryProfile(final Intent request, final Intent response) {
-        //XXXX パスの互換性を担保
+        //MEMO [命名規則] パスの互換性を担保
         for (MessageConverter converter : mRequestConverters) {
             converter.convert(request);
         }
@@ -300,7 +300,7 @@ public class DConnectService extends DConnectMessageService {
     protected Intent createResponseIntent(final Intent request, final Intent response) {
         Intent result = super.createResponseIntent(request, response);
 
-        //XXXX パスの互換性の担保
+        //MEMO [命名規則] パスの互換性の担保
         for (MessageConverter converter : mResponseConverters) {
             converter.convert(result);
         }

@@ -77,7 +77,7 @@ public enum EventManager {
         Event event = new Event();
         event.setSessionKey(sessionKey);
         event.setAccessToken(accessToken);
-        // XXXX パスの大文字小文字を無視
+        // MEMO [命名規則] パスの大文字小文字を無視
         event.setProfile(profile != null ? profile.toLowerCase() : null);
         event.setInterface(inter != null ? inter.toLowerCase() : null);
         event.setAttribute(attribute != null ? attribute.toLowerCase() : null);
@@ -166,7 +166,7 @@ public enum EventManager {
     public List<Event> getEventList(final String serviceId, final String profile, 
             final String inter, final String attribute) {
         checkState();
-        // XXXX パスの大文字小文字を無視
+        // MEMO [命名規則] パスの大文字小文字を無視
         return mController.getEvents(serviceId,
             profile != null ? profile.toLowerCase() : null,
             inter != null ? inter.toLowerCase() : null,
