@@ -4,9 +4,22 @@ android {
     compileSdkVersion 23
     buildToolsVersion '23.0.0'
 
+    def getVersionName = { ->
+        def version
+        def date = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date())
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            version = ["cmd", "/c", "git rev-parse --short HEAD"].execute().in.text.trim()
+        } else {
+            version = ["sh", "-c", "git rev-parse --short HEAD"].execute().in.text.trim()
+        }
+        return "v2.0.0-${date}-${version}"
+    }
+
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 23
+        versionCode 1
+        versionName getVersionName()
     }
 
     signingConfigs {

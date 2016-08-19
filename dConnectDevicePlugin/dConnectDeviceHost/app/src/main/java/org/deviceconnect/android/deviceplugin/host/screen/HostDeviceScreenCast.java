@@ -13,6 +13,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
@@ -21,6 +23,8 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 
 import org.deviceconnect.android.deviceplugin.host.HostDevicePreviewServer;
@@ -58,11 +62,11 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
 
     private final Context mContext;
 
-    private final int mDisplayDensityDpi;
-
     private final Object mLockObj = new Object();
 
     private final Logger mLogger = Logger.getLogger("host.dplugin");
+
+    private ScreenPreview mScreenPreview;
 
     private MixedReplaceMediaServer mServer;
 
@@ -70,11 +74,9 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
 
     private MediaProjection mMediaProjection;
 
-    private VirtualDisplay mVirtualDisplay;
-
-    private ImageReader mImageReader;
-
     private boolean mIsCasting;
+
+    private Handler mMainHandler;
 
     private Thread mThread;
 
@@ -91,18 +93,28 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
     public HostDeviceScreenCast(final Context context) {
         mContext = context;
         mManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        mMainHandler = new Handler(Looper.getMainLooper());
 
-        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        PictureSize size = new PictureSize(metrics.widthPixels, metrics.heightPixels);
-        mDisplayDensityDpi = metrics.densityDpi;
-        initSupportedPreviewSizes(size);
-        mPreviewSize = mSupportedPreviewSizes.get(0);
+        initSupportedPreviewSizes(context.getResources());
+        setPreviewSize(mSupportedPreviewSizes.get(0));
 
         mMaxFps = DEFAULT_MAX_FPS;
         setPreviewFrameRate(mMaxFps);
     }
 
-    private void initSupportedPreviewSizes(final PictureSize originalSize) {
+    private void initSupportedPreviewSizes(final Resources res) {
+        DisplayMetrics metrics = res.getDisplayMetrics();
+        PictureSize originalSize;
+        switch (getOrientation()) {
+            case Configuration.ORIENTATION_PORTRAIT:
+                originalSize = new PictureSize(metrics.widthPixels, metrics.heightPixels);
+                break;
+            case Configuration.ORIENTATION_LANDSCAPE:
+                originalSize = new PictureSize(metrics.heightPixels, metrics.widthPixels);
+                break;
+            default:
+                return;
+        }
         final int num = 4;
         final int w = originalSize.getWidth();
         final int h = originalSize.getHeight();
@@ -247,35 +259,19 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
         mMediaProjection = mManager.getMediaProjection(resultCode, data);
     }
 
-    private void setupVirtualDisplay() {
-        int w = mPreviewSize.getWidth();
-        int h = mPreviewSize.getHeight();
-        mImageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 10);
-        mVirtualDisplay = mMediaProjection.createVirtualDisplay(
-            "Android Host Screen",
-            w,
-            h,
-            mDisplayDensityDpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            mImageReader.getSurface(),
-            new VirtualDisplay.Callback() {
-                @Override
-                public void onPaused() {
-                    mLogger.info("VirtualDisplay.Callback.onPaused");
-                    stopScreenCast();
-                }
+    private int getOrientation() {
+        return mContext.getResources().getConfiguration().orientation;
+    }
 
-                @Override
-                public void onResumed() {
-                    mLogger.info("VirtualDisplay.Callback.onResumed");
-                    startScreenCast();
-                }
-
-                @Override
-                public void onStopped() {
-                    mLogger.info("VirtualDisplay.Callback.onStopped");
-                }
-            }, null);
+    private PictureSize getImageSize() {
+        switch (getOrientation()) {
+            case Configuration.ORIENTATION_PORTRAIT:
+                return mPreviewSize;
+            case Configuration.ORIENTATION_LANDSCAPE:
+                return new PictureSize(mPreviewSize.getHeight(), mPreviewSize.getWidth());
+            default:
+                throw new RuntimeException();
+        }
     }
 
     private void startScreenCast() {
@@ -283,36 +279,57 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
             return;
         }
         mIsCasting = true;
-        setupVirtualDisplay();
-        mThread = new Thread(new Runnable() {
+        startScreenCastAtMainThread();
+    }
+
+    private void startScreenCastAtMainThread() {
+        mMainHandler.post(new Runnable() {
             @Override
             public void run() {
-                mLogger.info("Server URL: " + mServer.getUrl());
-                while (mIsCasting) {
-                    try {
-                        long start = System.currentTimeMillis();
+                PictureSize imageSize = getImageSize();
+                mScreenPreview = new ScreenPreview(mContext, imageSize.getWidth(), imageSize.getHeight());
 
-                        Bitmap bitmap = getScreenshot();
-                        if (bitmap == null) {
-                            continue;
-                        }
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                        byte[] media = baos.toByteArray();
-                        mServer.offerMedia(media);
+                mThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mLogger.info("Server URL: " + mServer.getUrl());
+                        boolean reset = false;
 
-                        long end = System.currentTimeMillis();
-                        long interval = mFrameInterval - (end - start);
-                        if (interval > 0) {
-                            Thread.sleep(interval);
+                        cast:
+                        while (mIsCasting) {
+                            try {
+                                long start = System.currentTimeMillis();
+
+                                PictureSize imageSize = getImageSize();
+                                if (mScreenPreview == null || !mScreenPreview.isSameSize(imageSize)) {
+                                    reset = true;
+                                    break;
+                                }
+                                mServer.offerMedia(mScreenPreview.load());
+
+                                long end = System.currentTimeMillis();
+                                long interval = mFrameInterval - (end - start);
+                                if (interval > 0) {
+                                    Thread.sleep(interval);
+                                }
+                            } catch (InterruptedException e) {
+                                break;
+                            }
                         }
-                    } catch (InterruptedException e) {
-                        break;
+
+                        if (mScreenPreview != null) {
+                            mScreenPreview.destroy();
+                            mScreenPreview = null;
+                        }
+
+                        if (reset) {
+                            restartScreenCast();
+                        }
                     }
-                }
+                });
+                mThread.start();
             }
         });
-        mThread.start();
     }
 
     private void stopScreenCast() {
@@ -329,54 +346,11 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
             }
             mThread = null;
         }
-        if (mVirtualDisplay != null) {
-            mVirtualDisplay.release();
-        }
     }
 
     private void restartScreenCast() {
         stopScreenCast();
         startScreenCast();
-    }
-
-    private Bitmap getScreenshot() {
-        Image image = mImageReader.acquireLatestImage();
-        if (image == null) {
-            return null;
-        }
-        return decodeToBitmap(image);
-    }
-
-    private Bitmap decodeToBitmap(final Image img) {
-        Image.Plane[] planes = img.getPlanes();
-        if (planes[0].getBuffer() == null) {
-            return null;
-        }
-        int width = img.getWidth();
-        int height = img.getHeight();
-        int pixelStride = planes[0].getPixelStride();
-        int rowStride = planes[0].getRowStride();
-        int rowPadding = rowStride - pixelStride * width;
-
-        int offset = 0;
-        DisplayMetrics metrics = mContext.getResources().getDisplayMetrics();
-        Bitmap bitmap = Bitmap.createBitmap(metrics, width, height, Bitmap.Config.ARGB_8888);
-        ByteBuffer buffer = planes[0].getBuffer();
-        for (int i = 0; i < height; ++i) {
-            for (int j = 0; j < width; ++j) {
-                int pixel = 0;
-                pixel |= (buffer.get(offset) & 0xff) << 16;     // R
-                pixel |= (buffer.get(offset + 1) & 0xff) << 8;  // G
-                pixel |= (buffer.get(offset + 2) & 0xff);       // B
-                pixel |= (buffer.get(offset + 3) & 0xff) << 24; // A
-                bitmap.setPixel(j, i, pixel);
-                offset += pixelStride;
-            }
-            offset += rowPadding;
-        }
-        img.close();
-
-        return bitmap;
     }
 
     @Override
@@ -418,5 +392,113 @@ public class HostDeviceScreenCast implements HostDeviceRecorder, HostDevicePrevi
     public void setPreviewFrameRate(final double max) {
         mMaxFps = max;
         mFrameInterval = (long) (1 / max) * 1000L;
+    }
+
+    private class ScreenPreview {
+
+        private final int mWidth;
+
+        private final int mHeight;
+
+        private ImageReader mImageReader;
+
+        private int[] mPixels;
+
+        private Bitmap mBitmap;
+
+        private VirtualDisplay mVirtualDisplay;
+
+        ScreenPreview(final Context context, final PictureSize size) {
+            this(context, size.getWidth(), size.getHeight());
+        }
+
+        ScreenPreview(final Context context, final int w, final int h) {
+            mWidth = w;
+            mHeight = h;
+            mImageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 10);
+            mPixels = new int[w * h];
+            DisplayMetrics metrics = mContext.getResources().getDisplayMetrics();
+            mBitmap = Bitmap.createBitmap(metrics, w, h, Bitmap.Config.RGB_565);
+
+            mVirtualDisplay = mMediaProjection.createVirtualDisplay(
+                "Android Host Screen",
+                w,
+                h,
+                context.getResources().getDisplayMetrics().densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                mImageReader.getSurface(),
+                new VirtualDisplay.Callback() {
+                    @Override
+                    public void onPaused() {
+                        mLogger.info("VirtualDisplay.Callback.onPaused");
+                        stopScreenCast();
+                    }
+
+                    @Override
+                    public void onResumed() {
+                        mLogger.info("VirtualDisplay.Callback.onResumed");
+                        startScreenCast();
+                    }
+
+                    @Override
+                    public void onStopped() {
+                        mLogger.info("VirtualDisplay.Callback.onStopped");
+                    }
+                }, null);
+        }
+
+        public boolean isSameSize(final PictureSize size) {
+            return isSameSize(size.getWidth(), size.getHeight());
+        }
+
+        public boolean isSameSize(final int w, final int h) {
+            return mWidth == w && mHeight == h;
+        }
+
+        public void destroy() {
+            mVirtualDisplay.release();
+            mImageReader.close();
+            mBitmap.recycle();
+            mPixels = null;
+        }
+
+        public byte[] load() {
+            Image image = mImageReader.acquireLatestImage();
+            if (image != null) {
+                decodeToBitmap(image);
+            }
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            return baos.toByteArray();
+        }
+
+        private void decodeToBitmap(final Image img) {
+            Image.Plane[] planes = img.getPlanes();
+            if (planes[0].getBuffer() == null) {
+                return;
+            }
+            int width = img.getWidth();
+            int height = img.getHeight();
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+            int rowPadding = rowStride - pixelStride * width;
+
+            int offset = 0;
+            ByteBuffer buffer = planes[0].getBuffer();
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    int pixel = 0;
+                    pixel |= (buffer.get(offset) & 0xff) << 16;     // R
+                    pixel |= (buffer.get(offset + 1) & 0xff) << 8;  // G
+                    pixel |= (buffer.get(offset + 2) & 0xff);       // B
+                    pixel |= (buffer.get(offset + 3) & 0xff) << 24; // A
+                    mPixels[j + (width * i)] = pixel;
+                    offset += pixelStride;
+                }
+                offset += rowPadding;
+            }
+            img.close();
+            mBitmap.setPixels(mPixels, 0, width, 0, 0, width, height);
+        }
     }
 }
