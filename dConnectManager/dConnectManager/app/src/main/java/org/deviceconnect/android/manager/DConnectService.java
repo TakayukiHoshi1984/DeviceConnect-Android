@@ -48,6 +48,8 @@ public class DConnectService extends DConnectMessageService {
      */
     private static final String TAG_WAKE_LOCK = "DeviceConnectManager";
 
+    public static final String ACTION_SERVER_START = "org.deviceconnect.action.START";
+    public static final String ACTION_SERVER_STOP = "org.deviceconnect.action.STOP";
     public static final String ACTION_DISCONNECT_WEB_SOCKET = "disconnect.WebSocket";
     public static final String ACTION_SETTINGS_KEEP_ALIVE = "settings.KeepAlive";
     public static final String EXTRA_WEBSOCKET_ID = "webSocketId";
@@ -140,6 +142,16 @@ public class DConnectService extends DConnectMessageService {
         String action = intent.getAction();
         if (action == null) {
             mLogger.warning("action is null.");
+            return START_STICKY;
+        }
+
+        if (ACTION_SERVER_START.equals(action)) {
+            startInternal();
+            return START_STICKY;
+        }
+        if (ACTION_SERVER_STOP.equals(action)) {
+            // TODO 終了条件が満たされていることのチェック
+            stopInternal();
             return START_STICKY;
         }
 

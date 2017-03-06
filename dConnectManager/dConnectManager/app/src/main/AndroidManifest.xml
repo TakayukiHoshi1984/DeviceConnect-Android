@@ -134,6 +134,9 @@
                 <action android:name="org.deviceconnect.action.DELETE"/>
                 <action android:name="org.deviceconnect.action.RESPONSE"/>
                 <action android:name="org.deviceconnect.action.EVENT"/>
+
+                <action android:name="org.deviceconnect.action.START"/>
+                <action android:name="org.deviceconnect.action.STOP"/>
             </intent-filter>
         </receiver>
 
