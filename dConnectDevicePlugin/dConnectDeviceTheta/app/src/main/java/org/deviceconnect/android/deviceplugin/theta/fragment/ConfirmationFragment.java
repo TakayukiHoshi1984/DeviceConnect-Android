@@ -106,8 +106,10 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
             public void onClick(final View v) {
                 String ssId = mWifiMgr.getConnectionInfo().getSSID();
                 mLogger.info("Current Wi-Fi SSID: " + ssId);
-                if (WiFiUtil.checkSSID(ssId)) {
-                    mServiceIdView.setText(getThetaName());
+
+                ThetaDevice device = getConnectedDevice();
+                if (device != null) {
+                    showMessageConnectedTheta(device);
                 } else {
                     connectTheta();
                 }
@@ -117,11 +119,37 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         return rootView;
     }
 
+    private void showMessageConnectedTheta(final ThetaDevice device) {
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    String message = getString(R.string.camera_search_message_found);
+                    message = message.replace("$NAME$", device.getName());
+                    mServiceIdView.setText(message);
+                }
+            });
+        }
+    }
+
+    private void showMessageThetaNotFound() {
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mServiceIdView.setText(R.string.camera_search_message_not_found);
+                }
+            });
+        }
+    }
+
     private WifiManager getWifiManager() {
         return (WifiManager) getActivity().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     }
 
-    /* Get connected Theta device's info. */
+    /** Get connected Theta device's info. */
     private ThetaDevice getConnectedDevice() {
         Activity activity = getActivity();
         if (activity != null) {
@@ -131,19 +159,6 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         } else {
             return null;
         }
-    }
-
-    /* Get Theta Device's Name. */
-    private String getThetaName() {
-        ThetaDevice device = getConnectedDevice();
-        String message;
-        if (device != null) {
-            message = getString(R.string.camera_search_message_found);
-            message = message.replace("$NAME$", device.getName());
-        } else {
-            message = getString(R.string.camera_search_message_not_found);
-        }
-        return message;
     }
 
     @Override
@@ -174,21 +189,6 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     }
 
     /**
-     * Explore the WiFi that exist around.
-     * <p>
-     * Search results, we want to display to WiFiDeviceListFragment.
-     * </p>
-     */
-    private void searchTheta() {
-        WifiInfo info = mWifiMgr.getConnectionInfo();
-        if (info != null && WiFiUtil.checkSSID(info.getSSID())) {
-            mServiceIdView.setText(getThetaName());
-        } else {
-            mServiceIdView.setText(R.string.camera_search_message_not_found);
-        }
-    }
-
-    /**
      * Connection to the Theta device.
      */
     private void connectTheta() {
@@ -214,11 +214,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                     }
                 });
             }
-            if (WiFiUtil.checkSSID(wifiInfo.getSSID())) {
-                searchTheta();
-            } else {
-                searchThetaWifi();
-            }
+            searchThetaWifi();
         }
     }
 
@@ -559,21 +555,16 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
             mDialog.dismiss();
             mDialog = null;
         }
-        Activity activity = getActivity();
-        if (activity != null) {
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mServiceIdView.setText(getThetaName());
-                }
-            });
-        }
-
+        showMessageConnectedTheta(device);
     }
 
     @Override
     public void onDisconnected(final ThetaDevice device) {
-        this.onConnected(device);
+        if (mDialog != null) {
+            mDialog.dismiss();
+            mDialog = null;
+        }
+        showMessageThetaNotFound();
     }
 
     /**
