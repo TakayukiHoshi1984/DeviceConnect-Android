@@ -155,6 +155,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         if (activity != null) {
             ThetaDeviceApplication app = (ThetaDeviceApplication) activity.getApplication();
             ThetaDeviceManager deviceManager = app.getDeviceManager();
+            deviceManager.checkConnectedDevice();
             return deviceManager.getConnectedDevice();
         } else {
             return null;

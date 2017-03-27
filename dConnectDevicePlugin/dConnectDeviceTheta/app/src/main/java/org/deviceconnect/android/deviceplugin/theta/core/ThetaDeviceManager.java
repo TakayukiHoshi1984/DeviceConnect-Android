@@ -103,7 +103,8 @@ public class ThetaDeviceManager implements WifiStateEventListener {
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                WifiManager wifiMgr = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+                Context appContext = mContext.getApplicationContext();
+                WifiManager wifiMgr = (WifiManager) appContext.getSystemService(Context.WIFI_SERVICE);
                 WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
                 if (wifiInfo != null) {
                     ThetaDevice device = ThetaDeviceFactory.createDevice(mContext, wifiInfo);
