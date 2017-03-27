@@ -56,6 +56,8 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     /** Interval. */
     private static final int INTERVAL = 1000;
 
+    /** Handler. */
+    private Handler mHandler;
     /** View to display the service ID. */
     private TextView mServiceIdView;
     /** Wifi management class. */
@@ -90,6 +92,21 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         }
     };
 
+    private Runnable mTimeoutDialogTask = new Runnable() {
+        @Override
+        public void run() {
+            if (mDialog != null) {
+                if (isResumed()) {
+                    mDialog.dismiss();
+                    ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
+                            getString(R.string.theta_error_wrong_password), null);
+                    mServiceIdView.setText(R.string.camera_search_message_not_found);
+                }
+                mDialog = null;
+            }
+        }
+    };
+
     private boolean mIsWaitingWifiEnabled;
 
     @Override
@@ -99,6 +116,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         mServiceIdView = (TextView) rootView.findViewById(R.id.camera_search_message);
         mSettings = new UserSettings(getActivity());
         mWifiMgr = getWifiManager();
+        mHandler = new Handler();
 
         Button btnCameraSearch = (Button) rootView.findViewById(R.id.btn_camera_search);
         btnCameraSearch.setOnClickListener(new View.OnClickListener() {
@@ -514,7 +532,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     }
 
     private void showConnectionProgress() {
-        Activity activity = getActivity();
+        final Activity activity = getActivity();
         if (activity != null) {
             activity.runOnUiThread(new Runnable() {
                 @Override
@@ -524,19 +542,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                         mDialog.show(getActivity().getFragmentManager(),
                             "fragment_dialog");
                     }
-                    new Handler().postDelayed(new Runnable() {  //Timeout Handler
-                        @Override
-                        public void run() {
-                            if (mDialog != null) {
-                                mDialog.dismiss();
-                                mDialog = null;
-                                ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
-                                    getString(R.string.theta_error_wrong_password), null);
-                                mServiceIdView.setText(R.string.camera_search_message_not_found);
-
-                            }
-                        }
-                    }, 30000);
+                    mHandler.postDelayed(mTimeoutDialogTask, 30 * 1000);
                 }
             });
         }
