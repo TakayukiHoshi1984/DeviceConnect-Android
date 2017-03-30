@@ -16,12 +16,7 @@ class ThetaDeviceFactory {
         ThetaDeviceModel model = parseModel(ssId);
         switch (model) {
             case THETA_M15:
-                ThetaM15 m15 = new ThetaM15(context, ssId);
-                if (m15.initialize()) {
-                    return m15;
-                } else {
-                    return null;
-                }
+                return new ThetaM15(context, ssId);
             case THETA_S:
                 return new ThetaS(ssId);
             default:

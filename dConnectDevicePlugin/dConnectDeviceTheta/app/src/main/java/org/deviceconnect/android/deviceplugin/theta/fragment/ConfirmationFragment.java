@@ -72,8 +72,6 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         @Override
         public void onReceive(final Context context, final Intent intent) {
             String action = intent.getAction();
-            mLogger.info("ConfirmationFragment: action = " + action
-                + ", isWaitingWiFiEnabled = " + mIsWaitingWifiEnabled);
             if (!mIsWaitingWifiEnabled) {
                 return;
             }
@@ -82,7 +80,9 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                 switch (state) {
                     case WifiManager.WIFI_STATE_ENABLED:
                         mIsWaitingWifiEnabled = false;
-                        connectTheta();
+
+                        showMessage(R.string.theta_connecting);
+                        searchThetaWifi();
                         break;
                     default:
                         break;
@@ -97,6 +97,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
             if (mDialog != null) {
                 if (isResumed()) {
                     mDialog.dismiss();
+
                     ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
                             getString(R.string.theta_error_wrong_password), null);
                     mServiceIdView.setText(R.string.camera_search_message_not_found);
@@ -222,18 +223,22 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                     }
                 });
         } else {
-            WifiInfo wifiInfo = mWifiMgr.getConnectionInfo();
-            Activity activity = getActivity();
-            if (activity != null) {
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mServiceIdView.setText(R.string.theta_connecting);
-                    }
-                });
-            }
+            showMessage(R.string.theta_connecting);
             searchThetaWifi();
         }
+    }
+
+    private void showMessage(final int resId) {
+        showMessage(getString(resId));
+    }
+
+    private void showMessage(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mServiceIdView.setText(message);
+            }
+        });
     }
 
     /**
@@ -531,19 +536,23 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     }
 
     private void showConnectionProgress() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mDialog == null) {
+                    mDialog = ThetaDialogFragment.newInstance(getString(R.string.theta_ssid_prefix), getString(R.string.connecting));
+                    mDialog.show(getActivity().getFragmentManager(),
+                            "fragment_dialog");
+                }
+                mHandler.postDelayed(mTimeoutDialogTask, 30 * 1000);
+            }
+        });
+    }
+
+    private void runOnUiThread(final Runnable r) {
         final Activity activity = getActivity();
         if (activity != null) {
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (mDialog == null) {
-                        mDialog = ThetaDialogFragment.newInstance(getString(R.string.theta_ssid_prefix), getString(R.string.connecting));
-                        mDialog.show(getActivity().getFragmentManager(),
-                            "fragment_dialog");
-                    }
-                    mHandler.postDelayed(mTimeoutDialogTask, 30 * 1000);
-                }
-            });
+            activity.runOnUiThread(r);
         }
     }
 
@@ -557,6 +566,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
 
     @Override
     public void onConnected(final ThetaDevice device) {
+        mLogger.info("onConnected: " + device.getName());
         if (mDialog != null) {
             mDialog.dismiss();
             mDialog = null;
@@ -566,6 +576,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
 
     @Override
     public void onDisconnected(final ThetaDevice device) {
+        mLogger.info("onDisconnected: " + device.getName());
         if (mDialog != null) {
             mDialog.dismiss();
             mDialog = null;

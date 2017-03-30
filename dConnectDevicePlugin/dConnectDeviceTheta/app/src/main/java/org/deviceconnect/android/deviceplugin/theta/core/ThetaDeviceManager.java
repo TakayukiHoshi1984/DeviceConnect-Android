@@ -171,10 +171,15 @@ public class ThetaDeviceManager implements WifiStateEventListener {
             @Override
             public void run() {
                 synchronized (this) {
+                    if (isConnectedAlready(wifiInfo)) {
+                        mLogger.info("Already Connected: " + wifiInfo.getSSID());
+                        return;
+                    }
+
                     ThetaDevice oldDevice = mConnectedDevice;
                     ThetaDevice newDevice = ThetaDeviceFactory.createDevice(mContext, wifiInfo);
                     mConnectedDevice = newDevice;
-                    mLogger.info("onNetworkChanged: " + mConnectedDevice);
+                    mLogger.info("onNetworkChanged: connected = " + mConnectedDevice);
 
                     if (oldDevice != null) {
                         notifyOnDisconnected(oldDevice);
@@ -186,6 +191,18 @@ public class ThetaDeviceManager implements WifiStateEventListener {
                 }
             }
         });
+    }
+
+    private boolean isConnectedAlready(final WifiInfo wifiInfo) {
+        return mConnectedDevice != null && mConnectedDevice.getName().equals(parseSSID(wifiInfo));
+    }
+
+    private static String parseSSID(final WifiInfo wifiInfo) {
+        String ssId = wifiInfo.getSSID();
+        if (ssId == null) {
+            return null;
+        }
+        return ssId.replace("\"", "");
     }
 
     @Override

@@ -66,21 +66,26 @@ class ThetaM15 extends AbstractThetaDevice {
         mSocketFactory = getWifiSocketFactory(context);
     }
 
-    public boolean initialize() {
-        mDeviceVersion = getDeviceVersion();
+    private boolean initialize(final PtpipInitiator ptpIp) throws ThetaException {
         if (mDeviceVersion == null) {
-            return false;
+            mDeviceVersion = getDeviceVersion(ptpIp);
         }
-        mRecorder = detectRecorder();
         if (mRecorder == null) {
-            return false;
+            mRecorder = detectRecorder(ptpIp);
         }
-        return true;
+        return isInitialized();
+    }
+
+    private boolean isInitialized() {
+        return mDeviceVersion != null && mRecorder != null;
     }
 
     private PtpipInitiator getInitiator() throws ThetaException, IOException {
-        // TODO Null check for mSocketFactory.
-        return new PtpipInitiator(mSocketFactory, HOST);
+        PtpipInitiator ptpIp = new PtpipInitiator(mSocketFactory, HOST);
+        if (!initialize(ptpIp)) {
+            throw new ThetaException("Failed to initialize THETA m15.");
+        }
+        return ptpIp;
     }
 
     private static SocketFactory getWifiSocketFactory(final Context context) {
@@ -263,6 +268,9 @@ class ThetaM15 extends AbstractThetaDevice {
     }
 
     private boolean is5minVideo() {
+        if (mDeviceVersion == null) {
+            return false;
+        }
         return mDeviceVersion.isSameOrLaterThan(VERSION_5_MIN_VIDEO);
     }
 
@@ -280,29 +288,32 @@ class ThetaM15 extends AbstractThetaDevice {
     @Override
     public ShootingMode getShootingMode() throws ThetaDeviceException {
         try {
-            PtpipInitiator ptpIp = getInitiator();
-            short captureMode = ptpIp.getStillCaptureMode();
-            ShootingMode mode;
-            switch (captureMode) {
-                case PtpipInitiator.DEVICE_PROP_VALUE_SINGLE_CAPTURE_MODE:
-                    mode = ShootingMode.IMAGE;
-                    break;
-                case PtpipInitiator.DEVICE_PROP_VALUE_TIMELAPSE_CAPTURE_MODE:
-                    mode = ShootingMode.IMAGE_INTERVAL;
-                    break;
-                case PtpipInitiator.DEVICE_PROP_VALUE_UNDEFINED_CAPTURE_MODE:
-                    mode = ShootingMode.VIDEO;
-                    break;
-                default:
-                    mode = ShootingMode.UNKNOWN;
-                    break;
-            }
-            return mode;
+            return getShootingMode(getInitiator());
         } catch (IOException e) {
             throw new ThetaDeviceException(ThetaDeviceException.IO_ERROR, e);
         } catch (ThetaException e) {
             throw new ThetaDeviceException(ThetaDeviceException.UNKNOWN, e);
         }
+    }
+
+    private ShootingMode getShootingMode(final PtpipInitiator ptpIp) throws ThetaException {
+        short captureMode = ptpIp.getStillCaptureMode();
+        ShootingMode mode;
+        switch (captureMode) {
+            case PtpipInitiator.DEVICE_PROP_VALUE_SINGLE_CAPTURE_MODE:
+                mode = ShootingMode.IMAGE;
+                break;
+            case PtpipInitiator.DEVICE_PROP_VALUE_TIMELAPSE_CAPTURE_MODE:
+                mode = ShootingMode.IMAGE_INTERVAL;
+                break;
+            case PtpipInitiator.DEVICE_PROP_VALUE_UNDEFINED_CAPTURE_MODE:
+                mode = ShootingMode.VIDEO;
+                break;
+            default:
+                mode = ShootingMode.UNKNOWN;
+                break;
+        }
+        return mode;
     }
 
     @Override
@@ -312,6 +323,18 @@ class ThetaM15 extends AbstractThetaDevice {
 
     @Override
     public Recorder getRecorder() throws ThetaDeviceException {
+        if (!isInitialized()) {
+            try {
+                if (!initialize(getInitiator())) {
+                    throw new ThetaDeviceException(ThetaDeviceException.UNKNOWN,
+                            "Failed to detect shooting mode of THETA m15.");
+                }
+            } catch (IOException e) {
+                throw new ThetaDeviceException(ThetaDeviceException.IO_ERROR, e);
+            } catch (ThetaException e) {
+                throw new ThetaDeviceException(ThetaDeviceException.IO_ERROR, e);
+            }
+        }
         return mRecorder;
     }
 
@@ -320,33 +343,20 @@ class ThetaM15 extends AbstractThetaDevice {
         throw new UnsupportedOperationException();
     }
 
-    private VersionName getDeviceVersion() {
-        DeviceInfo deviceInfo;
-
-        try {
-            deviceInfo = getInitiator().getDeviceInfo();
-        } catch (IOException e) {
-            return null;
-        } catch (ThetaException e) {
-            return null;
-        }
-
+    private VersionName getDeviceVersion(final PtpipInitiator ptpIp) throws ThetaException {
+        DeviceInfo deviceInfo = ptpIp.getDeviceInfo();
         return new VersionName(deviceInfo.getDeviceVersion());
     }
 
-    private Recorder detectRecorder() {
-        try {
-            ShootingMode mode = getShootingMode();
-            switch (mode) {
-                case IMAGE:
-                    return new ThetaImageRecorderM15("0");
-                case VIDEO:
-                    return new ThetaVideoRecorderM15("1");
-                default:
-                    return null;
-            }
-        } catch (ThetaDeviceException e) {
-            return null;
+    private Recorder detectRecorder(final PtpipInitiator ptpIp) throws ThetaException {
+        ShootingMode mode = getShootingMode(ptpIp);
+        switch (mode) {
+            case IMAGE:
+                return new ThetaImageRecorderM15("0");
+            case VIDEO:
+                return new ThetaVideoRecorderM15("1");
+            default:
+                return null;
         }
     }
 

@@ -60,6 +60,9 @@ import java.util.List;
  */
 public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventListener {
 
+    /** Tag for logger. */
+    private static final String TAG = ThetaGalleryFragment.class.getSimpleName();
+
     /** Gallery Mode: App. */
     private static final int GALLERY_MODE_APP = 0;
 
@@ -927,7 +930,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                     cacheThumbnail(mObj);
                 } catch (ThetaDeviceException e) {
                     if (BuildConfig.DEBUG) {
-                        Log.e("AAA", "error", e);
+                        Log.e(TAG, "error", e);
                     }
                 } catch (InterruptedException e) {
                     // Nothing to do.

@@ -2,6 +2,7 @@ package org.deviceconnect.android.deviceplugin.theta.core.wifi;
 
 import android.app.Service;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -33,9 +34,12 @@ public class WifiStateService extends Service {
         String action = intent.getAction();
         if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)) {
             NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
-            if (networkInfo.isConnected()) {
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected()) {
                 WifiInfo wifiInfo = intent.getParcelableExtra(WifiManager.EXTRA_WIFI_INFO);
-                mListener.onNetworkChanged(wifiInfo);
+                String bssid = intent.getStringExtra(WifiManager.EXTRA_BSSID);
+                if (wifiInfo != null && bssid != null) {
+                    mListener.onNetworkChanged(wifiInfo);
+                }
             }
         } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action)) {
             int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN);
