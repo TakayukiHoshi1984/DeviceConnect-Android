@@ -698,7 +698,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                         mDownloadTask = new DownloadThetaDataTask();
                         mDownloadTask.execute(removeObj);
                     }
-                });
+                }, null);
     }
 
     /**

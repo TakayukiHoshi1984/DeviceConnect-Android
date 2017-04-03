@@ -78,11 +78,13 @@ public class ThetaDialogFragment extends DialogFragment {
      * @param title title
      * @param message message
      * @param positiveBtnMsg Positive Button Message
-     * @param listener listener
+     * @param positiveListener Listener for positive button
+     * @param negativeListener Listener for negative button
      */
     public static void showConfirmAlert(final Activity activity, final String title, final String message,
                                         final String positiveBtnMsg,
-                                        final DialogInterface.OnClickListener listener) {
+                                        final DialogInterface.OnClickListener positiveListener,
+                                        final DialogInterface.OnClickListener negativeListener) {
         if (activity == null) {
             return;
         }
@@ -90,8 +92,8 @@ public class ThetaDialogFragment extends DialogFragment {
         new AlertDialog.Builder(activity)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton(positiveBtnMsg, listener)
-                .setNegativeButton(R.string.button_cancel, null)
+                .setPositiveButton(positiveBtnMsg, positiveListener)
+                .setNegativeButton(R.string.button_cancel, negativeListener)
                 .show();
     }
 

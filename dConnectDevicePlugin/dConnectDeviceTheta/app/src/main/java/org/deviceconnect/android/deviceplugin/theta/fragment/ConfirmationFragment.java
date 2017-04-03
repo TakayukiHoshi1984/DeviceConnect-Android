@@ -42,6 +42,7 @@ import org.deviceconnect.android.deviceplugin.theta.utils.WiFiUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -94,20 +95,25 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     private Runnable mTimeoutDialogTask = new Runnable() {
         @Override
         public void run() {
-            if (mDialog != null) {
-                if (isResumed()) {
-                    mDialog.dismiss();
-
-                    ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
-                            getString(R.string.theta_error_wrong_password), null);
-                    mServiceIdView.setText(R.string.camera_search_message_not_found);
+            synchronized (this) {
+                if (mDialog != null) {
+                    if (isResumed()) {
+                        mDialog.dismiss();
+                        showDialogTimeout();
+                        showMessageThetaNotFound();
+                    }
+                    mDialog = null;
                 }
-                mDialog = null;
+                lockBtn(false);
             }
         }
     };
 
     private boolean mIsWaitingWifiEnabled;
+
+    private boolean mIsConnecting;
+
+    private Button mBtnCameraSearch;
 
     @Override
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
@@ -118,10 +124,17 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         mWifiMgr = getWifiManager();
         mHandler = new Handler();
 
-        Button btnCameraSearch = (Button) rootView.findViewById(R.id.btn_camera_search);
-        btnCameraSearch.setOnClickListener(new View.OnClickListener() {
+        mBtnCameraSearch = (Button) rootView.findViewById(R.id.btn_camera_search);
+        mBtnCameraSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View v) {
+                synchronized (this) {
+                    if (mIsConnecting) {
+                        return;
+                    }
+                    lockBtn(true);
+                }
+
                 String ssId = mWifiMgr.getConnectionInfo().getSSID();
                 mLogger.info("Current Wi-Fi SSID: " + ssId);
 
@@ -151,6 +164,32 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
         }
     }
 
+    private void showDialogTimeout() {
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
+                            getString(R.string.theta_error_wrong_password), null);
+                }
+            });
+        }
+    }
+
+    private void showDialogThetaNotFound() {
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
+                            getString(R.string.camera_search_message_not_found), null);
+                }
+            });
+        }
+    }
+
     private void showMessageThetaNotFound() {
         Activity activity = getActivity();
         if (activity != null) {
@@ -158,6 +197,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                 @Override
                 public void run() {
                     mServiceIdView.setText(R.string.camera_search_message_not_found);
+                    lockBtn(false);
                 }
             });
         }
@@ -220,6 +260,12 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                     @Override
                     public void onClick(final DialogInterface dialog, final int whichButton) {
                         turnOnWifi();
+                    }
+                },
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(final DialogInterface dialog, final int whichButton) {
+                        lockBtn(false);
                     }
                 });
         } else {
@@ -345,13 +391,12 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                                 @Override
                                 public void onClick(final DialogInterface dialog, final int whichButton) {
                                     mServiceIdView.setText(R.string.theta_no_device);
+                                    lockBtn(false);
                                 }
                             });
                 } else {
-                    ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
-                            getString(R.string.camera_search_message_not_found), null);
-                    mServiceIdView.setText(R.string.camera_search_message_not_found);
-
+                    showDialogThetaNotFound();
+                    showMessageThetaNotFound();
                 }
 
                 synchronized (unregistered) {
@@ -444,7 +489,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
 
                 @Override
                 public void onCancel() {
-                    mServiceIdView.setText(R.string.camera_search_message_not_found);
+                    showMessageThetaNotFound();
                 }
             });
         } else if (capabilities.contains("WEP")) {
@@ -462,7 +507,7 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
 
                 @Override
                 public void onCancel() {
-                    mServiceIdView.setText(R.string.camera_search_message_not_found);
+                    showMessageThetaNotFound();
                 }
             });
         } else {
@@ -528,10 +573,8 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                 }
             }).start();
         } else {
-            ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi),
-                    getString(R.string.camera_search_message_not_found), null);
-            mServiceIdView.setText(R.string.camera_search_message_not_found);
-
+            showDialogThetaNotFound();
+            showMessageThetaNotFound();
         }
     }
 
@@ -567,9 +610,12 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     @Override
     public void onConnected(final ThetaDevice device) {
         mLogger.info("onConnected: " + device.getName());
-        if (mDialog != null) {
-            mDialog.dismiss();
-            mDialog = null;
+        synchronized (this) {
+            if (mDialog != null) {
+                mDialog.dismiss();
+                mDialog = null;
+            }
+            lockBtn(false);
         }
         showMessageConnectedTheta(device);
     }
@@ -577,11 +623,24 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
     @Override
     public void onDisconnected(final ThetaDevice device) {
         mLogger.info("onDisconnected: " + device.getName());
-        if (mDialog != null) {
-            mDialog.dismiss();
-            mDialog = null;
+        synchronized (this) {
+            if (mDialog != null) {
+                mDialog.dismiss();
+                mDialog = null;
+            }
+            lockBtn(false);
         }
         showMessageThetaNotFound();
+    }
+
+    private void lockBtn(final boolean isLock) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mIsConnecting = isLock;
+                mBtnCameraSearch.setEnabled(!isLock);
+            }
+        });
     }
 
     /**
