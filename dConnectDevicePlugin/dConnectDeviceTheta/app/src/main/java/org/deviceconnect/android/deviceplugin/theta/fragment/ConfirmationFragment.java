@@ -14,6 +14,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -22,6 +23,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ResultReceiver;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +33,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.deviceconnect.android.activity.IntentHandlerActivity;
 import org.deviceconnect.android.activity.PermissionUtility;
 import org.deviceconnect.android.deviceplugin.theta.R;
 import org.deviceconnect.android.deviceplugin.theta.ThetaDeviceApplication;
@@ -300,11 +304,30 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
 
     /** Check Location Service Permission. */
     private void checkLocationServiceEnabled() {
-        checkPermission();
+        // WiFi scan in SDK 23 requires location service to be enabled.
+        final LocationManager manager = getContext().getSystemService(LocationManager.class);
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            IntentHandlerActivity.startActivityForResult(getContext(),
+                    new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+                    new ResultReceiver(new Handler(Looper.getMainLooper())) {
+                        @Override
+                        protected void onReceiveResult(int resultCode, final Bundle resultData) {
+                            super.onReceiveResult(resultCode, resultData);
+
+                            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                                checkLocationPermission();
+                            } else {
+                                showErrorDialog(getString(R.string.theta_error_request_permission));
+                            }
+                        }
+                    });
+        } else {
+            checkLocationPermission();
+        }
     }
 
     /** Check Permission. */
-    private void checkPermission() {
+    private void checkLocationPermission() {
         // WiFi scan requires location permissions.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (getContext().checkSelfPermission(
@@ -330,6 +353,10 @@ public class ConfirmationFragment extends SettingsFragment implements ThetaDevic
                         });
             }
         }
+    }
+
+    private void showErrorDialog(final String message) {
+        ThetaDialogFragment.showAlert(getActivity(), getString(R.string.theta_confirm_wifi), message, null);
     }
 
     /** Get Theta AP List. */
