@@ -94,6 +94,7 @@ public class ThetaDialogFragment extends DialogFragment {
                 .setMessage(message)
                 .setPositiveButton(positiveBtnMsg, positiveListener)
                 .setNegativeButton(R.string.button_cancel, negativeListener)
+                .setCancelable(false)
                 .show();
     }
 
@@ -115,6 +116,7 @@ public class ThetaDialogFragment extends DialogFragment {
             .setMessage(R.string.theta_error_reconnection_dialog_message)
             .setPositiveButton(R.string.open_settings, positive)
             .setNegativeButton(R.string.button_cancel, negative)
+            .setCancelable(false)
             .show();
     }
 
@@ -134,6 +136,7 @@ public class ThetaDialogFragment extends DialogFragment {
         new AlertDialog.Builder(activity)
             .setTitle(R.string.communication_error)
             .setMessage(R.string.theta_error_disconnect_dialog_message)
+            .setCancelable(false)
             .setPositiveButton(R.string.open_settings, positive)
             .setNegativeButton(R.string.button_cancel, negative)
             .show();
@@ -163,7 +166,7 @@ public class ThetaDialogFragment extends DialogFragment {
         builder.setSingleChoiceItems(list, 0, singleChoiceListner);
         builder.setPositiveButton(R.string.ok, positiveListener);
         builder.setNegativeButton(R.string.button_cancel, negativeListener);
-        builder.setCancelable(true);
+        builder.setCancelable(false);
         builder.show();
     }
 
@@ -176,6 +179,7 @@ public class ThetaDialogFragment extends DialogFragment {
         builder.setTitle(R.string.theta_password_dialog);
         builder.setView(editView).setPositiveButton(R.string.ok, okListener);
         builder.setNegativeButton(R.string.button_cancel, cancelListener);
+        builder.setCancelable(false);
         builder.show();
     }
 }
