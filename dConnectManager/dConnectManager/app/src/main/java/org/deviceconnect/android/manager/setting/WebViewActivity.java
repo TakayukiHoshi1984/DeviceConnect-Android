@@ -99,6 +99,11 @@ public class WebViewActivity extends Activity {
      */
     private boolean mPauseFlag;
 
+    /**
+     * 現在選択されているServiceの
+     */
+    private String mCurrentServiceId;
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -157,6 +162,12 @@ public class WebViewActivity extends Activity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
                 webSettings.setAllowFileAccessFromFileURLs(true);
                 webSettings.setAllowUniversalAccessFromFileURLs(true);
+            }
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
+                Uri assetsURI = Uri.parse(url);
+                mCurrentServiceId = assetsURI.getQueryParameter("serviceId");
+                String[] urlSplit = url.split("\\?");
+                url = urlSplit[0];
             }
 
             mWebView.loadUrl(url);
@@ -319,6 +330,7 @@ public class WebViewActivity extends Activity {
                 }
             }
         }
+
     };
 
     private final WebChromeClient mChromeClient = new WebChromeClient() {
@@ -475,6 +487,11 @@ public class WebViewActivity extends Activity {
             SharedPreferences.Editor editor = mPref.edit();
             editor.remove(name);
             editor.commit();
+        }
+
+        @JavascriptInterface
+        public String getCurrentServiceId() {
+            return mCurrentServiceId;
         }
     }
 }

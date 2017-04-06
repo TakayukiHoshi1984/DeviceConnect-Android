@@ -404,7 +404,11 @@ var util = (function(parent, global) {
 
 
     function getServiceId() {
-        return getQuery('serviceId');
+        var serviceId = getQuery('serviceId');
+        if (!serviceId) {
+            serviceId = Android.getCurrentServiceId();
+        }
+        return serviceId;
     }
     parent.getServiceId = getServiceId;
 
