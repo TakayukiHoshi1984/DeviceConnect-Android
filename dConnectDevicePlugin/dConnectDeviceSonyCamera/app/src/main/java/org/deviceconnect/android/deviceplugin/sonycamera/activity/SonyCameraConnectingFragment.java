@@ -203,8 +203,13 @@ public class SonyCameraConnectingFragment extends SonyCameraBaseFragment {
                     new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS),
                     new ResultReceiver(new Handler(Looper.getMainLooper())) {
                         @Override
-                        protected void onReceiveResult(int resultCode, final Bundle resultData) {
+                        protected void onReceiveResult(final int resultCode, final Bundle resultData) {
                             super.onReceiveResult(resultCode, resultData);
+
+                            if (getActivity() == null) {
+                                // 画面回転されたりしているとActivityがdetachされることがある
+                                return;
+                            }
 
                             if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                                 checkLocationPermission();
@@ -378,6 +383,9 @@ public class SonyCameraConnectingFragment extends SonyCameraBaseFragment {
      * @param message エラーメッセージ
      */
     private void showErrorDialog(final String title, final String message) {
+        if (getActivity() == null) {
+            return;
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setIcon(android.R.drawable.ic_dialog_alert);
         builder.setTitle(title);
