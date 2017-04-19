@@ -272,7 +272,7 @@ public class VideoRecorderActivity extends Activity implements SurfaceHolder.Cal
             values.put(Video.Media.TITLE, mFileName);
             values.put(Video.Media.DISPLAY_NAME, mFileName);
             values.put(Video.Media.ARTIST, "DeviceConnect");
-            values.put(Video.Media.MIME_TYPE, VideoConst.FORMAT_TYPE);
+            values.put(Video.Media.MIME_TYPE, VideoConst.MIME_TYPE);
             values.put(Video.Media.DATA, mFile.toString());
             resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
         }

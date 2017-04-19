@@ -38,7 +38,7 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
 
     private static final String NAME = "AndroidHost Audio Recorder";
 
-    private static final String MIME_TYPE = "audio/3gp";
+    private static final String MIME_TYPE = "audio/3gpp";
 
     private final SimpleDateFormat mSimpleDateFormat = new SimpleDateFormat("yyyyMMdd_kkmmss", Locale.JAPAN);
 
@@ -49,7 +49,7 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
      */
     private List<String> mMimeTypes = new ArrayList<String>() {
         {
-            add("audio/3gp");
+            add("audio/3gpp");
         }
     };
     public HostDeviceAudioRecorder(final Context context) {

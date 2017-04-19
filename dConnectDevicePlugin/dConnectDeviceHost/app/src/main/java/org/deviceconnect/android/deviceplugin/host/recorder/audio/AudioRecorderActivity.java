@@ -167,7 +167,7 @@ public class AudioRecorderActivity extends Activity {
             values.put(Video.Media.TITLE, mFileName);
             values.put(Video.Media.DISPLAY_NAME, mFileName);
             values.put(Video.Media.ARTIST, "DeviceConnect");
-            values.put(Video.Media.MIME_TYPE, AudioConst.FORMAT_TYPE);
+            values.put(Video.Media.MIME_TYPE, AudioConst.MIME_TYPE);
             values.put(Video.Media.DATA, mFile.toString());
             resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
         }

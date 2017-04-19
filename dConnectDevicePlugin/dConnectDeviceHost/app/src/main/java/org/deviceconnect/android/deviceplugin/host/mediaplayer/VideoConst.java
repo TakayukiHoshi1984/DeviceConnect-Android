@@ -113,5 +113,7 @@ public final class VideoConst {
 
     /** Format Type. */
     public static final String FORMAT_TYPE = ".3gp";
+    /** Mime Type. */
+    public static final String MIME_TYPE = "video/3gpp";
 
 }

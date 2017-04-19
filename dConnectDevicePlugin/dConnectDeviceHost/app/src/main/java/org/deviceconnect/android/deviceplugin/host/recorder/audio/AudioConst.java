@@ -66,4 +66,7 @@ public final class AudioConst {
 
     /** フォーマット名. */
     public static final String FORMAT_TYPE = ".3gp";
+    /** Mime Type. */
+    public static final String MIME_TYPE = "audio/3gpp";
+
 }

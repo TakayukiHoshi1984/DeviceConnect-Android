@@ -44,11 +44,11 @@ public class HostDeviceVideoRecorder implements HostDeviceRecorder, HostDeviceSt
 
     private static final String NAME_BASE = "AndroidHost Video Recorder";
 
-    private static final String MIME_TYPE = "video/3gp";
+    private static final String MIME_TYPE = "video/3gpp";
 
     private List<String> mMimeTypes = new ArrayList<String>(){
         {
-            add("video/3gp");
+            add("video/3gpp");
         }
     };
 
