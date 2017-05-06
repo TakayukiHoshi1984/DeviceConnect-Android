@@ -465,7 +465,9 @@ public class WebViewActivity extends Activity {
          * cookie保存用クラス.
          */
         private SharedPreferences mPref;
-
+        private String mMimeType;
+        private String mResource;
+        private String mProfile;
         JavaScriptInterface() {
             mPref = getSharedPreferences("__cookie.dat", Context.MODE_PRIVATE);
         }
@@ -493,5 +495,18 @@ public class WebViewActivity extends Activity {
         public String getCurrentServiceId() {
             return mCurrentServiceId;
         }
+
+        @JavascriptInterface
+        public void setMimeType(final String mimeType) { mMimeType = mimeType;}
+        @JavascriptInterface
+        public String getMimeType() { return mMimeType; }
+        @JavascriptInterface
+        public void setResource(final String resource) { mResource = resource; }
+        @JavascriptInterface
+        public String getResource() { return mResource; }
+        @JavascriptInterface
+        public void setProfile(final String profile) { mProfile = profile; }
+        @JavascriptInterface
+        public String getProfile() { return mProfile; }
     }
 }

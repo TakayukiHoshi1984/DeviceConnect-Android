@@ -10,7 +10,7 @@ var main = (function(parent, global) {
     parent.init = init;
 
     function back() {
-            location.href = "./index.html?serviceId=" + util.getServiceId();
+            location.href = "./index.html";
     }
     parent.back = back;
     function onChangeValue(nav, name) {

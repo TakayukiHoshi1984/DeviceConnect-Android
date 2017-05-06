@@ -404,24 +404,38 @@ var util = (function(parent, global) {
 
 
     function getServiceId() {
-        var serviceId = getQuery('serviceId');
-        if (!serviceId) {
-            serviceId = Android.getCurrentServiceId();
-        }
-        return serviceId;
+        return Android.getCurrentServiceId();
     }
     parent.getServiceId = getServiceId;
 
+    function setResourceUri(resource) {
+        return Android.setResource(resource);
+    }
+    parent.setResourceUri = setResourceUri;
 
     function getResourceUri() {
-        return getQuery('resource');
+        return Android.getResource();
     }
     parent.getResourceUri = getResourceUri;
 
     function getMimeType() {
-        return getQuery('mimeType');
+        return Android.getMimeType();
     }
     parent.getMimeType = getMimeType;
+    function setMimeType(mimeType) {
+        return Android.setMimeType(mimeType);
+    }
+    parent.setMimeType = setMimeType;
+
+    function getProfile() {
+        return Android.getProfile();
+    }
+    parent.getProfile = getProfile;
+    function setProfile(profile) {
+        Android.setProfile(profile);
+        location.href = "./checker.html";
+    }
+    parent.setProfile = setProfile;
 
     function getAccessToken() {
         return mAccessToken;
@@ -462,7 +476,9 @@ var util = (function(parent, global) {
                     if (jsonObject['mimeType']) {
                         mimeType = jsonObject['mimeType'];
                     }
-                    jsonObject[key] = '<a href=resource.html?mimeType=' + encodeURIComponent(mimeType) + '&resource=' + encodeURIComponent(value) + '>' + value + "</a>";
+                    util.setMimeType(encodeURIComponent(mimeType));
+                    util.setResourceUri(encodeURIComponent(value));
+                    jsonObject[key] = '<a href=resource.html>' + value + "</a>";
                 }
             }
         }
