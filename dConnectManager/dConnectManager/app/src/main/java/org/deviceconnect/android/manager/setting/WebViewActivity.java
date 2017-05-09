@@ -163,12 +163,10 @@ public class WebViewActivity extends Activity {
                 webSettings.setAllowFileAccessFromFileURLs(true);
                 webSettings.setAllowUniversalAccessFromFileURLs(true);
             }
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
-                Uri assetsURI = Uri.parse(url);
-                mCurrentServiceId = assetsURI.getQueryParameter("serviceId");
-                String[] urlSplit = url.split("\\?");
-                url = urlSplit[0];
-            }
+            Uri assetsURI = Uri.parse(url);
+            mCurrentServiceId = assetsURI.getQueryParameter("serviceId");
+            String[] urlSplit = url.split("\\?");
+            url = urlSplit[0];
 
             mWebView.loadUrl(url);
         }

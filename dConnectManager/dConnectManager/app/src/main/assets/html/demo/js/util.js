@@ -397,12 +397,6 @@ var util = (function(parent, global) {
     parent.getUri = getUri;
 
 
-    function getProfile() {
-        return getQuery('profile');
-    }
-    parent.getProfile = getProfile;
-
-
     function getServiceId() {
         return Android.getCurrentServiceId();
     }
@@ -476,8 +470,8 @@ var util = (function(parent, global) {
                     if (jsonObject['mimeType']) {
                         mimeType = jsonObject['mimeType'];
                     }
-                    util.setMimeType(encodeURIComponent(mimeType));
-                    util.setResourceUri(encodeURIComponent(value));
+                    util.setMimeType(mimeType);
+                    util.setResourceUri(value);
                     jsonObject[key] = '<a href=resource.html>' + value + "</a>";
                 }
             }
