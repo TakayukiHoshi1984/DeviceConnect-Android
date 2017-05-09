@@ -32,6 +32,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.Logger;
 
 /**
@@ -246,6 +247,8 @@ public class MixedReplaceMediaServer {
                         }
                     }
                 } catch (IOException e) {
+                    mLogger.warning("Error server socket[" + mServerName + "]");
+                } catch (RejectedExecutionException e) {
                     mLogger.warning("Error server socket[" + mServerName + "]");
                 } finally {
                     stop();
