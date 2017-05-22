@@ -1,7 +1,7 @@
 
 var main = (function(parent, global) {
     function init() {
-        var mimeType = decodeURIComponent(util.getMimeType());
+        var mimeType = util.getMimeType();
         var uri = util.getResourceUri();
         if (mimeType.indexOf('image') === 0) {
             var elem = document.getElementById('image');

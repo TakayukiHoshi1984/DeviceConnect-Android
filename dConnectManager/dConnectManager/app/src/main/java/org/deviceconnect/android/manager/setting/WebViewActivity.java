@@ -99,6 +99,11 @@ public class WebViewActivity extends Activity {
      */
     private boolean mPauseFlag;
 
+    /**
+     * 現在選択されているServiceの
+     */
+    private String mCurrentServiceId;
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -158,6 +163,10 @@ public class WebViewActivity extends Activity {
                 webSettings.setAllowFileAccessFromFileURLs(true);
                 webSettings.setAllowUniversalAccessFromFileURLs(true);
             }
+            Uri assetsURI = Uri.parse(url);
+            mCurrentServiceId = assetsURI.getQueryParameter("serviceId");
+            String[] urlSplit = url.split("\\?");
+            url = urlSplit[0];
 
             mWebView.loadUrl(url);
         }
@@ -330,6 +339,7 @@ public class WebViewActivity extends Activity {
                 }
             }
         }
+
     };
 
     private final WebChromeClient mChromeClient = new WebChromeClient() {
@@ -464,7 +474,9 @@ public class WebViewActivity extends Activity {
          * cookie保存用クラス.
          */
         private SharedPreferences mPref;
-
+        private String mMimeType;
+        private String mResource;
+        private String mProfile;
         JavaScriptInterface() {
             mPref = getSharedPreferences("__cookie.dat", Context.MODE_PRIVATE);
         }
@@ -487,5 +499,23 @@ public class WebViewActivity extends Activity {
             editor.remove(name);
             editor.commit();
         }
+
+        @JavascriptInterface
+        public String getCurrentServiceId() {
+            return mCurrentServiceId;
+        }
+
+        @JavascriptInterface
+        public void setMimeType(final String mimeType) { mMimeType = mimeType;}
+        @JavascriptInterface
+        public String getMimeType() { return mMimeType; }
+        @JavascriptInterface
+        public void setResource(final String resource) { mResource = resource; }
+        @JavascriptInterface
+        public String getResource() { return mResource; }
+        @JavascriptInterface
+        public void setProfile(final String profile) { mProfile = profile; }
+        @JavascriptInterface
+        public String getProfile() { return mProfile; }
     }
 }
