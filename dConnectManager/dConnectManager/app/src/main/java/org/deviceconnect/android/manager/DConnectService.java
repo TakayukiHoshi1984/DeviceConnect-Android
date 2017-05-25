@@ -23,6 +23,7 @@ import org.deviceconnect.android.manager.event.EventBroker;
 import org.deviceconnect.android.manager.event.KeepAlive;
 import org.deviceconnect.android.manager.event.KeepAliveManager;
 import org.deviceconnect.android.manager.util.DConnectUtil;
+import org.deviceconnect.android.manager.util.NsdHelper;
 import org.deviceconnect.android.manager.util.VersionName;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.message.intent.message.IntentDConnectMessage;
@@ -87,6 +88,11 @@ public class DConnectService extends DConnectMessageService {
 
     /** バインドするためのクラス. */
     private final IBinder mLocalBinder = new LocalBinder();
+
+    /**
+     * NsdManagerを操作するヘルパークラス.
+     */
+    private NsdHelper mNsdHelper;
 
     @Override
     public IBinder onBind(final Intent intent) {
@@ -334,6 +340,9 @@ public class DConnectService extends DConnectMessageService {
                 mRESTfulServer.setServerEventListener(mWebServerListener);
                 mRESTfulServer.start();
 
+                mNsdHelper = new NsdHelper(DConnectService.this);
+                mNsdHelper.registerService(mSettings.getPort());
+
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
                 registerReceiver(mWiFiReceiver, filter);
@@ -354,6 +363,11 @@ public class DConnectService extends DConnectMessageService {
                     unregisterReceiver(mWiFiReceiver);
                     mRESTfulServer.shutdown();
                     mRESTfulServer = null;
+                }
+
+                if (mNsdHelper != null) {
+                    mNsdHelper.unregisterService();
+                    mNsdHelper = null;
                 }
 
                 if (BuildConfig.DEBUG) {

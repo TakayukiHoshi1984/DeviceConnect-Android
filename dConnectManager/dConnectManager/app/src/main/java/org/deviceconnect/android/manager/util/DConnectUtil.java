@@ -136,7 +136,16 @@ public final class DConnectUtil {
         DConnectSettings settings = DConnectSettings.getInstance();
         StringBuilder builder = new StringBuilder();
         builder.append(settings.isSSL() ? "https://" : "http://");
-        builder.append(settings.getHost());
+        if (settings.allowExternalIP()) {
+            NetworkUtil.getIpAddress();
+            String ipAddress = NetworkUtil.getWifiIPv4Address();
+            if (ipAddress.equals(NetworkUtil.NOT_SET_IPV4)) {
+                ipAddress = NetworkUtil.LOCALHOST_IPV4;
+            }
+            builder.append(ipAddress);
+        } else {
+            builder.append(settings.getHost());
+        }
         builder.append(":");
         builder.append(settings.getPort());
         builder.append("/gotapi/files");

@@ -187,7 +187,14 @@ public class MixedReplaceMediaServer {
         if (mServerSocket == null || mPath == null) {
             return null;
         }
-        return "http://localhost:" + mServerSocket.getLocalPort() + "/" + mPath;
+
+        NetworkUtil.getIpAddress();
+
+        String ipAddress = NetworkUtil.getWifiIPv4Address();
+        if (ipAddress.equals(NetworkUtil.NOT_SET_IPV4)) {
+            ipAddress = NetworkUtil.LOCALHOST_IPV4;
+        }
+        return "http://" + ipAddress + ":" + mServerSocket.getLocalPort() + "/" + mPath;
     }
     
     /**
