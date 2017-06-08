@@ -29,52 +29,52 @@ import org.deviceconnect.android.deviceplugin.sphero.BuildConfig;
  * @author NTT DOCOMO, INC.
  */
 public class DeviceInfo implements ResponseListener {
-
+    
     /**
      * センサーの周期. {@value} Hz
      */
     private static final int SENSOR_RATE = 2;
-
+    
     /**
      * デバイス.
      */
     private ConvenienceRobot mDevice;
-
+    
     /**
      * バックLEDの明るさ.
      */
     private float mBackBrightness;
-
+    
     /**
      * 現在の色.
      */
     private int mColor;
-
+    
     /**
      * センサーリスナー.
      */
     private DeviceSensorListener mSensorListener;
-
+    
     /**
      * 衝突リスナー.
      */
     private DeviceCollisionListener mCollisionListener;
-
+    
     /**
      * センサーが稼働しているか.
      */
     private boolean mIsSensorStarted;
-
+    
     /**
      * 衝突検知が稼働しているか.
      */
     private boolean mIsCollisionStarted;
-
+    
     /**
      * 前のセンサーのタイムスタンプ.
      */
     private long mPreSensorTimestamp;
-
+    
     /**
      * デバイスを取得する.
      *
@@ -83,7 +83,7 @@ public class DeviceInfo implements ResponseListener {
     public ConvenienceRobot getDevice() {
         return mDevice;
     }
-
+    
     /**
      * デバイスを設定する.
      *
@@ -92,7 +92,7 @@ public class DeviceInfo implements ResponseListener {
     public void setDevice(final ConvenienceRobot device) {
         this.mDevice = device;
     }
-
+    
     /**
      * バックライトの明るさを取得する.
      *
@@ -101,7 +101,7 @@ public class DeviceInfo implements ResponseListener {
     public float getBackBrightness() {
         return mBackBrightness;
     }
-
+    
     /**
      * バックライトの明るさを設定する.
      *
@@ -111,7 +111,7 @@ public class DeviceInfo implements ResponseListener {
         this.mDevice.setBackLedBrightness(backBrightness);
         this.mBackBrightness = backBrightness;
     }
-
+    
     /**
      * 色を設定する.
      *
@@ -125,7 +125,7 @@ public class DeviceInfo implements ResponseListener {
         // 自前で色を管理する。
         mColor = (0xff000000 | (r << 16) | (g << 8) | b);
     }
-
+    
     /**
      * 色を取得する.
      *
@@ -134,7 +134,7 @@ public class DeviceInfo implements ResponseListener {
     public int getColor() {
         return mColor;
     }
-
+    
     /**
      * センサーが稼働しているかチェックする.
      *
@@ -143,7 +143,7 @@ public class DeviceInfo implements ResponseListener {
     public boolean isSensorStarted() {
         return mIsSensorStarted;
     }
-
+    
     /**
      * 衝突の監視が稼働しているかチェックする.
      *
@@ -152,74 +152,70 @@ public class DeviceInfo implements ResponseListener {
     public boolean isCollisionStarted() {
         return mIsCollisionStarted;
     }
-
+    
     /**
      * センサーを開始する.
      *
      * @param listener リスナー
      */
     public void startSensor(final DeviceSensorListener listener) {
-
+        
         if (mIsSensorStarted) {
             return;
         }
-
+        
         mIsSensorStarted = true;
         mSensorListener = listener;
         mDevice.enableSensors(SensorFlag.ACCELEROMETER_NORMALIZED.longValue()
-                | SensorFlag.GYRO_NORMALIZED.longValue()
-                | SensorFlag.ATTITUDE.longValue()
-                | SensorFlag.QUATERNION.longValue()
-                | SensorFlag.LOCATOR.longValue()
-                | SensorFlag.VELOCITY.longValue(), SensorControl.StreamingRate.STREAMING_RATE10);
+                              | SensorFlag.GYRO_NORMALIZED.longValue()
+                              | SensorFlag.ATTITUDE.longValue()
+                              | SensorFlag.QUATERNION.longValue()
+                              | SensorFlag.LOCATOR.longValue()
+                              | SensorFlag.VELOCITY.longValue(), SensorControl.StreamingRate.STREAMING_RATE10);
         mDevice.addResponseListener(this);
-//        sc.setRate(SENSOR_RATE);
-//        sc.enableStreaming(true);
-//        sc.addSensorListener(this, SensorFlag.ACCELEROMETER_NORMALIZED,
-//                SensorFlag.GYRO_NORMALIZED, SensorFlag.ATTITUDE,
-//                SensorFlag.QUATERNION, SensorFlag.LOCATOR, SensorFlag.VELOCITY);
+        mDevice.enableStabilization(false);
         mDevice.sendCommand(new ConfigureLocatorCommand(ConfigureLocatorCommand.ROTATE_WITH_CALIBRATE_FLAG_OFF, 0, 0, 0));
         mPreSensorTimestamp = System.currentTimeMillis();
     }
-
+    
     /**
      * センサーを停止する.
      */
     public void stopSensor() {
-
+        
         if (!mIsSensorStarted) {
             return;
         }
         mIsSensorStarted = false;
+        mDevice.enableStabilization(true);
         mDevice.removeResponseListener(this);
         mDevice.getSensorControl().disableSensors();
         mSensorListener = null;
     }
-
+    
     /**
      * 衝突の監視を開始する.
      *
      * @param listener リスナー
      */
     public void startCollistion(final DeviceCollisionListener listener) {
-
+        
         if (mIsCollisionStarted) {
             return;
         }
-
+        
         if (BuildConfig.DEBUG) {
             Log.d("", "start collision");
         }
-
+        
         mIsCollisionStarted = true;
         mCollisionListener = listener;
-
-//        mDevice.getCollisionControl().addCollisionListener(this);
-//        mDevice.getCollisionControl().startDetection(90, 90, 130, 130, 100);
+        
         mDevice.addResponseListener(this);
         mDevice.enableCollisions(true);
+        mDevice.enableStabilization(false);
     }
-
+    
     /**
      * 衝突イベントの検知を終了する.
      */
@@ -227,47 +223,31 @@ public class DeviceInfo implements ResponseListener {
         if (!mIsCollisionStarted) {
             return;
         }
-
+        
         mIsCollisionStarted = false;
         mCollisionListener = null;
-//        mDevice.getCollisionControl().removeCollisionListener(this);
-//        mDevice.getCollisionControl().stopDetection();
         mDevice.enableCollisions(false);
+        mDevice.enableStabilization(true);
         mDevice.getSensorControl().disableSensors();
         if (BuildConfig.DEBUG) {
             Log.d("", "stop collision");
         }
     }
-
-//    @Override
-//    public void sensorUpdated(final DeviceSensorsData data) {
-//
-//        long timestamp = data.getTimeStamp();
-//        mSensorListener.sensorUpdated(this, data, timestamp - mPreSensorTimestamp);
-//        mPreSensorTimestamp = timestamp;
-//    }
-//
-//    @Override
-//    public void collisionDetected(final CollisionDetectedAsyncData data) {
-//        if (BuildConfig.DEBUG) {
-//            Log.d("", "collisionDetected");
-//        }
-//        mCollisionListener.collisionDetected(this, data);
-//    }
-
+    
+    
     @Override
     public void handleResponse(final DeviceResponse deviceResponse, final Robot robot) {
-
+        
     }
-
+    
     @Override
     public void handleStringResponse(final String s, final Robot robot) {
-
+        
     }
-
+    
     @Override
     public void handleAsyncMessage(final AsyncMessage asyncMessage, final Robot robot) {
-
+        
         if (asyncMessage instanceof CollisionDetectedAsyncData) {
             if (BuildConfig.DEBUG) {
                 Log.d("", "collisionDetected");
@@ -286,13 +266,13 @@ public class DeviceInfo implements ResponseListener {
             mPreSensorTimestamp = timestamp;
         }
     }
-
-
+    
+    
     /**
      * デバイスのセンサーのイベント通知を受けるリスナー.
      */
     public interface DeviceSensorListener {
-
+        
         /**
          * センサーがアップデートされたことを通知する.
          *
@@ -302,12 +282,12 @@ public class DeviceInfo implements ResponseListener {
          */
         void sensorUpdated(final DeviceInfo info, final DeviceSensorAsyncMessage data, final long interval);
     }
-
+    
     /**
      * デバイスの衝突イベントの通知を受けるリスナー.
      */
     public interface DeviceCollisionListener {
-
+        
         /**
          * デバイスが衝突したことを通知する.
          *
