@@ -447,6 +447,9 @@ public class WhitelistFragment extends Fragment {
         Cursor c = resolver.query(uri, new String[] { columnTitle, columnURL, columnFavicon }, selectionBookmark, null,
                 null);
         List<KnownApplicationInfo> bookmarks = new ArrayList<WhitelistFragment.KnownApplicationInfo>();
+        if (c == null) {
+            return bookmarks;
+        }
         if (c.moveToFirst()) {
             do {
                 final int titleIndex = c.getColumnIndex(columnTitle);
