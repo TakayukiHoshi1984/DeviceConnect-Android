@@ -217,14 +217,10 @@ public final class DConnectUtil {
 
     /**
      * Gets the ip address.
-     * @param context Context of application
      * @return Returns ip address
      */
-    public static String getIPAddress(final Context context) {
-        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
-        return String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
-                (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
+    public static String getIPAddress() {
+        return NetworkUtil.getIpAddress();
     }
 
     /**
