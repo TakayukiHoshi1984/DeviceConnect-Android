@@ -47,6 +47,8 @@ import org.deviceconnect.message.intent.message.IntentDConnectMessage;
 import java.util.ArrayList;
 import java.util.List;
 
+import static android.os.Build.MODEL;
+
 /**
  * サービス一覧を表示するActivity.
  *
@@ -184,23 +186,25 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.activity_service_list, menu);
+        if (MODEL.equals("M300")) { // TODO M300用Menu対応
+            getMenuInflater().inflate(R.menu.activity_service_list_glass, menu);
+        } else {
+            getMenuInflater().inflate(R.menu.activity_service_list, menu);
+            mSwitchAction = (Switch) menu.findItem(R.id.activity_service_manager_power).getActionView();
+            if (mSwitchAction != null) {
+                mSwitchAction.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
+                        switchDConnectServer(isChecked);
+                    }
+                });
 
-        mSwitchAction = (Switch) menu.findItem(R.id.activity_service_manager_power).getActionView();
-        if (mSwitchAction != null) {
-            mSwitchAction.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked) {
-                    switchDConnectServer(isChecked);
+                DConnectService managerService = getManagerService();
+                if (managerService != null) {
+                    mSwitchAction.setChecked(managerService.isRunning());
                 }
-            });
-
-            DConnectService managerService = getManagerService();
-            if (managerService != null) {
-                mSwitchAction.setChecked(managerService.isRunning());
             }
         }
-
         return true;
     }
 
