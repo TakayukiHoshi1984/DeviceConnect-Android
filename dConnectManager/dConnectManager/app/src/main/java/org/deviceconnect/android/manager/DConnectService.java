@@ -247,10 +247,20 @@ public class DConnectService extends DConnectMessageService implements WebSocket
                             if (BuildConfig.DEBUG) {
                                 mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
                             }
+
+
+                            // TEST: JSONへの変換を開始した時刻
+                            event.putExtra("manager-json-time", System.currentTimeMillis());
+
                             JSONObject root = new JSONObject();
                             DConnectUtil.convertBundleToJSON(root, event.getExtras());
                             DConnectWebSocket webSocket = mRESTfulServer.getWebSocket(info.getRawId());
                             if (webSocket != null && mRESTfulServer.isRunning()) {
+
+                                // TEST: マネージャを出発した時刻
+                                root.put("manager-sent-time", System.currentTimeMillis());
+                                root.put("route-1", "WebSocket");
+
                                 webSocket.sendMessage(root.toString());
                             } else {
                                 if (mWebServerListener != null) {

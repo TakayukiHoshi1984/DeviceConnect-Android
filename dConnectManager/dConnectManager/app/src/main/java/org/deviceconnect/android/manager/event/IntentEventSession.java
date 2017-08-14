@@ -32,6 +32,11 @@ class IntentEventSession extends EventSession {
     @Override
     public void sendEvent(final Intent event) throws IOException {
         event.setComponent(mBroadcastReceiver);
+
+        // TEST: マネージャを出発した時刻
+        event.putExtra("manager-sent-time", System.currentTimeMillis());
+        event.putExtra("route-1", "Intent");
+
         getContext().sendBroadcast(event);
     }
 }

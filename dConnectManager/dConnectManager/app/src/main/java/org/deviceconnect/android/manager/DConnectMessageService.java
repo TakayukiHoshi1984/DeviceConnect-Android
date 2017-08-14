@@ -470,6 +470,9 @@ public abstract class DConnectMessageService extends Service
      * @param event イベント用Intent
      */
     private void onEventReceive(final Intent event) {
+        // TEST: マネージャに到着した時刻
+        event.putExtra("manager-receive-time", System.currentTimeMillis());
+
         mEventBroker.onEvent(event);
     }
 
