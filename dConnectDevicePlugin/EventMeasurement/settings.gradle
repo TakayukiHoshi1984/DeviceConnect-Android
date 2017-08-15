@@ -1,5 +1,7 @@
 include ':dconnect-device-plugin-event-test-included'
 include ':dconnect-device-plugin-event-test-binder'
+include ':dconnect-device-plugin-event-test-broadcast'
+include ':event-test-app'
 
 include 'dconnect-sdk-for-android'
 project(':dconnect-sdk-for-android').projectDir = new File('/Users/mtaka/workspace/DeviceConnect/github/dev/DeviceConnect-Android/dConnectSDK/dConnectSDKForAndroid/dconnect-sdk-for-android')
