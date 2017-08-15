@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
+import android.util.Log;
 
 import org.deviceconnect.android.BuildConfig;
 import org.deviceconnect.android.IDConnectCallback;
@@ -182,6 +183,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         mLogger.info("onBind: " + getClass().getName());
         if (isCalledFromLocal()) {
             mLogger.info("onBind: Local binder");
+            Log.d("plugin-sdk", "created local binder = " + mLocalBinder);
             return mLocalBinder;
         }
         mLogger.info("onBind: Remote binder");
@@ -610,13 +612,25 @@ public abstract class DConnectMessageService extends Service implements DConnect
             }
         }
 
-        if (BuildConfig.DEBUG) {
-            mLogger.info("sendEvent: " + event);
-            mLogger.info("sendEvent Extra: " + event.getExtras());
+//        if (BuildConfig.DEBUG) {
+//            mLogger.info("sendEvent: " + event);
+//            mLogger.info("sendEvent Extra: " + event.getExtras());
+//        }
+
+
+        {
+            Bundle root = event.getExtras();
+            root.putLong("plugin-local-oauth-time", System.currentTimeMillis());
+            event.putExtras(root);
         }
 
         MessageSender sender = getMessageSender(event);
         if (sender != null) {
+
+            Bundle root = event.getExtras();
+            root.putLong("plugin-sent-time", System.currentTimeMillis());
+            event.putExtras(root);
+
             sender.send(event);
             return true;
         }
@@ -788,6 +802,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
 
         @Override
         public void registerCallback(final IDConnectCallback callback) throws RemoteException {
+            Log.d("plugin-sdk", "registerCallback @ " + this.hashCode());
             mDelegate.registerCallback(callback);
         }
 
