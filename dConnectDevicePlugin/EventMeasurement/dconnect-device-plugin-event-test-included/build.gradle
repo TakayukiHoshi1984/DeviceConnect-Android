@@ -5,6 +5,7 @@ dependencies {
 
     //compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.0.0'
     compile project(':dconnect-device-plugin-sdk')
+    compile project(':dconnect-device-plugin-event-test-lib')
 }
 
 repositories {
@@ -18,7 +19,6 @@ android {
     buildToolsVersion '25.0.0'
 
     defaultConfig {
-        //applicationId "com.mydomain.measurement"
         minSdkVersion 14
         targetSdkVersion 23
         versionCode 1

@@ -1,11 +1,10 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 dependencies {
     compile fileTree(include: '*.jar', dir: 'libs')
 
     //compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.0.0'
     compile project(':dconnect-device-plugin-sdk')
-    compile project(':dconnect-device-plugin-event-test-lib')
 }
 
 repositories {
@@ -19,7 +18,6 @@ android {
     buildToolsVersion '25.0.0'
 
     defaultConfig {
-        applicationId "com.mydomain.measurement.broadcast"
         minSdkVersion 14
         targetSdkVersion 23
         versionCode 1

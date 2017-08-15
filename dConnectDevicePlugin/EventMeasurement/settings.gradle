@@ -1,3 +1,4 @@
+include ':dconnect-device-plugin-event-test-lib'
 include ':dconnect-device-plugin-event-test-included'
 include ':dconnect-device-plugin-event-test-binder'
 include ':dconnect-device-plugin-event-test-broadcast'

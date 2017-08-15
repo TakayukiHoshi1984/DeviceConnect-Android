@@ -5,6 +5,7 @@ dependencies {
 
     //compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.0.0'
     compile project(':dconnect-device-plugin-sdk')
+    compile project(':dconnect-device-plugin-event-test-lib')
 }
 
 repositories {
