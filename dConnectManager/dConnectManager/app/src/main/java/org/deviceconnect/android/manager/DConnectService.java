@@ -244,9 +244,9 @@ public class DConnectService extends DConnectMessageService implements WebSocket
                         }
 
                         try {
-                            if (BuildConfig.DEBUG) {
-                                mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
-                            }
+//                            if (BuildConfig.DEBUG) {
+//                                mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
+//                            }
 
 
                             // TEST: JSONへの変換を開始した時刻

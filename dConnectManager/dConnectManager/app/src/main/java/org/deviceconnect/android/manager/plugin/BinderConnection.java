@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import org.deviceconnect.android.IDConnectCallback;
 import org.deviceconnect.android.IDConnectPlugin;
@@ -142,10 +143,11 @@ public class BinderConnection extends AbstractConnection {
             final ServiceConnection serviceConnection = new ServiceConnection() {
                 @Override
                 public void onServiceConnected(final ComponentName componentName, final IBinder binder) {
-                    mLogger.info("onServiceConnected: componentName = " + componentName + ", binder = " + binder);
+                    mLogger.info("onServiceConnected: componentName = " + componentName + ", binder = " + binder.hashCode());
                     try {
                         IDConnectPlugin plugin = IDConnectPlugin.Stub.asInterface(binder);
                         plugin.registerCallback(mCallback);
+                        Log.d("manager", "manager: registerCallback @ " + plugin.hashCode());
 
                         synchronized (lockObj) {
                             result.mIsComplete = true;
