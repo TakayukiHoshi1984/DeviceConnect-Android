@@ -10,6 +10,8 @@ project(':dconnect-server-nano-httpd').projectDir = new File('../dConnectServerN
 include 'dconnect-device-plugin-host'
 project(':dconnect-device-plugin-host').projectDir = new File('../../dConnectDevicePlugin/dConnectDeviceHost/app')
 
+include 'dconnect-device-plugin-event-test-lib'
+project(':dconnect-device-plugin-event-test-lib').projectDir = new File('../../dConnectDevicePlugin/EventMeasurement/dconnect-device-plugin-event-test-lib')
 include 'dconnect-device-plugin-event-test-included'
 project(':dconnect-device-plugin-event-test-included').projectDir = new File('../../dConnectDevicePlugin/EventMeasurement/dconnect-device-plugin-event-test-included')
 include 'dconnect-device-plugin-event-test-binder'

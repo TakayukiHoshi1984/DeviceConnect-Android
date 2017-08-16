@@ -26,6 +26,16 @@ android {
         versionName '1.0.0'
     }
 
+    productFlavors {
+        withAuth {
+            buildConfigField "boolean", "USES_AUTH", "true"
+        }
+        withoutAuth {
+            buildConfigField "boolean", "USES_AUTH", "false"
+            applicationIdSuffix ".withoutauth"
+        }
+    }
+
     signingConfigs {
         releaseConfig {
             storeFile=file(project.properties.storeFile)

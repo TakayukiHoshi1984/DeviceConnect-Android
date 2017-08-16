@@ -1,21 +1,11 @@
 package com.mydomain.measurement;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.PowerManager;
-import android.os.SystemClock;
-import android.util.Log;
+import com.mydomain.measurement.profiles.MyDeviceOrientationProfile;
+import com.mydomain.measurement.profiles.MySystemProfile;
 
 import org.deviceconnect.android.message.DConnectMessageService;
 import org.deviceconnect.android.profile.SystemProfile;
 import org.deviceconnect.android.service.DConnectService;
-
-import com.mydomain.measurement.profiles.MyDeviceOrientationProfile;
-import com.mydomain.measurement.profiles.MySystemProfile;
 import org.deviceconnect.profile.ServiceDiscoveryProfileConstants.NetworkType;
 
 
@@ -24,9 +14,9 @@ public class MyMessageService extends DConnectMessageService {
     @Override
     public void onCreate() {
         super.onCreate();
-        setUseLocalOAuth(false);
+        setUseLocalOAuth(BuildConfig.USES_AUTH);
 
-        DConnectService service = new DConnectService("event-test-binder");
+        DConnectService service = new DConnectService("event-test-binder" + (BuildConfig.USES_AUTH ? "-withAuth" : "-withoutAuth"));
         service.setName("binder");
         service.setOnline(true);
         service.setNetworkType(NetworkType.UNKNOWN);

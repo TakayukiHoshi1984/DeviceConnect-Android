@@ -23,6 +23,7 @@ android {
         targetSdkVersion 23
         versionCode 1
         versionName '1.0.0'
+        buildConfigField "boolean", "USES_AUTH", "false" //MEMO: 同梱版のため認可は常に不要
     }
 
     signingConfigs {

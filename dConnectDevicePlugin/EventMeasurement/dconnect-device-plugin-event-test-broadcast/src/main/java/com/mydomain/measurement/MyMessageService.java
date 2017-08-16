@@ -25,9 +25,9 @@ public class MyMessageService extends DConnectMessageService {
     public void onCreate() {
         super.onCreate();
 
-        setUseLocalOAuth(true);
+        setUseLocalOAuth(BuildConfig.USES_AUTH);
 
-        DConnectService service = new DConnectService("event-test-broadcast");
+        DConnectService service = new DConnectService("event-test-broadcast" + (BuildConfig.USES_AUTH ? "-withAuth" : "-withoutAuth"));
         service.setName("broadcast");
         service.setOnline(true);
         service.setNetworkType(NetworkType.UNKNOWN);

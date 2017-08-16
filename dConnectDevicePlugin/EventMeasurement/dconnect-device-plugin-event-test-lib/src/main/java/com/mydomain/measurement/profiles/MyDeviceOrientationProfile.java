@@ -23,28 +23,6 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
 
     public MyDeviceOrientationProfile() {
 
-        // GET /deviceOrientation/onDeviceOrientation
-        addApi(new GetApi() {
-            @Override
-            public String getAttribute() {
-                return "onDeviceOrientation";
-            }
-
-            @Override
-            public boolean onRequest(final Intent request, final Intent response) {
-                String serviceId = (String) request.getExtras().get("serviceId");
-
-                setResult(response, DConnectMessage.RESULT_OK);
-                Bundle root = response.getExtras();
-                // タイムスタンプ(Unix時刻)を設定
-                root.putLong("plugin-sent-time", System.currentTimeMillis());
-
-                response.putExtras(root);
-                return true;
-            }
-        });
-
-        // DELETE /deviceOrientation/onDeviceOrientation
         addApi(new DeleteApi() {
             @Override
             public String getAttribute() {
