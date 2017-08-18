@@ -18,3 +18,5 @@ include 'dconnect-device-plugin-event-test-binder'
 project(':dconnect-device-plugin-event-test-binder').projectDir = new File('../../dConnectDevicePlugin/EventMeasurement/dconnect-device-plugin-event-test-binder')
 include 'dconnect-device-plugin-event-test-broadcast'
 project(':dconnect-device-plugin-event-test-broadcast').projectDir = new File('../../dConnectDevicePlugin/EventMeasurement/dconnect-device-plugin-event-test-broadcast')
+include 'event-test-app'
+project(':event-test-app').projectDir = new File('../../dConnectDevicePlugin/EventMeasurement/event-test-app')

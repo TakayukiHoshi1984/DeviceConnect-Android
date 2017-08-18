@@ -9,11 +9,11 @@ import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.DConnectProfile;
-import org.deviceconnect.android.profile.api.GetApi;
 import org.deviceconnect.android.profile.api.PutApi;
 import org.deviceconnect.android.profile.api.DeleteApi;
 import org.deviceconnect.message.DConnectMessage;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -67,13 +67,22 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
             public boolean onRequest(final Intent request, final Intent response) {
                 String serviceId = (String) request.getExtras().get("serviceId");
                 Long interval = parseLong(request, "interval");
-
                 if (interval == null) {
-                    interval = 200L;
+                    interval = 5000L;
                 }
+
                 EventError error = EventManager.INSTANCE.addEvent(request);
                 switch (error) {
                     case NONE:
+                        // 計測用のダミーデータを生成
+                        Integer payload = parseInteger(request, "payload");
+                        if (payload == null) {
+                            //payload = 1 * 1024;
+                            payload = 256 * 1024;
+                        }
+                        Log.d("event-test", "payload = " + payload + " bytes");
+                        final String dummyPayload = generateDummyPayload(payload);
+
                         setResult(response, DConnectMessage.RESULT_OK);
 
                         // 以下、サンプルのイベントの定期的送信を開始.
@@ -84,8 +93,13 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
                                 Event event = EventManager.INSTANCE.getEvent(request);
                                 Intent message = EventManager.createEventMessage(event);
                                 Bundle root = message.getExtras();
+
                                 // タイムスタンプ(Unix時刻)を設定
                                 root.putLong("plugin-created-time", System.currentTimeMillis());
+
+                                // 計測用のダミーデータを追加
+                                root.putString("payload", dummyPayload);
+
                                 message.putExtras(root);
                                 sendEvent(message, event.getAccessToken());
                             }
@@ -103,6 +117,18 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
             }
         });
 
+    }
+
+    private String generateDummyPayload(final int size) {
+        try {
+            byte[] data = new byte[size];
+            for (int i = 0; i < data.length; i++) {
+                data[i] = 0x30; // == '0'
+            }
+            return new String(data, "US-ASCII");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
