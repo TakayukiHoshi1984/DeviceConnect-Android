@@ -118,8 +118,8 @@ public class MainActivity extends AppCompatActivity {
 
                     // 計測実行
                     int[] payloadSizes = {
-                            256, // <= 256 KB
-                            128, // <= 128 KB
+                            //256,
+                            //128,
                             1    // <=   1 KB
                     };
                     for (int size : payloadSizes) {
@@ -424,7 +424,7 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 synchronized (this) {
-                    wait(1000);
+                    wait(5000);
                 }
             } catch (InterruptedException e) {
                 // NOP.

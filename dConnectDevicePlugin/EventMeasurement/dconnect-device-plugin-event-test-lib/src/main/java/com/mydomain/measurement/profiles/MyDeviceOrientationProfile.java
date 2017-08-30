@@ -66,9 +66,11 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
                 String serviceId = (String) request.getExtras().get("serviceId");
+
+                // インターバル設定
                 Long interval = parseLong(request, "interval");
                 if (interval == null) {
-                    interval = 5000L;
+                    interval = 0L;
                 }
 
                 EventError error = EventManager.INSTANCE.addEvent(request);
@@ -77,8 +79,7 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
                         // 計測用のダミーデータを生成
                         Integer payload = parseInteger(request, "payload");
                         if (payload == null) {
-                            //payload = 1 * 1024;
-                            payload = 256 * 1024;
+                            payload = 1 * 1024;
                         }
                         Log.d("event-test", "payload = " + payload + " bytes");
                         final String dummyPayload = generateDummyPayload(payload);
