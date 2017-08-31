@@ -4,10 +4,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import org.deviceconnect.message.DConnectEventMessage;
 import org.deviceconnect.message.DConnectMessage;
@@ -26,15 +29,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Measurement";
-    private static final int EVENT_COUNT_PER_SERVICE = 1000;
-    private static final long EVENT_INTERVAL = 1000; //msec.
     private static final String APP_NAME = "Event Measurement";
     private static final String[] SCOPE = {
             "serviceDiscovery",
@@ -45,25 +46,37 @@ public class MainActivity extends AppCompatActivity {
 
     private DConnectSDK mSDK;
     private WebSocketConnector mWebSocket;
-    private boolean mIsExecuting = false;
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService mWebSocketMonitor = Executors.newSingleThreadExecutor();
     private final Map<String, EventCollector> mEventCollectors = Collections.synchronizedMap(new HashMap<String, EventCollector>());
+
+    private Ui mUI;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mUI = new Ui() {
+            @Override
+            void onStartBtn() {
+                startMeasurement();
+            }
+
+            @Override
+            void onStopBtn() {
+                stopMeasurement();
+            }
+        };
 
         // デバイスコネクトSDKの初期化
         mSDK = DConnectSDKFactory.create(this, DConnectSDKFactory.Type.HTTP);
 
         // WebSocket管理クラスの初期化
         mWebSocket = new WebSocketConnector(mSDK, mWebSocketMonitor);
-        mWebSocket.setOnCloseListener(new WebSocketConnector.OnCloseListener() {
+        mWebSocket.setOnCloseListener(new OnWebSocketCloseListener() {
             @Override
             public void onClose() {
-                if (!mIsExecuting) {
+                if (!isMeasurement()) {
                     return;
                 }
                 if (openWebSocket()) {
@@ -74,10 +87,21 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    Log.e(TAG, "Failed to re-open websocket.");
+                    error("Failed to re-open websocket.");
                 }
             }
         });
+    }
+
+    private synchronized void onFinished() {
+        mUI.setEnabledStopBtn(false);
+        mUI.setEnabledStartBtn(true);
+        mUI.setEnabledParameters(true);
+        mMeasurementThread = null;
+    }
+
+    private boolean isMeasurement() {
+        return mMeasurementThread != null;
     }
 
     @Override
@@ -89,80 +113,89 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+    }
 
-        if (!mIsExecuting) {
-            mIsExecuting = true;
-            mExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    // アクセストークン取得
-                    String accessToken = authorization();
-                    if (accessToken != null) {
-                        debug("accessToken: " + accessToken);
-                        mSDK.setAccessToken(accessToken);
-                    } else {
-                        debug("accessToken: <Not needed>");
-                    }
+    private Thread mMeasurementThread;
 
-                    // WebSocket接続
-                    if (openWebSocket()) {
-                        debug("WebSocket is open");
-                    } else {
-                        Log.e(TAG, "Failed to open websocket.");
-                        return;
+    private void startMeasurement() {
+        synchronized (this) {
+            if (mMeasurementThread == null) {
+                mUI.setEnabledStopBtn(true);
+                mUI.setEnabledStartBtn(false);
+                mUI.setEnabledParameters(false);
 
-                    }
-
-                    // 計測用サービス検索
-                    List<DConnectServiceInfo> services = serviceDiscoveryForTest();
-
-                    // 計測実行
-                    int[] payloadSizes = {
-                            //256,
-                            //128,
-                            1    // <=   1 KB
-                    };
-                    for (int size : payloadSizes) {
-                        for (DConnectServiceInfo service : services) {
-                            final String serviceId = service.getId();
-                            final EventCollector collector = new EventCollector(mSDK, service, size);
-
-                            if (collector.isReported()) {
-                                Log.w(TAG, "Already Reported: " + collector.getReportFileName(service));
-                                continue;
+                mMeasurementThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            // アクセストークン取得
+                            String accessToken = authorization();
+                            if (accessToken != null) {
+                                debug("accessToken: " + accessToken);
+                                mSDK.setAccessToken(accessToken);
+                            } else {
+                                debug("accessToken: <Not needed>");
                             }
 
-                            try {
+                            // WebSocket接続
+                            if (openWebSocket()) {
+                                debug("WebSocket is open");
+                            } else {
+                                error("Failed to open websocket.");
+                                return;
+                            }
 
-                                mEventCollectors.put(serviceId, collector);
-                                if (!collector.startEvent()) {
+                            // 計測用サービス検索
+                            List<DConnectServiceInfo> services = serviceDiscoveryForTest();
+
+                            // 計測実行
+                            final String interval = mUI.getEventInterval();
+                            final String size = mUI.getEventByteSize();
+                            final String count = mUI.getEventCount();
+                            for (DConnectServiceInfo service : services) {
+                                final String serviceId = service.getId();
+                                final EventCollector collector = new EventCollector(mSDK, service, interval, size, count);
+
+                                if (collector.isReported()) {
+                                    warn("Already Reported: " + collector.getReportFileName(service));
+                                    continue;
+                                }
+
+                                try {
+                                    mEventCollectors.put(serviceId, collector);
+                                    if (!collector.startEvent()) {
+                                        return;
+                                    }
+                                    collector.waitEvent();
+                                    mEventCollectors.remove(serviceId);
+                                    collector.stopEvent();
+                                    collector.report();
+                                } catch (InterruptedException e) {
+                                    // 計測中断
+                                    warn("Interrupted test.");
+                                    return;
+                                } catch (IOException e) {
+                                    // 計測結果の保存に失敗
+                                    e.printStackTrace();
+                                    error("Failed to store report: serviceId = " + serviceId);
                                     return;
                                 }
-                                collector.waitEvent();
-                                mEventCollectors.remove(serviceId);
-                                collector.stopEvent();
-
-                                collector.report();
-                            } catch (InterruptedException e) {
-                                // 計測中断
-                                Log.e(TAG, "Interrupted test.");
-                                return;
-                            } catch (IOException e) {
-                                // 計測結果の保存に失敗
-                                e.printStackTrace();
-                                Log.e(TAG, "Failed to store report: serviceId = " + serviceId);
-                                return;
                             }
+                        } finally {
+                            mSDK.disconnectWebSocket();
+                            onFinished();
                         }
                     }
-
-
-                    mIsExecuting = false;
-                    mSDK.disconnectWebSocket();
-                }
-            });
+                });
+                mMeasurementThread.start();
+            }
         }
+    }
 
+    private synchronized void stopMeasurement() {
+        if (mMeasurementThread != null) {
+            mMeasurementThread.interrupt();
+        }
     }
 
     private String authorization() {
@@ -209,8 +242,19 @@ public class MainActivity extends AppCompatActivity {
         return DConnectMessage.ErrorCode.getInstance(response.getErrorCode());
     }
 
-    private static void debug(final String message) {
+    private void debug(final String message) {
+        mUI.debug(message);
         Log.d(TAG, message);
+    }
+
+    private void warn(final String message) {
+        mUI.warn(message);
+        Log.w(TAG, message);
+    }
+
+    private void error(final String message) {
+        mUI.error(message);
+        Log.e(TAG, message);
     }
 
     private static class DConnectServiceInfo {
@@ -240,13 +284,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private static class WebSocketConnector {
+    private class WebSocketConnector {
 
         private final DConnectSDK mSDK;
         private final ExecutorService mExecutor;
-        private State mState = State.CLOSED;
+        private WebSocketState mState = WebSocketState.CLOSED;
         private Exception mError;
-        private OnCloseListener mOnCloseListener;
+        private OnWebSocketCloseListener mOnCloseListener;
 
         WebSocketConnector(final DConnectSDK sdk, final ExecutorService executorService) {
             mSDK = sdk;
@@ -257,26 +301,25 @@ public class MainActivity extends AppCompatActivity {
             switch (mState) {
                 case CLOSED:
                     mError = null;
-                    mState = State.OPENING;
+                    mState = WebSocketState.OPENING;
                     mSDK.connectWebSocket(new DConnectSDK.OnWebSocketListener() {
                         @Override
                         public void onOpen() {
                             debug("websocket: open");
-                            mState = State.OPEN;
+                            mState = WebSocketState.OPEN;
                             unlock();
                         }
 
                         @Override
                         public void onClose() {
                             debug("websocket: close");
-                            mState = State.CLOSED;
-                            //mSDK.disconnectWebSocket();
+                            mState = WebSocketState.CLOSED;
                             unlock();
 
                             mExecutor.execute(new Runnable() {
                                 @Override
                                 public void run() {
-                                    OnCloseListener listener = mOnCloseListener;
+                                    OnWebSocketCloseListener listener = mOnCloseListener;
                                     if (listener != null) {
                                         listener.onClose();
                                     }
@@ -305,36 +348,47 @@ public class MainActivity extends AppCompatActivity {
             notifyAll();
         }
 
-        void setOnCloseListener(final OnCloseListener l) {
+        void setOnCloseListener(final OnWebSocketCloseListener l) {
             mOnCloseListener = l;
         }
 
-        interface OnCloseListener {
-            void onClose();
-        }
-
-        enum State {
-            OPENING,
-            OPEN,
-            CLOSED
-        }
     }
 
-    private static class EventCollector {
+    private interface OnWebSocketCloseListener {
+        void onClose();
+    }
+
+    private enum WebSocketState {
+        OPENING,
+        OPEN,
+        CLOSED
+    }
+
+    private class EventCollector {
+
+        private final String mTransactionId;
 
         private final DConnectSDK mSDK;
 
         private final StringBuffer mBuffer = new StringBuffer();
 
-        private final CountDownLatch mLock = new CountDownLatch(EVENT_COUNT_PER_SERVICE);
+        private final Object mLock = new Object();
 
         private final DConnectServiceInfo mServiceInfo;
 
-        private final int mEventPayloadSize;
+        private final String mEventInterval;
+
+        private final String mEventPayloadSize;
+
+        private final String mEventCount;
 
         private final File mFile;
 
         private DConnectResponseMessage mStartResponse;
+
+        private int mCount;
+
+        private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
         private final DConnectSDK.OnEventListener mEventListener = new DConnectSDK.OnEventListener() {
             @Override
@@ -348,25 +402,37 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onMessage(final DConnectEventMessage event) {
-                // 計測用データの検証
-                String dummyPayload = event.getString("payload");
-                int length = getByteSize(dummyPayload) / 1024;
-                if (length != mEventPayloadSize) {
-                    Log.e(TAG, "Invalid length payload. Expected length is " + mEventPayloadSize + " KB.");
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            throw new RuntimeException("Invalid length payload. Expected length is " + mEventPayloadSize + " KB.");
+                mExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        Object num = event.get("num");
+                        if (num == null || !(num instanceof Integer)) {
+                            error("Number of event was not specified.");
+                            return;
                         }
-                    });
-                    return;
-                }
+                        String transactionId = event.getString("transactionId");
 
-                String serviceId = event.getString("serviceId");
-                debug("message: cnt = " + mLock.getCount() + ", length = " + length + " KB, serviceId = " + serviceId);
+                        // 計測用データの検証
+                        String dummyPayload = event.getString("payload");
+                        int length = getByteSize(dummyPayload) / 1024;
+                        if (transactionId == null || !transactionId.equals(mTransactionId)) {
+                            error("Invalid transaction. Expected = " + mTransactionId + ", Actual = " + transactionId);
+                            return;
+                        }
 
-                event.put("app-receive-time", System.currentTimeMillis());
-                add(event);
+                        event.put("app-receive-time", System.currentTimeMillis());
+                        add(event);
+
+                        debug("message: num = " + num + " + cnt = " + mCount + ", length = " + length + " KB, serviceId = " + event.getString("serviceId"));
+
+                        if (((Integer) num) == 0) {
+                            debug("message: finished.");
+                            synchronized (mLock) {
+                                mLock.notifyAll();
+                            }
+                        }
+                    }
+                });
             }
         };
 
@@ -378,31 +444,55 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        private String generateTransactionId(final int cnt) {
+            final String chars ="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            Random rnd = new Random();
+            StringBuffer buf = new StringBuffer();
+            for (int i = 0; i < cnt; i++){
+                int val = rnd.nextInt(chars.length());
+                buf.append(chars.charAt(val));
+            }
+            return buf.toString();
+        }
+
         EventCollector(final DConnectSDK sdk,
                        final DConnectServiceInfo serviceInfo,
-                       final int payloadSize) {
+                       final String interval,
+                       final String payloadSize,
+                       final String count) {
+            mTransactionId = generateTransactionId(4);
+
             mSDK = sdk;
             mServiceInfo = serviceInfo;
+            mEventInterval = interval;
             mEventPayloadSize = payloadSize;
+            mEventCount = count;
 
             String dir = Environment.getExternalStorageDirectory().getPath();
             mFile = new File(dir, getReportFileName(mServiceInfo));
         }
 
         private String getReportFileName(final DConnectServiceInfo serviceInfo) {
-            String name = Build.MODEL + "_" + Build.VERSION.RELEASE + "_" + serviceInfo.getConnectionTypeName() + "_" + mEventPayloadSize + "KB.csv";
+            String name = Build.MODEL + "_" +
+                    Build.VERSION.RELEASE + "_" +
+                    serviceInfo.getConnectionTypeName() + "_" +
+                    mEventInterval + "ms" + "_" +
+                    mEventPayloadSize + "bytes" + "_" +
+                    mEventCount +
+                    ".csv";
             return name.toLowerCase();
         }
 
         private void add(final DConnectEventMessage event) {
-            long rowNo = (EVENT_COUNT_PER_SERVICE - mLock.getCount() + 1);
+            int max = Integer.parseInt(mUI.getEventCount());
+            long rowNo = (max - (++mCount) + 1);
             mBuffer.append(rowNo + "," + createCSVForEvent(event) + "\n");
-
-            mLock.countDown();
         }
 
         void waitEvent() throws InterruptedException {
-            mLock.await();
+            synchronized (mLock) {
+                mLock.wait();
+            }
         }
 
         private DConnectSDK.URIBuilder createURIBuilder() {
@@ -417,14 +507,16 @@ public class MainActivity extends AppCompatActivity {
 
             Uri uri = createURIBuilder()
                     .setServiceId(serviceId)
-                    .addParameter("interval", Long.toString(EVENT_INTERVAL))
-                    .addParameter("payload", Integer.toString(mEventPayloadSize * 1024))
+                    .addParameter("interval", mEventInterval)
+                    .addParameter("payload", mEventPayloadSize)
+                    .addParameter("count", mEventCount)
+                    .addParameter("transactionId", mTransactionId)
                     .build();
             mSDK.addEventListener(uri, mEventListener);
 
             try {
                 synchronized (this) {
-                    wait(5000);
+                    wait(1000);
                 }
             } catch (InterruptedException e) {
                 // NOP.
@@ -435,11 +527,11 @@ public class MainActivity extends AppCompatActivity {
                     debug("Started event: serviceId = " + serviceId);
                     return true;
                 } else {
-                    Log.e(TAG, "Failed to start event: serviceId = " + serviceId + ", errorMessage = " + mStartResponse.getErrorMessage());
+                    error("Failed to start event: serviceId = " + serviceId + ", errorMessage = " + mStartResponse.getErrorMessage());
                     return false;
                 }
             } else {
-                Log.e(TAG, "No response to start event: serviceId = " + serviceId);
+                error("No response to start event: serviceId = " + serviceId);
                 return false;
             }
         }
@@ -449,6 +541,7 @@ public class MainActivity extends AppCompatActivity {
 
             Uri uri = createURIBuilder()
                     .setServiceId(serviceId)
+                    .addParameter("transactionId", mTransactionId)
                     .build();
             mSDK.removeEventListener(uri);
 
@@ -496,7 +589,7 @@ public class MainActivity extends AppCompatActivity {
             long total = timestamps[timestamps.length - 1] - timestamps[0];
             row.append("," + total);
 
-            debug("row: " + row.toString());
+            //debug("row: " + row.toString());
 
             return row.toString();
         }
@@ -513,5 +606,171 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    private abstract class Ui implements View.OnClickListener {
+        private final Button mStartBtn;
+        private final Button mStopBtn;
+        private final ViewGroup mParamEditorGroup;
+        private final EditText mParamInterval;
+        private final EditText mParamPayloadSize;
+        private final EditText mParamCount;
+        private final LogView mLogView;
+
+        Ui() {
+            mStartBtn = (Button) findViewById(R.id.button_start_measurement);
+            mStartBtn.setOnClickListener(this);
+            mStopBtn = (Button) findViewById(R.id.button_stop_measurement);
+            mStopBtn.setOnClickListener(this);
+            mParamEditorGroup = (ViewGroup) findViewById(R.id.view_group_params);
+            mParamInterval = (EditText) findViewById(R.id.param_interval);
+            mParamPayloadSize = (EditText) findViewById(R.id.param_payload_size);
+            mParamCount = (EditText) findViewById(R.id.param_count);
+            mLogView = new LogView((ViewGroup) findViewById(R.id.log_view));
+
+            mParamInterval.setText("1000");
+            mParamPayloadSize.setText("1024"); // 10KB
+            mParamCount.setText("10");
+            setEnabledStopBtn(false);
+        }
+
+        @Override
+        public void onClick(final View view) {
+            if (view == mStartBtn) {
+                onStartBtn();
+            } else if (view == mStopBtn) {
+                onStopBtn();
+            }
+        }
+
+        abstract void onStartBtn();
+        abstract void onStopBtn();
+
+        void setEnabledStartBtn(final boolean isEnabled) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStartBtn.setEnabled(isEnabled);
+                }
+            });
+        }
+        void setEnabledStopBtn(final boolean isEnabled) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStopBtn.setEnabled(isEnabled);
+                }
+            });
+        }
+        void setEnabledParameters(final boolean isEnabled) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mParamEditorGroup.setEnabled(isEnabled);
+                }
+            });
+        }
+
+        String getEventInterval() {
+            return mParamInterval.getText().toString();
+        }
+        String getEventByteSize() {
+            return mParamPayloadSize.getText().toString();
+        }
+        String getEventCount() {
+            return mParamCount.getText().toString();
+        }
+
+        void debug(final String message) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mLogView.debug(message);
+                }
+            });
+        }
+
+        void warn(final String message) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mLogView.warn(message);
+                }
+            });
+        }
+
+        void error(final String message) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mLogView.error(message);
+                }
+            });
+        }
+    }
+
+    private class LogView {
+        private final ViewGroup mRoot;
+        private int mMaxCount = 10;
+
+        LogView(final ViewGroup root) {
+            if (root == null) {
+                throw new NullPointerException("root is null.");
+            }
+            mRoot = root;
+        }
+
+        void debug(final String message) {
+            addMessage(LogLevel.DEBUG, message);
+        }
+
+        void warn(final String message) {
+            addMessage(LogLevel.WARN, message);
+        }
+
+        void error(final String message) {
+            addMessage(LogLevel.ERROR, message);
+        }
+
+        void addMessage(final LogLevel level, final String message) {
+            addTextView(level, message);
+            if (isMaxCount()) {
+                removeLog();
+            }
+        }
+
+        void addTextView(final LogLevel level, final String message) {
+            int id;
+            switch (level) {
+                case DEBUG:
+                    id = R.layout.log_view_debug;
+                    break;
+                case WARN:
+                    id = R.layout.log_view_warn;
+                    break;
+                case ERROR:
+                    id = R.layout.log_view_error;
+                    break;
+                default:
+                    return;
+            }
+            getLayoutInflater().inflate(id, mRoot);
+            ((TextView) mRoot.getChildAt(mRoot.getChildCount() - 1)).setText(message);
+        }
+
+        boolean isMaxCount() {
+            int size = mRoot.getChildCount();
+            return size >= mMaxCount;
+        }
+
+        void removeLog() {
+            mRoot.removeViewAt(0);
+        }
+    }
+
+    private enum LogLevel {
+        DEBUG,
+        WARN,
+        ERROR
     }
 }

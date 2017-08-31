@@ -14,12 +14,21 @@ import org.deviceconnect.android.profile.api.DeleteApi;
 import org.deviceconnect.message.DConnectMessage;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class MyDeviceOrientationProfile extends DConnectProfile {
+
+    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+    private final Object mLock = new Object();
+    private Map<String, Future<Void>> mEventTaskMap = new HashMap<>();
 
     public MyDeviceOrientationProfile() {
 
@@ -31,16 +40,19 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
 
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
-                String serviceId = (String) request.getExtras().get("serviceId");
-
                 EventError error = EventManager.INSTANCE.removeEvent(request);
                 switch (error) {
                     case NONE:
                         setResult(response, DConnectMessage.RESULT_OK);
 
-                        // 以下、サンプルのイベントの定期的送信を停止.
-                        String taskId = serviceId;
-                        stopTimer(taskId);
+                        // イベントの定期的送信を停止.
+                        String transactionId = request.getStringExtra("transactionId");
+                        synchronized (mLock) {
+                            Future<Void> task = mEventTaskMap.remove(transactionId);
+                            if (task != null) {
+                                task.cancel(true);
+                            }
+                        }
                         break;
                     case INVALID_PARAMETER:
                         MessageUtils.setInvalidRequestParameterError(response);
@@ -65,56 +77,91 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
 
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
-                String serviceId = (String) request.getExtras().get("serviceId");
+                try {
+                    EventError error = EventManager.INSTANCE.addEvent(request);
+                    switch (error) {
+                        case NONE:
 
-                // インターバル設定
-                Long interval = parseLong(request, "interval");
-                if (interval == null) {
-                    interval = 0L;
-                }
-
-                EventError error = EventManager.INSTANCE.addEvent(request);
-                switch (error) {
-                    case NONE:
-                        // 計測用のダミーデータを生成
-                        Integer payload = parseInteger(request, "payload");
-                        if (payload == null) {
-                            payload = 1 * 1024;
-                        }
-                        Log.d("event-test", "payload = " + payload + " bytes");
-                        final String dummyPayload = generateDummyPayload(payload);
-
-                        setResult(response, DConnectMessage.RESULT_OK);
-
-                        // 以下、サンプルのイベントの定期的送信を開始.
-                        String taskId = serviceId;
-                        TimerTask task = new TimerTask() {
-                            @Override
-                            public void run() {
-                                Event event = EventManager.INSTANCE.getEvent(request);
-                                Intent message = EventManager.createEventMessage(event);
-                                Bundle root = message.getExtras();
-
-                                // タイムスタンプ(Unix時刻)を設定
-                                root.putLong("plugin-created-time", System.currentTimeMillis());
-
-                                // 計測用のダミーデータを追加
-                                root.putString("payload", dummyPayload);
-
-                                message.putExtras(root);
-                                sendEvent(message, event.getAccessToken());
+                            // 計測用のダミーデータを生成
+                            Integer payload = parseInteger(request, "payload");
+                            if (payload == null) {
+                                payload = 1 * 1024;
                             }
-                        };
-                        startTimer(taskId, task, interval);
-                        break;
-                    case INVALID_PARAMETER:
-                        MessageUtils.setInvalidRequestParameterError(response);
-                        break;
-                    default:
-                        MessageUtils.setUnknownError(response);
-                        break;
+                            Log.d("event-test", "payload = " + payload + " bytes");
+                            final String dummyPayload = generateDummyPayload(payload);
+
+                            setResult(response, DConnectMessage.RESULT_OK);
+
+                            // 以下、サンプルのイベントの定期的送信を開始.
+                            synchronized (mLock) {
+                                final String transactionId = request.getStringExtra("transactionId");
+                                Future<Void> task = mEventTaskMap.get(transactionId);
+                                if (task != null) {
+                                    task.cancel(true);
+                                }
+                                task = mExecutor.submit(new Callable<Void>() {
+                                    @Override
+                                    public Void call() throws Exception {
+
+                                        final int count = Integer.parseInt(request.getStringExtra("count"));
+
+                                        try {
+                                            for (int num = count - 1; num >= 0; num--) {
+                                                Event event = EventManager.INSTANCE.getEvent(request);
+                                                Intent message = EventManager.createEventMessage(event);
+                                                Bundle root = message.getExtras();
+
+                                                // トランザクションID を設定
+                                                root.putString("transactionId", transactionId);
+
+                                                // タイムスタンプ(Unix時刻)を設定
+                                                root.putLong("plugin-created-time", System.currentTimeMillis());
+
+                                                // 計測用のダミーデータを追加
+                                                root.putString("payload", dummyPayload);
+
+                                                // 連番
+                                                root.putInt("num", num);
+
+                                                Log.d("event-test", "#" + num + ": " + transactionId);
+
+                                                message.putExtras(root);
+                                                sendEvent(message, event.getAccessToken());
+
+                                                if (Thread.currentThread().isInterrupted()) {
+                                                    Log.d("Test", "Event sending was canceled.");
+                                                    break;
+                                                }
+
+                                                // インターバル
+                                                Long interval = parseLong(request, "interval");
+                                                if (interval == null) {
+                                                    interval = 0L;
+                                                }
+                                                Thread.sleep(interval);
+                                            }
+                                        } catch (InterruptedException e) {
+                                            Log.d("Test", "Event sending was canceled.");
+                                        }
+
+                                        return null;
+                                    }
+                                });
+                                mEventTaskMap.put(transactionId, task);
+                            }
+                            break;
+                        case INVALID_PARAMETER:
+                            MessageUtils.setInvalidRequestParameterError(response);
+                            break;
+                        default:
+                            MessageUtils.setUnknownError(response);
+                            break;
+                    }
+                    return true;
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    throw e;
                 }
-                return true;
             }
         });
 
@@ -139,14 +186,6 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
 
     private final Map<String, TimerTask> mTimerTasks = new ConcurrentHashMap<>();
     private final Timer mTimer = new Timer();
-
-    private void startTimer(final String taskId, final TimerTask task, final long interval) {
-        synchronized (mTimerTasks) {
-            stopTimer(taskId);
-            mTimerTasks.put(taskId, task);
-            mTimer.scheduleAtFixedRate(task, 0, interval);
-        }
-    }
 
     private void stopTimer(final String taskId) {
         synchronized (mTimerTasks) {
