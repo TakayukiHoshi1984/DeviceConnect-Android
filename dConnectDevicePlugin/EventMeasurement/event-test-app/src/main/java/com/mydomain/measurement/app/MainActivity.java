@@ -465,7 +465,9 @@ public class MainActivity extends AppCompatActivity {
                         event.put("app-receive-time", System.currentTimeMillis());
                         add(event);
 
-                        //debug("message: num = " + num + " + cnt = " + mCount + ", length = " + length + " KB, serviceId = " + event.getString("serviceId"));
+                        long threadId = event.getLong("manager-thread-id");
+                        String threadName = event.getString("manager-thread-name");
+                        debug("message: thread = " + threadName + "(#" + threadId +"), num = " + num + ", cnt = " + mCount + ", length = " + length + " KB, serviceId = " + event.getString("serviceId"));
 
                         if (((Integer) num) == 0) {
                             debug("message: finished.");
@@ -619,7 +621,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private String createCSVForEvent(DConnectEventMessage event) {
-
             long[] timestamps = {
                     event.getLong("plugin-created-time"),
                     event.getLong("plugin-sent-time"),
@@ -638,7 +639,6 @@ public class MainActivity extends AppCompatActivity {
             }
             long total = timestamps[timestamps.length - 1] - timestamps[0];
             row.append("," + total);
-
             return row.toString();
         }
 

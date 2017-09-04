@@ -12,6 +12,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.os.Binder;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
@@ -102,9 +104,15 @@ public class DConnectService extends DConnectMessageService implements WebSocket
         return mLocalBinder;
     }
 
+    private Handler mEventHandler;
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        mEventThread = new HandlerThread("event-sender");
+        mEventThread.start();
+        mEventHandler = new Handler(mEventThread.getLooper());
 
         mWebSocketInfoManager = new WebSocketInfoManager();
         mWebSocketInfoManager.addOnWebSocketEventListener(this);
@@ -234,10 +242,18 @@ public class DConnectService extends DConnectMessageService implements WebSocket
         }
     }
 
+    private HandlerThread mEventThread;
+
     @Override
     public void sendEvent(final String receiver, final Intent event) {
         if (receiver == null || receiver.length() <= 0) {
-            mEventSender.execute(new Runnable() {
+
+            Thread thread = Thread.currentThread();
+            Log.d("AAA", "sendEvent: id = " + thread.getId() + ", name = " + thread.getName());
+            event.putExtra("manager-thread-id", thread.getId());
+            event.putExtra("manager-thread-name", thread.getName());
+
+            mEventHandler.post(new Runnable() {
                 @Override
                 public void run() {
 
