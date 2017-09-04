@@ -14,6 +14,7 @@ import android.net.ConnectivityManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
 
 import org.deviceconnect.android.compat.MessageConverter;
 import org.deviceconnect.android.manager.compat.CompatibleRequestConverter;
@@ -239,42 +240,50 @@ public class DConnectService extends DConnectMessageService implements WebSocket
             mEventSender.execute(new Runnable() {
                 @Override
                 public void run() {
-                    String key = event.getStringExtra(IntentDConnectMessage.EXTRA_SESSION_KEY);
-                    if (key != null && mRESTfulServer != null && mRESTfulServer.isRunning()) {
-                        WebSocketInfo info = getWebSocketInfo(key);
-                        if (info == null) {
-                            mLogger.warning("sendMessage: webSocket is not found: key = " + key);
-                            return;
-                        }
 
-                        try {
+                    long startTime = System.currentTimeMillis();
+                    try {
+                        String key = event.getStringExtra(IntentDConnectMessage.EXTRA_SESSION_KEY);
+                        if (key != null && mRESTfulServer != null && mRESTfulServer.isRunning()) {
+                            WebSocketInfo info = getWebSocketInfo(key);
+                            if (info == null) {
+                                mLogger.warning("sendMessage: webSocket is not found: key = " + key);
+                                return;
+                            }
+
+                            try {
 //                            if (BuildConfig.DEBUG) {
 //                                mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
 //                            }
 
 
-                            // TEST: JSONへの変換を開始した時刻
-                            event.putExtra("manager-json-time", System.currentTimeMillis());
+                                // TEST: JSONへの変換を開始した時刻
+                                event.putExtra("manager-json-time", System.currentTimeMillis());
 
-                            JSONObject root = new JSONObject();
-                            DConnectUtil.convertBundleToJSON(root, event.getExtras());
-                            DConnectWebSocket webSocket = mRESTfulServer.getWebSocket(info.getRawId());
-                            if (webSocket != null && mRESTfulServer.isRunning()) {
+                                JSONObject root = new JSONObject();
+                                DConnectUtil.convertBundleToJSON(root, event.getExtras());
+                                DConnectWebSocket webSocket = mRESTfulServer.getWebSocket(info.getRawId());
+                                if (webSocket != null && mRESTfulServer.isRunning()) {
 
-                                // TEST: マネージャを出発した時刻
-                                root.put("manager-sent-time", System.currentTimeMillis());
-                                root.put("route-1", "WebSocket");
+                                    // TEST: マネージャを出発した時刻
+                                    root.put("manager-sent-time", System.currentTimeMillis());
+                                    root.put("route-1", "WebSocket");
 
-                                webSocket.sendMessage(root.toString());
-                            } else {
-                                if (mWebServerListener != null) {
-                                    mWebServerListener.onWebSocketDisconnected(webSocket);
+                                    webSocket.sendMessage(root.toString());
+                                } else {
+                                    if (mWebServerListener != null) {
+                                        mWebServerListener.onWebSocketDisconnected(webSocket);
+                                    }
                                 }
+                            } catch (JSONException e) {
+                                mLogger.warning("JSONException in sendMessage: " + e.toString());
                             }
-                        } catch (JSONException e) {
-                            mLogger.warning("JSONException in sendMessage: " + e.toString());
                         }
+                    } finally {
+                        long endTime = System.currentTimeMillis();
+                        Log.d("manager", "Event sender time: " + (endTime - startTime) + " msec.");
                     }
+
                 }
             });
         } else {

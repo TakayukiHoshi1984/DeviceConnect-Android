@@ -133,6 +133,10 @@ public abstract class DConnectMessageService extends Service implements DConnect
     private final MessageSender mDefaultSender = new MessageSender() {
         @Override
         public void send(final Intent message) {
+
+            // TODO Delete me
+            message.putExtra("route-0", "broadcast");
+
             sendBroadcast(message);
         }
     };
@@ -186,12 +190,15 @@ public abstract class DConnectMessageService extends Service implements DConnect
             Log.d("plugin-sdk", "created local binder = " + mLocalBinder);
             return mLocalBinder;
         }
+        Log.d("plugin-sdk", "created remote binder = " + mRemoteBinder);
         mLogger.info("onBind: Remote binder");
         return mRemoteBinder;
     }
 
     private boolean isCalledFromLocal() {
-        return getPackageName().equals(getCallingPackage());
+        String selfPackage = getPackageName();
+        String callingPackage = getCallingPackage();
+        return selfPackage.equals(callingPackage);
     }
 
     private String getCallingPackage() {
@@ -844,10 +851,23 @@ public abstract class DConnectMessageService extends Service implements DConnect
 
         @Override
         public void registerCallback(final IDConnectCallback callback) throws RemoteException {
+
+            // TODO Delete me
+            final boolean isIncluded = isCalledFromLocal();
+
             mBindingSenders.put(getCallingPackage(), new MessageSender() {
                 @Override
                 public void send(final Intent message) {
                     try {
+
+
+                        // TODO Delete me.
+                        if (isIncluded) {
+                            message.putExtra("route-0", "included");
+                        } else {
+                            message.putExtra("route-0", "binder");
+                        }
+
                         callback.sendMessage(message);
                     } catch (RemoteException e) {
                         // TODO マネージャへの応答に失敗した場合

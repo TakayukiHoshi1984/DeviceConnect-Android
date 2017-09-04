@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -127,6 +128,11 @@ public class MainActivity extends AppCompatActivity {
                 mMeasurementThread = new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        final String interval = mUI.getEventInterval();
+                        final String size = mUI.getEventByteSize();
+                        final String count = mUI.getEventCount();
+                        final boolean isDataSaved = mUI.isDataSaved();
+                        EventCollector collector = null;
                         try {
                             // アクセストークン取得
                             String accessToken = authorization();
@@ -149,19 +155,21 @@ public class MainActivity extends AppCompatActivity {
                             List<DConnectServiceInfo> services = serviceDiscoveryForTest();
 
                             // 計測実行
-                            final String interval = mUI.getEventInterval();
-                            final String size = mUI.getEventByteSize();
-                            final String count = mUI.getEventCount();
                             for (DConnectServiceInfo service : services) {
                                 final String serviceId = service.getId();
-                                final EventCollector collector = new EventCollector(mSDK, service, interval, size, count);
 
-                                if (collector.isReported()) {
-                                    warn("Already Reported: " + collector.getReportFileName(service));
-                                    continue;
-                                }
+//                                if (!serviceId.contains("binder")) { // TODO 消す
+//                                    continue;
+//                                }
+
+                                collector = new EventCollector(mSDK, service, interval, size, count);
 
                                 try {
+                                    if (collector.isReported()) {
+                                        collector.removeReport();
+                                        warn("Deleted: " + collector.getReportFileName(service));
+                                    }
+
                                     mEventCollectors.put(serviceId, collector);
                                     if (!collector.startEvent()) {
                                         return;
@@ -169,16 +177,28 @@ public class MainActivity extends AppCompatActivity {
                                     collector.waitEvent();
                                     mEventCollectors.remove(serviceId);
                                     collector.stopEvent();
-                                    collector.report();
                                 } catch (InterruptedException e) {
                                     // 計測中断
                                     warn("Interrupted test.");
                                     return;
                                 } catch (IOException e) {
-                                    // 計測結果の保存に失敗
+                                    warn("Stopped test");
                                     e.printStackTrace();
-                                    error("Failed to store report: serviceId = " + serviceId);
                                     return;
+                                } finally {
+                                    if (isDataSaved) {
+                                        try {
+                                            if (collector != null) {
+                                                collector.report();
+                                            }
+                                        } catch (IOException e) {
+                                            // 計測結果の保存に失敗
+                                            e.printStackTrace();
+                                            error("Failed to store report: serviceId = " + collector.mServiceInfo.getId());
+                                        }
+                                    } else {
+                                        warn("Data save is skipped.");
+                                    }
                                 }
                             }
                         } finally {
@@ -419,11 +439,16 @@ public class MainActivity extends AppCompatActivity {
                             error("Invalid transaction. Expected = " + mTransactionId + ", Actual = " + transactionId);
                             return;
                         }
+                        String route = event.getString("route-0");
+                        if (route == null || !route.equals(mServiceInfo.getConnectionTypeName())) {
+                            error("Invalid route. Expected = " + mServiceInfo.getConnectionTypeName() + ", Actual = " + route);
+                            return;
+                        }
 
                         event.put("app-receive-time", System.currentTimeMillis());
                         add(event);
 
-                        debug("message: num = " + num + " + cnt = " + mCount + ", length = " + length + " KB, serviceId = " + event.getString("serviceId"));
+                        //debug("message: num = " + num + " + cnt = " + mCount + ", length = " + length + " KB, serviceId = " + event.getString("serviceId"));
 
                         if (((Integer) num) == 0) {
                             debug("message: finished.");
@@ -552,6 +577,12 @@ public class MainActivity extends AppCompatActivity {
             return mFile.exists();
         }
 
+        void removeReport() throws IOException {
+            if (!mFile.delete()) {
+                throw new IOException("Failed to remove file: " + mFile.getAbsolutePath());
+            }
+        }
+
         void report() throws IOException {
             if (!mFile.exists()) {
                 try {
@@ -589,7 +620,7 @@ public class MainActivity extends AppCompatActivity {
             long total = timestamps[timestamps.length - 1] - timestamps[0];
             row.append("," + total);
 
-            //debug("row: " + row.toString());
+            debug("row: " + row.toString());
 
             return row.toString();
         }
@@ -611,10 +642,10 @@ public class MainActivity extends AppCompatActivity {
     private abstract class Ui implements View.OnClickListener {
         private final Button mStartBtn;
         private final Button mStopBtn;
-        private final ViewGroup mParamEditorGroup;
         private final EditText mParamInterval;
         private final EditText mParamPayloadSize;
         private final EditText mParamCount;
+        private final CheckBox mDataSavedCheckBox;
         private final LogView mLogView;
 
         Ui() {
@@ -622,15 +653,15 @@ public class MainActivity extends AppCompatActivity {
             mStartBtn.setOnClickListener(this);
             mStopBtn = (Button) findViewById(R.id.button_stop_measurement);
             mStopBtn.setOnClickListener(this);
-            mParamEditorGroup = (ViewGroup) findViewById(R.id.view_group_params);
             mParamInterval = (EditText) findViewById(R.id.param_interval);
             mParamPayloadSize = (EditText) findViewById(R.id.param_payload_size);
             mParamCount = (EditText) findViewById(R.id.param_count);
             mLogView = new LogView((ViewGroup) findViewById(R.id.log_view));
+            mDataSavedCheckBox = (CheckBox) findViewById(R.id.param_data_saved);
 
-            mParamInterval.setText("1000");
-            mParamPayloadSize.setText("1024"); // 10KB
-            mParamCount.setText("10");
+            mParamInterval.setText("100"); // ms
+            mParamPayloadSize.setText("1024");  // バイト
+            mParamCount.setText("4320000"); // 回
             setEnabledStopBtn(false);
         }
 
@@ -666,7 +697,10 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    mParamEditorGroup.setEnabled(isEnabled);
+                    mParamInterval.setEnabled(isEnabled);
+                    mParamCount.setEnabled(isEnabled);
+                    mParamPayloadSize.setEnabled(isEnabled);
+                    mDataSavedCheckBox.setEnabled(isEnabled);
                 }
             });
         }
@@ -679,6 +713,9 @@ public class MainActivity extends AppCompatActivity {
         }
         String getEventCount() {
             return mParamCount.getText().toString();
+        }
+        boolean isDataSaved() {
+            return mDataSavedCheckBox.isChecked();
         }
 
         void debug(final String message) {

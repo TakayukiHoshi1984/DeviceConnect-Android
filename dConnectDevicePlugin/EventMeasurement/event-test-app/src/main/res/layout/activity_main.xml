@@ -58,7 +58,7 @@
                 android:layout_width="150dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
-                android:text="データサイズ (KB)"/>
+                android:text="データサイズ (バイト)"/>
             <EditText
                 android:id="@+id/param_payload_size"
                 android:layout_width="0dp"
@@ -80,6 +80,23 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:text="ファイル保存"/>
+            <CheckBox
+                android:id="@+id/param_data_saved"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checked="true"/>
         </LinearLayout>
     </LinearLayout>
 

@@ -106,8 +106,8 @@ public class MyDeviceOrientationProfile extends DConnectProfile {
                                         final int count = Integer.parseInt(request.getStringExtra("count"));
 
                                         try {
+                                            Event event = EventManager.INSTANCE.getEvent(request);
                                             for (int num = count - 1; num >= 0; num--) {
-                                                Event event = EventManager.INSTANCE.getEvent(request);
                                                 Intent message = EventManager.createEventMessage(event);
                                                 Bundle root = message.getExtras();
 
