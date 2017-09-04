@@ -132,7 +132,8 @@ public class MainActivity extends AppCompatActivity {
                         final String size = mUI.getEventByteSize();
                         final String count = mUI.getEventCount();
                         final boolean isDataSaved = mUI.isDataSaved();
-                        EventCollector collector = null;
+                        EventCollector collector;
+                        String serviceId;
                         try {
                             // アクセストークン取得
                             String accessToken = authorization();
@@ -156,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
 
                             // 計測実行
                             for (DConnectServiceInfo service : services) {
-                                final String serviceId = service.getId();
+                                serviceId = service.getId();
 
 //                                if (!serviceId.contains("binder")) { // TODO 消す
 //                                    continue;
@@ -175,8 +176,6 @@ public class MainActivity extends AppCompatActivity {
                                         return;
                                     }
                                     collector.waitEvent();
-                                    mEventCollectors.remove(serviceId);
-                                    collector.stopEvent();
                                 } catch (InterruptedException e) {
                                     // 計測中断
                                     warn("Interrupted test.");
@@ -186,11 +185,17 @@ public class MainActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                     return;
                                 } finally {
+                                    if (serviceId != null) {
+                                        mEventCollectors.remove(serviceId);
+                                    }
+                                    collector.stopEvent();
+
                                     if (isDataSaved) {
                                         try {
-                                            if (collector != null) {
-                                                collector.report();
+                                            if (collector.mCount > 0) {
+                                                debug("Invalid Sequence Rate" + collector.mInvalidSequenceCount + " / " + collector.mCount + " = " + (100 * collector.mInvalidSequenceCount  /  collector.mCount) + "%");
                                             }
+                                            collector.report();
                                         } catch (IOException e) {
                                             // 計測結果の保存に失敗
                                             e.printStackTrace();
@@ -349,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
 
                         @Override
                         public void onError(final Exception e) {
-                            debug("websocket: error = " + e.getMessage());
+                            //error("websocket: error = " + e.getMessage());
                             mError = e;
                             unlock();
                         }
@@ -408,6 +413,10 @@ public class MainActivity extends AppCompatActivity {
 
         private int mCount;
 
+        private int mLastNumber = Integer.MAX_VALUE;
+
+        private int mInvalidSequenceCount;
+
         private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
         private final DConnectSDK.OnEventListener mEventListener = new DConnectSDK.OnEventListener() {
@@ -430,6 +439,7 @@ public class MainActivity extends AppCompatActivity {
                             error("Number of event was not specified.");
                             return;
                         }
+                        int number = (int) num;
                         String transactionId = event.getString("transactionId");
 
                         // 計測用データの検証
@@ -443,6 +453,13 @@ public class MainActivity extends AppCompatActivity {
                         if (route == null || !route.equals(mServiceInfo.getConnectionTypeName())) {
                             error("Invalid route. Expected = " + mServiceInfo.getConnectionTypeName() + ", Actual = " + route);
                             return;
+                        }
+                        synchronized (mEventListener) {
+                            if (mLastNumber <= number) {
+                                error("Invalid number. Expected = " + (mLastNumber - 1) + ", Actual = " + number);
+                                mInvalidSequenceCount++;
+                            }
+                            mLastNumber = number;
                         }
 
                         event.put("app-receive-time", System.currentTimeMillis());
@@ -511,7 +528,9 @@ public class MainActivity extends AppCompatActivity {
         private void add(final DConnectEventMessage event) {
             int max = Integer.parseInt(mUI.getEventCount());
             long rowNo = (max - (++mCount) + 1);
-            mBuffer.append(rowNo + "," + createCSVForEvent(event) + "\n");
+            String row = rowNo + "," + createCSVForEvent(event) + "\n";
+            debug("row: " + row);
+            mBuffer.append(row);
         }
 
         void waitEvent() throws InterruptedException {
@@ -619,8 +638,6 @@ public class MainActivity extends AppCompatActivity {
             }
             long total = timestamps[timestamps.length - 1] - timestamps[0];
             row.append("," + total);
-
-            debug("row: " + row.toString());
 
             return row.toString();
         }
