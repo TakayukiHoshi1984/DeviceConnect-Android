@@ -31,6 +31,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import org.deviceconnect.android.manager.BuildConfig;
+import org.deviceconnect.android.manager.DConnectApplication;
 import org.deviceconnect.android.manager.DConnectService;
 import org.deviceconnect.android.manager.DConnectSettings;
 import org.deviceconnect.android.manager.R;
@@ -125,8 +126,7 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_service_list);
 
-        mSettings = DConnectSettings.getInstance();
-        mSettings.load(this);
+        mSettings = ((DConnectApplication) getApplication()).getSettings();
 
         if (loadGuideSettings(this)) {
             startGuide();
@@ -420,7 +420,7 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
             return;
         }
 
-        mServiceDiscovery = new ServiceDiscovery(this) {
+        mServiceDiscovery = new ServiceDiscovery(this, mSettings) {
             private DialogFragment mDialog;
 
             @Override
@@ -482,25 +482,16 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
 
     /**
      * サービスの確認画面を開く.
-     * @param position 開くサービスの
+     * @param position 開くサービスの紐付いているポジション
      */
     private void openServiceInfo(final int position) {
         mSelectedService = (ServiceContainer) mServiceAdapter.getItem(position);
-        if (mSelectedService.isOnline()) {
-            String url = BuildConfig.URL_DEMO_HTML + "?serviceId=" + mSelectedService.getId();
-            Intent intent = new Intent();
-            intent.setClass(this, WebViewActivity.class);
-            intent.putExtra(WebViewActivity.EXTRA_URL, url);
-            intent.putExtra(WebViewActivity.EXTRA_TITLE, mSelectedService.getName());
-            startActivity(intent);
-        } else {
-            String title = getString(R.string.activity_service_list_offline_title);
-            String message = getString(R.string.activity_service_list_offline_message, mSelectedService.getName());
-            String positive = getString(R.string.activity_service_list_offline_positive);
-            String negative = getString(R.string.activity_service_list_offline_negative);
-            AlertDialogFragment dialog = AlertDialogFragment.create(TAG_OFFLINE, title, message, positive, negative);
-            dialog.show(getFragmentManager(), TAG_OFFLINE);
-        }
+        String url = BuildConfig.URL_DEMO_HTML + "?serviceId=" + mSelectedService.getId();
+        Intent intent = new Intent();
+        intent.setClass(this, WebViewActivity.class);
+        intent.putExtra(WebViewActivity.EXTRA_URL, url);
+        intent.putExtra(WebViewActivity.EXTRA_TITLE, mSelectedService.getName());
+        startActivity(intent);
     }
 
     /**

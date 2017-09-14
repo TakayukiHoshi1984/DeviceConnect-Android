@@ -247,64 +247,80 @@ public class DConnectService extends DConnectMessageService implements WebSocket
     @Override
     public void sendEvent(final String receiver, final Intent event) {
         if (receiver == null || receiver.length() <= 0) {
-
-            Thread thread = Thread.currentThread();
-            Log.d("AAA", "sendEvent: id = " + thread.getId() + ", name = " + thread.getName());
-            event.putExtra("manager-thread-id", thread.getId());
-            event.putExtra("manager-thread-name", thread.getName());
-
-            mEventHandler.post(new Runnable() {
-                @Override
-                public void run() {
-
-                    long startTime = System.currentTimeMillis();
-                    try {
-                        String key = event.getStringExtra(IntentDConnectMessage.EXTRA_SESSION_KEY);
-                        if (key != null && mRESTfulServer != null && mRESTfulServer.isRunning()) {
-                            WebSocketInfo info = getWebSocketInfo(key);
-                            if (info == null) {
-                                mLogger.warning("sendMessage: webSocket is not found: key = " + key);
-                                return;
-                            }
-
-                            try {
-//                            if (BuildConfig.DEBUG) {
-//                                mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
-//                            }
-
-
-                                // TEST: JSONへの変換を開始した時刻
-                                event.putExtra("manager-json-time", System.currentTimeMillis());
-
-                                JSONObject root = new JSONObject();
-                                DConnectUtil.convertBundleToJSON(root, event.getExtras());
-                                DConnectWebSocket webSocket = mRESTfulServer.getWebSocket(info.getRawId());
-                                if (webSocket != null && mRESTfulServer.isRunning()) {
-
-                                    // TEST: マネージャを出発した時刻
-                                    root.put("manager-sent-time", System.currentTimeMillis());
-                                    root.put("route-1", "WebSocket");
-
-                                    webSocket.sendMessage(root.toString());
-                                } else {
-                                    if (mWebServerListener != null) {
-                                        mWebServerListener.onWebSocketDisconnected(webSocket);
-                                    }
-                                }
-                            } catch (JSONException e) {
-                                mLogger.warning("JSONException in sendMessage: " + e.toString());
-                            }
-                        }
-                    } finally {
-                        long endTime = System.currentTimeMillis();
-                        Log.d("manager", "Event sender time: " + (endTime - startTime) + " msec.");
+            if (isCurrentUIThread()) {
+                mEventSender.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        sendEventToWebSocket(event);
                     }
-
-                }
-            });
+                });
+            } else {
+                sendEventToWebSocket(event);
+            }
         } else {
             super.sendEvent(receiver, event);
         }
+    }
+
+    /**
+     * WebSocketにイベントを送信します.
+     *
+     * @param event イベントを格納したIntent
+     */
+    private void sendEventToWebSocket(final Intent event) {
+        Thread thread = Thread.currentThread();
+        Log.d("AAA", "sendEvent: id = " + thread.getId() + ", name = " + thread.getName());
+        event.putExtra("manager-thread-id", thread.getId());
+        event.putExtra("manager-thread-name", thread.getName());
+        
+        try {
+            String key = event.getStringExtra(IntentDConnectMessage.EXTRA_SESSION_KEY);
+            if (key != null && mRESTfulServer != null && mRESTfulServer.isRunning()) {
+                WebSocketInfo info = getWebSocketInfo(key);
+                if (info == null) {
+                    mLogger.warning("sendMessage: webSocket is not found: key = " + key);
+                    return;
+                }
+                
+                try {
+                    //if (BuildConfig.DEBUG) {
+                    //    mLogger.info(String.format("sendMessage: %s extra: %s", key, event.getExtras()));
+                    //}
+                    
+                    // TEST: JSONへの変換を開始した時刻
+                    event.putExtra("manager-json-time", System.currentTimeMillis());
+                    
+                    JSONObject root = new JSONObject();
+                    DConnectUtil.convertBundleToJSON(getSettings(), root, event.getExtras());
+                    DConnectWebSocket webSocket = mRESTfulServer.getWebSocket(info.getRawId());
+                    if (webSocket != null && mRESTfulServer.isRunning()) {
+                        
+                        // TEST: マネージャを出発した時刻
+                        root.put("manager-sent-time", System.currentTimeMillis());
+                        root.put("route-1", "WebSocket");
+                        
+                        webSocket.sendMessage(root.toString());
+                    } else {
+                        if (mWebServerListener != null) {
+                            mWebServerListener.onWebSocketDisconnected(webSocket);
+                        }
+                    }
+                } catch (JSONException e) {
+                    mLogger.warning("JSONException in sendMessage: " + e.toString());
+                }
+            }
+        } finally {
+            long endTime = System.currentTimeMillis();
+            Log.d("manager", "Event sender time: " + (endTime - startTime) + " msec.");
+        }
+    }
+
+    /**
+     * 現在のスレッドがUIスレッドか判定します.
+     * @return UIスレッドの場合はtrue、それ以外の場合はfalse
+     */
+    private boolean isCurrentUIThread() {
+        return Thread.currentThread().equals(getMainLooper().getThread());
     }
 
     /**
@@ -376,8 +392,6 @@ public class DConnectService extends DConnectMessageService implements WebSocket
                 if (mSettings.enableWakLock()) {
                     acquireWakeLock();
                 }
-
-                mSettings.load(getApplicationContext());
 
                 mWebServerListener = new DConnectServerEventListenerImpl(DConnectService.this);
                 mWebServerListener.setFileManager(mFileMgr);

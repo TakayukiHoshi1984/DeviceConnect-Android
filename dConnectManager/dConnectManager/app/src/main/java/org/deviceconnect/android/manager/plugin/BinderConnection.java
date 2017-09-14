@@ -22,8 +22,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 /**
@@ -45,7 +43,7 @@ public class BinderConnection extends AbstractConnection {
 
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    private Logger mLogger = Logger.getLogger("binder");
+    private Logger mLogger = Logger.getLogger("dconnect.manager");
 
     public BinderConnection(final Context context,
                             final String pluginId,
