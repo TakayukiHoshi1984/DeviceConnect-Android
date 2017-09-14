@@ -59,5 +59,6 @@ repositories {
 
 dependencies {
     compile fileTree(include: '*.jar', dir: 'libs')
-    compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.3.1'
+    //compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.3.1'
+    compile project(':dconnect-device-plugin-sdk')
 }

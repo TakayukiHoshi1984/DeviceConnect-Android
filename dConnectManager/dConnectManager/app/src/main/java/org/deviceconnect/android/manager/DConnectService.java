@@ -268,6 +268,7 @@ public class DConnectService extends DConnectMessageService implements WebSocket
      * @param event イベントを格納したIntent
      */
     private void sendEventToWebSocket(final Intent event) {
+        long startTime = System.currentTimeMillis();
         Thread thread = Thread.currentThread();
         Log.d("AAA", "sendEvent: id = " + thread.getId() + ", name = " + thread.getName());
         event.putExtra("manager-thread-id", thread.getId());
