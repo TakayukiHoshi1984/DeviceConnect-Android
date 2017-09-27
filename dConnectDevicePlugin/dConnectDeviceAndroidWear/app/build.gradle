@@ -1,8 +1,12 @@
 apply plugin: 'com.android.application'
+repositories {
+    maven { url 'https://raw.githubusercontent.com/DeviceConnect/DeviceConnect-Android/master/dConnectSDK/dConnectSDKForAndroid/repository/' }
+    maven { url 'https://raw.githubusercontent.com/DeviceConnect/DeviceConnect-Android/master/dConnectDevicePlugin/dConnectDevicePluginSDK/repository/' }
+}
 
 dependencies {
     compile fileTree(include: '*.jar', dir: 'libs')
-    compile project(':dconnect-device-plugin-sdk')
+    compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.3.1'
     compile 'com.android.support:multidex:1.0.1'
     compile 'com.google.android.gms:play-services:11.0.2'
 
@@ -57,8 +61,8 @@ android {
 
     productFlavors {
         DeviceWebApi {
-            versionCode 6
-            versionName "1.2.0"
+            versionCode 7
+            versionName "1.2.1"
             manifestPlaceholders = [
                     appIcon: "@drawable/ic_launcher",
                     appName: "@string/app_name_for_device_web_api"

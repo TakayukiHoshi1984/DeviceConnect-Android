@@ -58,8 +58,8 @@ android {
 
     productFlavors {
         DeviceWebApi {
-            versionCode 9
-            versionName "2.1.0"
+            versionCode 10
+            versionName "2.1.1"
             manifestPlaceholders = [
                     appIcon: "@drawable/ic_launcher",
                     appName: "@string/app_name_for_device_web_api"
@@ -72,7 +72,12 @@ android {
     }
 }
 
+repositories {
+    maven { url 'https://raw.githubusercontent.com/DeviceConnect/DeviceConnect-Android/master/dConnectSDK/dConnectSDKForAndroid/repository/' }
+    maven { url 'https://raw.githubusercontent.com/DeviceConnect/DeviceConnect-Android/master/dConnectDevicePlugin/dConnectDevicePluginSDK/repository/' }
+}
+
 dependencies {
     compile fileTree(include: '*.jar', dir: 'libs')
-    compile project(':dconnect-device-plugin-sdk')
+    compile 'org.deviceconnect:dconnect-device-plugin-sdk:2.3.1'
 }
