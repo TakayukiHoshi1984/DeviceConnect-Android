@@ -21,9 +21,11 @@
 
 package org.deviceconnect.server.nanohttpd.util;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.KeyManagementException;
 import java.security.KeyPair;
@@ -32,8 +34,11 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.logging.Logger;
 
@@ -43,12 +48,27 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.security.auth.x500.X500Principal;
 
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERObject;
+import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.KeyPurposeId;
+import org.bouncycastle.asn1.x509.KeyUsage;
+import org.bouncycastle.asn1.x509.X509Extensions;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.x509.X509V3CertificateGenerator;
 import org.deviceconnect.server.nanohttpd.BuildConfig;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -73,7 +93,7 @@ public final class KeyStoreManager {
      * 
      * TODO パスワード文字列について要検証.
      */
-    private static final char[] KEYSTORE_PASSWORD = "sjdlf'%Rli\"SHglk29ugsld??AfjL+D-".toCharArray();
+    private static final char[] KEYSTORE_PASSWORD = "0000".toCharArray();
 
     /**
      * Alias for the remote controller (local) identity in the {@link KeyStore}.
@@ -133,10 +153,14 @@ public final class KeyStoreManager {
 
         mContext = context;
         if (fromFile) {
-            loadKeyStore();
-            if (hasLocalIdentityAlias()) {
+            loadKeyStore(true);
+            if (!hasLocalIdentityAlias()) {
                 generateAppCertificate();
+                Log.d("AAA", "Generated App Certificate!!!");
+            } else {
+                Log.d("AAA", "Already Generated App Certificate.");
             }
+            storeKeyStore(true);
         } else {
             createKeyStore();
             generateAppCertificate();
@@ -161,13 +185,15 @@ public final class KeyStoreManager {
             if (BuildConfig.DEBUG) {
                 Log.v(LOG_TAG, "Generating certificate ...");
             }
-            String commonName = getCertificateName(getUniqueId());
-            X509Certificate cert = SslUtil.generateX509V3Certificate(keyPair, commonName);
+            String commonName = "CN=192.168.1.80"; //getCertificateName(getUniqueId());
+            X509Certificate cert = generateX509V3Certificate(keyPair, commonName);
+
             Certificate[] chain = {cert};
             if (BuildConfig.DEBUG) {
                 Log.v(LOG_TAG, "Adding key to keystore  ...");
             }
             mKeyStore.setKeyEntry(LOCAL_IDENTITY_ALIAS, keyPair.getPrivate(), null, chain);
+            storeServerCertificate(cert);
 
             if (BuildConfig.DEBUG) {
                 Log.d(LOG_TAG, "Key added!");
@@ -177,30 +203,100 @@ public final class KeyStoreManager {
         }
     }
 
+    public synchronized void storeServerCertificate(final Certificate certificate) {
+        try {
+            File dir = Environment.getExternalStorageDirectory();
+            FileOutputStream fos = new FileOutputStream(new File(dir, "test.cer"));
+
+            byte[] data = certificate.getEncoded();
+            fos.write(data);
+            fos.flush();
+            fos.close();
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to store keyStore", e);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Unable to store keyStore", e);
+        }
+    }
+
+
+    public static X509Certificate generateX509V3Certificate(KeyPair var0, String var1, Date var2, Date var3, BigInteger var4) throws GeneralSecurityException {
+        Security.addProvider(new BouncyCastleProvider());
+        X509V3CertificateGenerator var5 = new X509V3CertificateGenerator();
+        X500Principal var6 = new X500Principal(var1);
+        var5.setSerialNumber(var4);
+        var5.setIssuerDN(var6);
+        var5.setSubjectDN(var6);
+        var5.setNotBefore(var2);
+        var5.setNotAfter(var3);
+        var5.setPublicKey(var0.getPublic());
+        var5.setSignatureAlgorithm("SHA256WithRSAEncryption");
+        var5.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
+        var5.addExtension(X509Extensions.KeyUsage, true, new KeyUsage(160));
+        var5.addExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
+        var5.addExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(new DERSequence(new ASN1Encodable[] {
+                new GeneralName(1, "192.168.1.80"),
+                new GeneralName(GeneralName.dNSName, "localhost"),
+                new GeneralName(GeneralName.dNSName, "192.168.1.80"),
+                new GeneralName(GeneralName.iPAddress, "192.168.1.80")
+        })));
+        X509Certificate var7 = var5.generateX509Certificate(var0.getPrivate(), "BC");
+        return var7;
+    }
+
+    public static X509Certificate generateX509V3Certificate(KeyPair var0, String var1) throws GeneralSecurityException {
+        Calendar var2 = Calendar.getInstance();
+        var2.set(2009, 0, 1);
+        Date var3 = new Date(var2.getTimeInMillis());
+        var2.set(2099, 0, 1);
+        Date var4 = new Date(var2.getTimeInMillis());
+        BigInteger var5 = BigInteger.valueOf(Math.abs(System.currentTimeMillis()));
+        return generateX509V3Certificate(var0, var1, var3, var4, var5);
+    }
+
+
+    private static final boolean DEBUG = true;
+
     /**
      * KeyStoreをファイルから読み取る. 失敗した場合は生成する.
+     *
+     * @param isExternalFile
      */
-    public void loadKeyStore() {
+    public void loadKeyStore(final boolean isExternalFile) {
+        Log.d(LOG_TAG, "loadKeyStore: isExternalFile = " + isExternalFile);
+
         KeyStore keyStore;
         try {
             keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
         } catch (KeyStoreException e) {
             throw new IllegalStateException("Unable to get default instance of KeyStore", e);
         }
+
+        Log.d(LOG_TAG, "loadKeyStore: default keystore = " + keyStore);
+
         try {
-            FileInputStream fis = mContext.openFileInput(KEYSTORE_FILENAME);
+            FileInputStream fis;
+            if (isExternalFile) {
+                File dir = Environment.getExternalStorageDirectory();
+                fis = new FileInputStream(new File(dir, KEYSTORE_FILENAME));
+            } else {
+                fis = mContext.openFileInput(KEYSTORE_FILENAME);
+            }
+
             keyStore.load(fis, KEYSTORE_PASSWORD);
         } catch (IOException e) {
-            if (BuildConfig.DEBUG) {
+            if (DEBUG) {
                 Log.v(LOG_TAG, "Unable open keystore file", e);
             }
             keyStore = null;
         } catch (GeneralSecurityException e) {
-            if (BuildConfig.DEBUG) {
+            if (DEBUG) {
                 Log.v(LOG_TAG, "Unable open keystore file", e);
             }
             keyStore = null;
         }
+
+        Log.d(LOG_TAG, "loadKeyStore: loaded keystore = " + keyStore);
 
         /*
          * No keys found: generate.
@@ -222,6 +318,7 @@ public final class KeyStoreManager {
      * @throws GeneralSecurityException General Security Exception
      */
     public void createKeyStore() throws GeneralSecurityException {
+        Log.d(LOG_TAG, "createKeyStore: start");
         KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
         try {
             keyStore.load(null, KEYSTORE_PASSWORD);
@@ -230,20 +327,30 @@ public final class KeyStoreManager {
         }
 
         mKeyStore = keyStore;
+        Log.d(LOG_TAG, "createKeyStore: end");
     }
 
     /**
      * キーストアをファイルに出力する.
      */
-    public synchronized void storeKeyStore() {
+    public synchronized void storeKeyStore(final boolean isExternalFile) {
+        Log.d(LOG_TAG, "storeKeyStore: start");
         try {
-            FileOutputStream fos = mContext.openFileOutput(KEYSTORE_FILENAME, Context.MODE_PRIVATE);
+            FileOutputStream fos;
+            if (isExternalFile) {
+                File dir = Environment.getExternalStorageDirectory();
+                fos = new FileOutputStream(new File(dir, KEYSTORE_FILENAME));
+            } else {
+                fos = mContext.openFileOutput(KEYSTORE_FILENAME, Context.MODE_PRIVATE);
+            }
             mKeyStore.store(fos, KEYSTORE_PASSWORD);
             fos.close();
         } catch (IOException e) {
             throw new IllegalStateException("Unable to store keyStore", e);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Unable to store keyStore", e);
+        } finally {
+            Log.d(LOG_TAG, "storeKeyStore: end");
         }
     }
 

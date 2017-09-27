@@ -299,11 +299,13 @@ public class DConnectServerNanoHttpd extends DConnectServer {
         do {
             KeyStoreManager storeManager = new KeyStoreManager();
             try {
-                storeManager.initialize(mContext, false);
+                storeManager.initialize(mContext, true);
             } catch (GeneralSecurityException e) {
                 mLogger.warning("Exception in the DConnectServerNanoHttpd#createServerSocketFactory() method. "
                         + e.toString());
                 break;
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
             retVal = storeManager.getServerSocketFactory();
         } while (false);
