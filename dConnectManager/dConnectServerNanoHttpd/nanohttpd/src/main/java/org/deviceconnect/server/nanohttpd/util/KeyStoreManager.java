@@ -220,38 +220,39 @@ public final class KeyStoreManager {
     }
 
 
-    public static X509Certificate generateX509V3Certificate(KeyPair var0, String var1, Date var2, Date var3, BigInteger var4) throws GeneralSecurityException {
+    public static X509Certificate generateX509V3Certificate(final KeyPair keyPair,
+                                                            final String commonName,
+                                                            final Date var2,
+                                                            final Date var3,
+                                                            final BigInteger serialNumber) throws GeneralSecurityException {
         Security.addProvider(new BouncyCastleProvider());
-        X509V3CertificateGenerator var5 = new X509V3CertificateGenerator();
-        X500Principal var6 = new X500Principal(var1);
-        var5.setSerialNumber(var4);
-        var5.setIssuerDN(var6);
-        var5.setSubjectDN(var6);
-        var5.setNotBefore(var2);
-        var5.setNotAfter(var3);
-        var5.setPublicKey(var0.getPublic());
-        var5.setSignatureAlgorithm("SHA256WithRSAEncryption");
-        var5.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
-        var5.addExtension(X509Extensions.KeyUsage, true, new KeyUsage(160));
-        var5.addExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
-        var5.addExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(new DERSequence(new ASN1Encodable[] {
-                new GeneralName(1, "192.168.1.80"),
+        X509V3CertificateGenerator generator = new X509V3CertificateGenerator();
+        X500Principal principal = new X500Principal(commonName);
+        generator.setSerialNumber(serialNumber);
+        generator.setIssuerDN(principal);
+        generator.setSubjectDN(principal);
+        generator.setNotBefore(var2);
+        generator.setNotAfter(var3);
+        generator.setPublicKey(keyPair.getPublic());
+        generator.setSignatureAlgorithm("SHA256WithRSAEncryption");
+        generator.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
+        generator.addExtension(X509Extensions.KeyUsage, true, new KeyUsage(160));
+        generator.addExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
+        generator.addExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(new DERSequence(new ASN1Encodable[] {
                 new GeneralName(GeneralName.dNSName, "localhost"),
-                new GeneralName(GeneralName.dNSName, "192.168.1.80"),
                 new GeneralName(GeneralName.iPAddress, "192.168.1.80")
         })));
-        X509Certificate var7 = var5.generateX509Certificate(var0.getPrivate(), "BC");
-        return var7;
+        return generator.generateX509Certificate(keyPair.getPrivate(), "BC");
     }
 
-    public static X509Certificate generateX509V3Certificate(KeyPair var0, String var1) throws GeneralSecurityException {
+    public static X509Certificate generateX509V3Certificate(final KeyPair keyPair, String commonName) throws GeneralSecurityException {
         Calendar var2 = Calendar.getInstance();
         var2.set(2009, 0, 1);
         Date var3 = new Date(var2.getTimeInMillis());
         var2.set(2099, 0, 1);
         Date var4 = new Date(var2.getTimeInMillis());
-        BigInteger var5 = BigInteger.valueOf(Math.abs(System.currentTimeMillis()));
-        return generateX509V3Certificate(var0, var1, var3, var4, var5);
+        BigInteger serialNumber = BigInteger.valueOf(Math.abs(System.currentTimeMillis()));
+        return generateX509V3Certificate(keyPair, commonName, var3, var4, serialNumber);
     }
 
 
