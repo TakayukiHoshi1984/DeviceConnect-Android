@@ -25,7 +25,10 @@
                 android:text="@string/theta_app"
                 android:layout_gravity="center"
                 android:textColor="@color/tab_text"
+                android:nextFocusForward="@+id/theta_shutter"
+                android:nextFocusLeft="@+id/theta_shutter"
                 android:background="@drawable/button_blue"
+                android:focusable="true"
                 />
             <Button
                 android:id="@+id/change_list_theta"
@@ -39,6 +42,8 @@
                 android:textColor="@color/action_bar_background"
                 android:layout_gravity="center"
                 android:background="@drawable/button_white"
+                android:focusable="true"
+                android:nextFocusDown="@+id/theta_shutter"
                 />
 
         </LinearLayout>
@@ -66,6 +71,8 @@
                 android:horizontalSpacing="20dp"
                 android:layout_marginLeft="@dimen/gallery_adapter_padding"
                 android:layout_marginRight="@dimen/gallery_adapter_padding"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:numColumns="2" >
             </GridView>
             <Button
@@ -75,6 +82,9 @@
                 android:background="@drawable/vr_mode_screen_shot_button"
                 android:layout_gravity="bottom|left"
                 android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:nextFocusDown="@+id/change_list_app"
                 android:layout_margin="16dp"/>
             <RelativeLayout
                 android:id="@+id/theta_reconnect_layout"

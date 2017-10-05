@@ -61,6 +61,16 @@ android {
                     appIcon: "@drawable/dconnect_icon",
                     appName: "@string/app_name_for_device_web_api"
             ]
+            buildConfigField "String", "MarketType", "\"GooglePlay\""
+        }
+        Vuzix {
+            versionCode 14
+            versionName "2.1.1"
+            manifestPlaceholders = [
+                    appIcon: "@drawable/dconnect_icon",
+                    appName: "@string/app_name_for_device_web_api"
+            ]
+            buildConfigField "String", "MarketType", "\"Vuzix\""
         }
     }
 
