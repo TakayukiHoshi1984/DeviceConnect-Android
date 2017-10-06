@@ -13,6 +13,7 @@
             android:layout_width="200dp"
             android:layout_height="200dp"
             android:background="@drawable/shooting_big_button"
+            android:clickable="true"
             android:layout_gravity="center"/>
     </FrameLayout>
     <!-- THETA S 写真撮影 -->
@@ -31,6 +32,7 @@
             android:layout_width="100dp"
             android:layout_height="100dp"
             android:background="@drawable/shooting_big_button"
+            android:clickable="true"
             android:layout_gravity="center|bottom"
             android:layout_margin="16dp"/>
     </FrameLayout>
@@ -58,6 +60,7 @@
             android:textOff=""
             android:textOn=""
             android:background="@drawable/rec_big_button"
+            android:clickable="true"
             android:layout_gravity="center|bottom"
             android:layout_margin="16dp"/>
     </FrameLayout>
@@ -67,6 +70,7 @@
         android:layout_width="200dp"
         android:layout_height="50dp"
         android:layout_margin="16dp"
+        android:clickable="true"
         android:layout_gravity="top|left"
         android:padding="5dp"
         android:gravity="center"

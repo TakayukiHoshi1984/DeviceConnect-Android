@@ -145,7 +145,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
     private LruCache<String, byte[]> mThumbnailCache;
 
     /** App/theta gallery mode flag. true:app false:theta*/
-    private boolean mIsGalleryMode = false;
+    private boolean mIsGalleryMode = true;
 
     /** App/theta  gallery mode change buttons.*/
     private Button[] mGalleryModeButtons = new Button[2];
