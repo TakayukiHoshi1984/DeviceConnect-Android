@@ -46,6 +46,7 @@
                 android:background="@drawable/button_white"
                 android:focusable="true"
                 android:nextFocusLeft="@+id/change_list_app"
+                android:nextFocusRight="@+id/theta_reconnect"
                 android:nextFocusDown="@+id/theta_shutter"
                 />
 
@@ -121,8 +122,11 @@
                         android:layout_marginLeft="30dp"
                         android:layout_marginRight="30dp"
                         android:clickable="true"
+                        android:focusable="true"
                         android:text="@string/theta_reconnect_button"
                         android:textColor="#FFFFFF"
+                        android:nextFocusRight="@+id/change_list_theta"
+                        android:nextFocusLeft="@+id/change_list_theta"
                         android:textSize="20sp"/>
                 </LinearLayout>
             </RelativeLayout>

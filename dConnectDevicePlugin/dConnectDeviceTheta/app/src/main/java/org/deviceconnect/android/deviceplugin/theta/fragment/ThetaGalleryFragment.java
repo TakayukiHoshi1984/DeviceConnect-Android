@@ -186,11 +186,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                         if (!mIsGalleryMode) {
                             updateList = mUpdateThetaList;
                         }
-                        if (mGalleryAdapter != null) {
-                            mGalleryAdapter.clear();
-                            mGalleryAdapter.addAll(updateList);
-                            mGalleryAdapter.notifyDataSetChanged();
-                        }
+                        updateGalleryAdapter(updateList);
 
                     }
                 });
@@ -204,6 +200,9 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
 
         @Override
         public void onClick(View view) {
+            if (!mGalleryModeButtons[GALLERY_MODE_APP].isEnabled()) {
+                return;
+            }
             mGalleryModeButtons[GALLERY_MODE_APP].setEnabled(false);
             mGalleryModeButtons[GALLERY_MODE_THETA].setEnabled(false);
             if (mIsGalleryMode) {
@@ -221,13 +220,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             if (updateList.size() == 0) {
                 enableReconnectView();
             }
-            if (mGalleryAdapter != null) {
-                mGalleryAdapter.clear();
-                mGalleryAdapter.addAll(updateList);
-                mGalleryAdapter.notifyDataSetChanged();
-                mList.requestFocus();
-                mList.setSelection(0);
-            }
+            updateGalleryAdapter(updateList);
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -239,7 +232,21 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
         }
     };
 
-
+    /**
+     * Update Gallery Adapter.
+     * @param updateList Theta Object list
+     */
+    private void updateGalleryAdapter(List<ThetaObject> updateList) {
+        if (mGalleryAdapter != null) {
+            mGalleryAdapter.clear();
+            if (updateList != null) {
+                mGalleryAdapter.addAll(updateList);
+            }
+            mGalleryAdapter.notifyDataSetChanged();
+            mList.requestFocus();
+            mList.setSelection(0);
+        }
+    }
 
 
     /**
@@ -375,9 +382,8 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (!mIsGalleryMode && mGalleryAdapter != null) {
-                        mGalleryAdapter.clear();
-                        mGalleryAdapter.notifyDataSetChanged();
+                    if (!mIsGalleryMode) {
+                        updateGalleryAdapter(null);
                     }
                     mUpdateThetaList.clear();
                     enableReconnectView();
@@ -400,10 +406,10 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             }
             if (!mIsGalleryMode && mGalleryAdapter != null) {
                 mUpdateThetaList.clear();
-                mGalleryAdapter.clear();
-                mGalleryAdapter.notifyDataSetChanged();
+                updateGalleryAdapter(null);
                 mRecconectLayout.setVisibility(View.VISIBLE);
             }
+
         } else {
             getActivity().getActionBar().setTitle(mDevice.getName());
         }
@@ -427,21 +433,17 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
         mGalleryModeButtons[GALLERY_MODE_APP].setOnClickListener(mGalleryModeChangeListener);
         mGalleryModeButtons[GALLERY_MODE_THETA] = (Button) rootView.findViewById(R.id.change_list_theta);
         mGalleryModeButtons[GALLERY_MODE_THETA].setOnClickListener(mGalleryModeChangeListener);
-        if (BuildConfig.MarketType.equals("Vuzix")) {
+        if (!BuildConfig.MarketType.equals("Vuzix")) {
             mGalleryModeButtons[GALLERY_MODE_APP].setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View view, boolean b) {
-                    if (b) {
-                        mGalleryModeChangeListener.onClick(view);
-                    }
+                    mGalleryModeChangeListener.onClick(view);
                 }
             });
             mGalleryModeButtons[GALLERY_MODE_THETA].setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View view, boolean b) {
-                    if (b) {
-                        mGalleryModeChangeListener.onClick(view);
-                    }
+                    mGalleryModeChangeListener.onClick(view);
                 }
             });
         }
@@ -453,19 +455,10 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             mGalleryModeButtons[GALLERY_MODE_APP].setBackgroundResource(MODE_ENABLE_BACKGROUND);
             mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_ENABLE_TEXT_COLOR));
             mGalleryModeButtons[GALLERY_MODE_THETA].setBackgroundResource(MODE_DISABLE_BACKGROUND);
-            if (BuildConfig.MarketType.equals("Vuzix")) {
-                mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_FOCUS_TEXT_COLOR));
-            } else {
-                mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
-            }
+            mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
         } else {
             mGalleryModeButtons[GALLERY_MODE_APP].setBackgroundResource(MODE_DISABLE_BACKGROUND);
-            if (BuildConfig.MarketType.equals("Vuzix")) {
-                mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_FOCUS_TEXT_COLOR));
-            } else {
-                mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
-
-            }
+            mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
             mGalleryModeButtons[GALLERY_MODE_THETA].setBackgroundResource(MODE_ENABLE_BACKGROUND);
             mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_ENABLE_TEXT_COLOR));
         }
@@ -498,8 +491,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
         } else if (mDevice == null && !mIsGalleryMode) {
             if (mGalleryAdapter != null) {
                 mUpdateThetaList.clear();
-                mGalleryAdapter.clear();
-                mGalleryAdapter.notifyDataSetChanged();
+                updateGalleryAdapter(null);
             }
             mShootingButton.setEnabled(false);
             mRecconectLayout.setVisibility(View.VISIBLE);
@@ -541,7 +533,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                                     final View view,
                                     final int position,
                                     final long id) {
-                if (BuildConfig.MarketType.equals("Vuzix")) {
+                if (!BuildConfig.MarketType.equals("Vuzix")) {
                     synchronized (this) {
                         if (firstClickTime == 0) {
                             firstClickTime = SystemClock.elapsedRealtime();
@@ -945,11 +937,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             } else {
                 mUpdateThetaList = mResult;
             }
-            if (mGalleryAdapter != null) {
-                mGalleryAdapter.clear();
-                mGalleryAdapter.addAll(mResult);
-                mGalleryAdapter.notifyDataSetChanged();
-            }
+            updateGalleryAdapter(mResult);
             try {
                 if (mProgress != null) {
                     mProgress.dismiss();
@@ -1088,11 +1076,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             if (!mIsGalleryMode) {
                 removedList = mUpdateThetaList;
             }
-            if (mGalleryAdapter != null) {
-                mGalleryAdapter.clear();
-                mGalleryAdapter.addAll(removedList);
-                mGalleryAdapter.notifyDataSetChanged();
-            }
+            updateGalleryAdapter(removedList);
             if (removedList.size() > 0) {
                 mStatusView.setVisibility(View.GONE);
             } else {
