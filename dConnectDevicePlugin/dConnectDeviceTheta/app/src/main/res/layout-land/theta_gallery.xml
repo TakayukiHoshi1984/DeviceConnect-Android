@@ -88,7 +88,6 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:nextFocusDown="@+id/change_list_app"
                 android:layout_margin="16dp"/>
             <RelativeLayout
                 android:id="@+id/theta_reconnect_layout"

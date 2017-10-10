@@ -86,6 +86,8 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
 
     /** Gallery Mode Disable text color. */
     private static final int MODE_DISABLE_TEXT_COLOR = R.color.action_bar_background;
+    /** Gallery Mode Focused text color. */
+    private static final int MODE_FOCUS_TEXT_COLOR = R.color.tab_text_focused;
 
     /**
      * Theta's Gallery.
@@ -451,10 +453,19 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             mGalleryModeButtons[GALLERY_MODE_APP].setBackgroundResource(MODE_ENABLE_BACKGROUND);
             mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_ENABLE_TEXT_COLOR));
             mGalleryModeButtons[GALLERY_MODE_THETA].setBackgroundResource(MODE_DISABLE_BACKGROUND);
-            mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
+            if (BuildConfig.MarketType.equals("Vuzix")) {
+                mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_FOCUS_TEXT_COLOR));
+            } else {
+                mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
+            }
         } else {
             mGalleryModeButtons[GALLERY_MODE_APP].setBackgroundResource(MODE_DISABLE_BACKGROUND);
-            mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
+            if (BuildConfig.MarketType.equals("Vuzix")) {
+                mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_FOCUS_TEXT_COLOR));
+            } else {
+                mGalleryModeButtons[GALLERY_MODE_APP].setTextColor(ContextCompat.getColor(getActivity(), MODE_DISABLE_TEXT_COLOR));
+
+            }
             mGalleryModeButtons[GALLERY_MODE_THETA].setBackgroundResource(MODE_ENABLE_BACKGROUND);
             mGalleryModeButtons[GALLERY_MODE_THETA].setTextColor(ContextCompat.getColor(getActivity(), MODE_ENABLE_TEXT_COLOR));
         }

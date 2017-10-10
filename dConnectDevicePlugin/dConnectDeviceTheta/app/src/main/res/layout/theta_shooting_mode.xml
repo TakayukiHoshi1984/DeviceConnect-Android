@@ -69,11 +69,12 @@
         android:id="@+id/theta_shooting_mode"
         android:layout_width="200dp"
         android:layout_height="50dp"
-        android:layout_margin="16dp"
-        android:clickable="true"
         android:layout_gravity="top|left"
-        android:padding="5dp"
-        android:gravity="center"
+        android:layout_margin="16dp"
         android:background="@drawable/button_white"
-        />
+        android:clickable="true"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center"
+        android:padding="5dp" />
 </FrameLayout>
