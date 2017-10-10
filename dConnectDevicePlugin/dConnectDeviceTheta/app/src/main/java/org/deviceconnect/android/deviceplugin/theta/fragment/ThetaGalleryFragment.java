@@ -240,11 +240,20 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
         if (mGalleryAdapter != null) {
             mGalleryAdapter.clear();
             if (updateList != null) {
+                if (updateList.size() > 0) {
+                    mStatusView.setVisibility(View.GONE);
+                } else {
+                    mStatusView.setVisibility(View.VISIBLE);
+                }
                 mGalleryAdapter.addAll(updateList);
             }
             mGalleryAdapter.notifyDataSetChanged();
-            mList.requestFocus();
-            mList.setSelection(0);
+            if (mList.getCount() > 0) {
+                mList.requestFocus();
+                mList.setSelection(0);
+            } else {
+                mGalleryModeButtons[GALLERY_MODE_APP].requestFocus();
+            }
         }
     }
 
@@ -433,17 +442,21 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
         mGalleryModeButtons[GALLERY_MODE_APP].setOnClickListener(mGalleryModeChangeListener);
         mGalleryModeButtons[GALLERY_MODE_THETA] = (Button) rootView.findViewById(R.id.change_list_theta);
         mGalleryModeButtons[GALLERY_MODE_THETA].setOnClickListener(mGalleryModeChangeListener);
-        if (!BuildConfig.MarketType.equals("Vuzix")) {
+        if (BuildConfig.MarketType.equals("Vuzix")) {
             mGalleryModeButtons[GALLERY_MODE_APP].setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View view, boolean b) {
-                    mGalleryModeChangeListener.onClick(view);
+                    if (b) {
+                        mGalleryModeChangeListener.onClick(view);
+                    }
                 }
             });
             mGalleryModeButtons[GALLERY_MODE_THETA].setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View view, boolean b) {
-                    mGalleryModeChangeListener.onClick(view);
+                    if (b) {
+                        mGalleryModeChangeListener.onClick(view);
+                    }
                 }
             });
         }
@@ -533,7 +546,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                                     final View view,
                                     final int position,
                                     final long id) {
-                if (!BuildConfig.MarketType.equals("Vuzix")) {
+                if (BuildConfig.MarketType.equals("Vuzix")) {
                     synchronized (this) {
                         if (firstClickTime == 0) {
                             firstClickTime = SystemClock.elapsedRealtime();
@@ -926,11 +939,7 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
                 showSettingsActivity();
                 return;
             }
-            if (mResult.size() > 0) {
-                mStatusView.setVisibility(View.GONE);
-            } else {
-                mStatusView.setVisibility(View.VISIBLE);
-            }
+
 
             if (mIsGalleryMode) {
                 mUpdateAppList = mResult;

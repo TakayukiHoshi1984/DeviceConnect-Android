@@ -47,7 +47,6 @@
                 android:focusable="true"
                 android:nextFocusLeft="@+id/change_list_app"
                 android:nextFocusRight="@+id/theta_reconnect"
-                android:nextFocusDown="@+id/theta_shutter"
                 />
 
         </LinearLayout>
