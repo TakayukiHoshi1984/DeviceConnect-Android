@@ -25,7 +25,11 @@
                 android:text="@string/theta_app"
                 android:layout_gravity="center"
                 android:textColor="@color/tab_text"
+                android:clickable="true"
+                android:nextFocusRight="@+id/change_list_theta"
+                android:nextFocusLeft="@+id/theta_shutter"
                 android:background="@drawable/button_blue"
+                android:focusable="true"
                 />
             <Button
                 android:id="@+id/change_list_theta"
@@ -35,10 +39,14 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginRight="16dp"
                 android:layout_marginBottom="16dp"
+                android:clickable="true"
                 android:text="@string/theta_ssid_prefix"
                 android:textColor="@color/action_bar_background"
                 android:layout_gravity="center"
                 android:background="@drawable/button_white"
+                android:focusable="true"
+                android:nextFocusLeft="@+id/change_list_app"
+                android:nextFocusRight="@+id/theta_reconnect"
                 />
 
         </LinearLayout>
@@ -66,6 +74,8 @@
                 android:horizontalSpacing="20dp"
                 android:layout_marginLeft="@dimen/gallery_adapter_padding"
                 android:layout_marginRight="@dimen/gallery_adapter_padding"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:numColumns="2" >
             </GridView>
             <Button
@@ -75,6 +85,9 @@
                 android:background="@drawable/vr_mode_screen_shot_button"
                 android:layout_gravity="bottom|left"
                 android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:layout_margin="16dp"/>
             <RelativeLayout
                 android:id="@+id/theta_reconnect_layout"
@@ -107,8 +120,12 @@
                         android:layout_marginTop="10dp"
                         android:layout_marginLeft="30dp"
                         android:layout_marginRight="30dp"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:text="@string/theta_reconnect_button"
                         android:textColor="#FFFFFF"
+                        android:nextFocusRight="@+id/change_list_theta"
+                        android:nextFocusLeft="@+id/change_list_theta"
                         android:textSize="20sp"/>
                 </LinearLayout>
             </RelativeLayout>
