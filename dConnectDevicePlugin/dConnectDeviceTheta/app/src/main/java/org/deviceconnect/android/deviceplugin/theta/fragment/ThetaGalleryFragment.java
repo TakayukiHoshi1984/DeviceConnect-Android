@@ -318,6 +318,9 @@ public class ThetaGalleryFragment extends Fragment implements ThetaDeviceEventLi
             }
         });
         mShootingButton = (Button) mRootView.findViewById(R.id.theta_shutter);
+        if (!BuildConfig.MarketType.equals("Vuzix")) {
+            mShootingButton.setFocusable(false);
+        }
         mShootingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
