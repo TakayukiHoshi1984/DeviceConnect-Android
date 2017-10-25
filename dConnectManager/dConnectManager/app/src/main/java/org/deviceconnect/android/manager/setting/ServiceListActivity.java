@@ -216,6 +216,10 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
                         switchDConnectServer(isChecked);
                     }
                 });
+                DConnectService managerService = getManagerService();
+                if (managerService != null) {
+                    mSwitchAction.setChecked(managerService.isRunning());
+                }
             }
         }
         return true;
