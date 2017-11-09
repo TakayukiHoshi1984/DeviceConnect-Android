@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '26.0.2'
 
     def getVersionName = { ->
         def version
@@ -51,11 +51,11 @@ android {
             signingConfig signingConfigs.releaseConfig
         }
     }
-
+    flavorDimensions "DeviceWebApi"
     productFlavors {
         DeviceWebApi {
-            versionCode 25
-            versionName "2.2.2"
+            versionCode 26
+            versionName "2.2.3"
             buildConfigField "String", "URL_HELP_HTML", "\"file:///android_asset/html/help-dwa/index.html\""
             buildConfigField "String", "URL_DEMO_HTML", "\"file:///android_asset/html/demo/index.html\""
         }

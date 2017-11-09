@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 19
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '26.0.2'
 
     def getVersionName = { ->
         def version
@@ -50,9 +50,10 @@ android {
         exclude 'META-INF/LICENSE'
         exclude 'META-INF/NOTICE'
     }
-
+    flavorDimensions "DeviceConnect", "DeviceWebApi"
     productFlavors {
         DeviceConnect {
+            dimension 'DeviceConnect'
             versionCode 8
             versionName "2.2.1"
             manifestPlaceholders = [
@@ -62,6 +63,7 @@ android {
         }
 
         DeviceWebApi {
+            dimension 'DeviceWebApi'
             versionCode 8
             versionName "2.2.1"
             manifestPlaceholders = [
