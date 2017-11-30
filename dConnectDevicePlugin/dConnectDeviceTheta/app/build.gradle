@@ -56,8 +56,8 @@ android {
     productFlavors {
         DeviceWebApi {
             dimension "DeviceWebApi"
-            versionCode 16
-            versionName "2.1.3"
+            versionCode 15
+            versionName "2.1.2"
             manifestPlaceholders = [
                     appIcon: "@drawable/dconnect_icon",
                     appName: "@string/app_name_for_device_web_api"
@@ -66,8 +66,8 @@ android {
         }
         Vuzix {
             dimension "Vuzix"
-            versionCode 16
-            versionName "2.1.3"
+            versionCode 15
+            versionName "2.1.2"
             manifestPlaceholders = [
                     appIcon: "@drawable/dconnect_icon",
                     appName: "@string/app_name_for_device_web_api"
