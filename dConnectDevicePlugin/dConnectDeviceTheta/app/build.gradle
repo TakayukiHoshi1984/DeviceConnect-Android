@@ -52,10 +52,10 @@ android {
         exclude 'META-INF/LICENSE'
         exclude 'META-INF/NOTICE'
     }
-    flavorDimensions "DeviceWebApi", "Vuzix"
+    flavorDimensions "DeviceWebAPI"
     productFlavors {
-        DeviceWebApi {
-            dimension "DeviceWebApi"
+        Moverio {
+            dimension "DeviceWebAPI"
             versionCode 17
             versionName "2.1.4"
             manifestPlaceholders = [
@@ -65,7 +65,7 @@ android {
             buildConfigField "String", "MarketType", "\"GooglePlay\""
         }
         Vuzix {
-            dimension "Vuzix"
+            dimension "DeviceWebAPI"
             versionCode 17
             versionName "2.1.4"
             manifestPlaceholders = [
