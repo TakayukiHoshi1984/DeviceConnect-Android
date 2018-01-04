@@ -10,7 +10,6 @@ import android.app.Application;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.webrtc.core.Peer;
-import org.deviceconnect.android.deviceplugin.webrtc.core.PeerConfig;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +32,7 @@ public class WebRTCApplication extends Application {
     /**
      * Map that contains the PeerConfig and Peer.
      */
-    private final Map<PeerConfig, Peer> mPeerMap = new HashMap<>();
+    private final Map<String, Peer> mPeerMap = new HashMap<>();
 
     /**
      * VideoChatActivity call timestamp.
@@ -59,12 +58,12 @@ public class WebRTCApplication extends Application {
 
     /**
      * Gets the peer corresponding to the config.
-     * @param config Instance of PeerConfig
+     * @param serviceId DevicePlugin's service ID.
      * @param callback Callback to notify the Peer
      */
-    public void getPeer(final PeerConfig config, final OnGetPeerCallback callback) {
-        if (config == null) {
-            throw new NullPointerException("config is null.");
+    public void getPeer(final String serviceId, final OnGetPeerCallback callback) {
+        if (serviceId == null) {
+            throw new NullPointerException("serviceId is null.");
         }
 
         if (callback == null) {
@@ -83,7 +82,7 @@ public class WebRTCApplication extends Application {
         };
 
         synchronized (mPeerMap) {
-            Peer peer = mPeerMap.get(config);
+            Peer peer = mPeerMap.get(serviceId);
             if (peer != null) {
                 if (peer.isConnected()) {
                     callback.onGetPeer(peer);
@@ -92,9 +91,9 @@ public class WebRTCApplication extends Application {
                 }
             } else {
                 try {
-                    peer = new Peer(getApplicationContext(), config);
+                    peer = new Peer(getApplicationContext());
                     peer.connect(peerCallback);
-                    mPeerMap.put(config, peer);
+                    mPeerMap.put(serviceId, peer);
                 } catch (Exception e) {
                     callback.onGetPeer(null);
                 }
@@ -107,7 +106,7 @@ public class WebRTCApplication extends Application {
      */
     public void destroyPeer() {
         synchronized (mPeerMap) {
-            for (Map.Entry<PeerConfig, Peer> entry : mPeerMap.entrySet()) {
+            for (Map.Entry<String, Peer> entry : mPeerMap.entrySet()) {
                 entry.getValue().destroy();
                 entry.getValue().removePeerEventListener();
             }
@@ -121,7 +120,7 @@ public class WebRTCApplication extends Application {
      */
     public boolean isConnected() {
         synchronized (mPeerMap) {
-            for (Map.Entry<PeerConfig, Peer> entry : mPeerMap.entrySet()) {
+            for (Map.Entry<String, Peer> entry : mPeerMap.entrySet()) {
                 if (entry.getValue().hasConnections()) {
                     return true;
                 }
@@ -131,12 +130,12 @@ public class WebRTCApplication extends Application {
     }
 
     /**
-     * Destroy the Peer corresponding to the config.
-     * @param config config
+     * Destroy the Peer corresponding to the serviceId.
+     * @param serviceId serviceId
      */
-    public void destroyPeer(final PeerConfig config) {
+    public void destroyPeer(final String serviceId) {
         synchronized (mPeerMap) {
-            Peer peer = mPeerMap.remove(config);
+            Peer peer = mPeerMap.remove(serviceId);
             if (peer != null) {
                 peer.destroy();
             }
@@ -144,16 +143,16 @@ public class WebRTCApplication extends Application {
     }
 
     /**
-     * Gets the list of PeerConfig.
+     * Gets the list of ServiceId.
      * @return list
      */
-    public List<PeerConfig> getPeerConfig() {
+    public List<String> getServiceIds() {
         synchronized (mPeerMap) {
-            List<PeerConfig> list = new ArrayList<>();
+            List<String> list = new ArrayList<>();
 
             // shadow copy
-            Set<PeerConfig> configs = mPeerMap.keySet();
-            for (PeerConfig config : configs) {
+            Set<String> configs = mPeerMap.keySet();
+            for (String config : configs) {
                 list.add(config);
             }
             return list;
@@ -161,13 +160,13 @@ public class WebRTCApplication extends Application {
     }
 
     /**
-     * Gets the peer corresponding to the config.
-     * @param config PeerConfig
+     * Gets the peer corresponding to the ServiceId.
+     * @param serviceId serviceId
      * @return instance of Peer
      */
-    public Peer getPeer(final PeerConfig config) {
+    public Peer getPeer(final String serviceId) {
         synchronized (mPeerMap) {
-            return mPeerMap.get(config);
+            return mPeerMap.get(serviceId);
         }
     }
 

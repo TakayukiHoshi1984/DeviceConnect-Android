@@ -21,7 +21,6 @@ import org.deviceconnect.android.deviceplugin.webrtc.activity.VideoChatActivity;
 import org.deviceconnect.android.deviceplugin.webrtc.core.AudioTrackExternal;
 import org.deviceconnect.android.deviceplugin.webrtc.core.MySurfaceViewRenderer;
 import org.deviceconnect.android.deviceplugin.webrtc.core.Peer;
-import org.deviceconnect.android.deviceplugin.webrtc.core.PeerConfig;
 import org.deviceconnect.android.deviceplugin.webrtc.core.WebRTCController;
 import org.deviceconnect.android.deviceplugin.webrtc.fragment.PercentFrameLayout;
 import org.deviceconnect.android.profile.VideoChatProfile;
@@ -95,7 +94,7 @@ public class WebRTCManager {
         localRender.createYuvConverter(eglBase.getEglBaseContext());
         localRender.setZOrderMediaOverlay(true);
 
-        PeerConfig config = intent.getParcelableExtra(VideoChatActivity.EXTRA_CONFIG);
+        String config = intent.getStringExtra(VideoChatActivity.EXTRA_CONFIG);
         String videoUri = intent.getStringExtra(VideoChatActivity.EXTRA_VIDEO_URI);
         String audioUri = intent.getStringExtra(VideoChatActivity.EXTRA_AUDIO_URI);
         String addressId = intent.getStringExtra(VideoChatActivity.EXTRA_ADDRESS_ID);
@@ -187,6 +186,7 @@ public class WebRTCManager {
     public  void destroy() {
         for (Map.Entry<Peer, WebRTCController> e : mMap.entrySet()) {
             e.getValue().hangup();
+            e.getKey().destroy();
         }
         mMap.clear();
         if (mServer != null) {

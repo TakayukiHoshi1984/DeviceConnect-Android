@@ -26,12 +26,12 @@ public class WebRTCController {
     /**
      * Tag for debugging.
      */
-    private static final String TAG = "WEBRTC";
+    private static final String TAG = "FIREBASE";
 
     /**
      * Defined a stun server.
      */
-    private static final String STUN_SERVER = "stun:stun.skyway.io:3478";
+    private static final String STUN_SERVER = "stun:stun.l.google.com:19302";
 
     private MySurfaceViewRenderer mLocalRender;
     private MySurfaceViewRenderer mRemoteRender;
@@ -39,7 +39,7 @@ public class WebRTCController {
 
     private WebRTCApplication mApplication;
 
-    private PeerConfig mConfig;
+    private String mConfig;
     private PeerOption mOption;
     private Peer mPeer;
 
@@ -56,7 +56,7 @@ public class WebRTCController {
     private String mAddressId;
     private boolean mOffer;
 
-    private WebRTCController(final WebRTCApplication app, final PeerConfig config, final PeerOption option,
+    private WebRTCController(final WebRTCApplication app, final String config, final PeerOption option,
                              final String addressId, final boolean offer, final WebRTCEventListener listener) {
         mApplication = app;
         mConfig = config;
@@ -408,7 +408,7 @@ public class WebRTCController {
         private MySurfaceViewRenderer mRemoteRender;
         private AudioTrackExternal mAudioTrackExternal;
 
-        private PeerConfig mConfig;
+        private String mConfig;
 
         private WebRTCApplication mApplication;
         private WebRTCEventListener mWebRTCEventListener;
@@ -517,7 +517,7 @@ public class WebRTCController {
             return this;
         }
 
-        public Builder setConfig(final PeerConfig config) {
+        public Builder setConfig(final String config) {
             mConfig = config;
             return this;
         }

@@ -42,9 +42,9 @@ public class Peer {
     private static final String FIELD_TRIAL_AUTOMATIC_RESIZE = "WebRTC-MediaCodecVideoEncoder-AutomaticResize/Enabled/";
 
     /**
-     * Config of a Peer.
+     * Room Name.
      */
-    private PeerConfig mConfig;
+    private static final String WEBRTC_ROOM_NAME = "room1";
 
     /**
      * Instance of PeerConnectionFactory.
@@ -59,7 +59,7 @@ public class Peer {
     /**
      * シグナリングサーバとの通信を行うクラス。
      */
-    private SignalingClient mSignaling;
+    private Signaling mSignaling;
 
     /**
      * Peer's id.
@@ -74,7 +74,7 @@ public class Peer {
     /**
      * Map that contains the offer message.
      */
-    private Map<String, JSONObject> mOfferMap = new ConcurrentHashMap<>();
+    private Map<String, String> mOfferMap = new ConcurrentHashMap<>();
 
     /**
      * Map that contains the MediaConnection.
@@ -84,28 +84,14 @@ public class Peer {
     /**
      * Constructor.
      * @param context context
-     * @param config config
      */
-    public Peer(final Context context, final PeerConfig config) {
+    public Peer(final Context context) {
         if (context == null) {
             throw new NullPointerException("context is null.");
         }
 
-        if (config == null) {
-            throw new NullPointerException("config is null.");
-        }
-
         mContext = context;
-        mConfig = config;
         initPeerConnectionFactory();
-    }
-
-    /**
-     * Retrieves a config of Peer.
-     * @return instance of PeerConfig
-     */
-    public PeerConfig getConfig() {
-        return mConfig;
     }
 
     /**
@@ -209,12 +195,18 @@ public class Peer {
             conn.setLocalMediaStream(stream);
             conn.createOffer();
             mConnections.put(addressId, conn);
+            if (mEventListener != null) {
+                Address address = getAddress(addressId);
+                mEventListener.onCalling(Peer.this, address);
+            }
             return conn;
         }
     }
 
     /**
      * Takes a phone call to the addressId.
+     *
+     *
      * @param addressId id of address
      * @param option options for take a call
      * @param listener
@@ -235,8 +227,8 @@ public class Peer {
             throw new NullPointerException("option is null.");
         }
 
-        JSONObject json = mOfferMap.remove(addressId);
-        if (json == null) {
+        String sdp = mOfferMap.remove(addressId);
+        if (sdp == null) {
             Log.w(TAG, "@@ do not have an offer.");
             return null;
         }
@@ -256,7 +248,7 @@ public class Peer {
             MediaConnection conn = createMediaConnection(addressId, option);
             conn.setOnMediaEventListener(listener);
             conn.setLocalMediaStream(stream);
-            conn.createAnswer(json);
+            conn.createAnswer(sdp);
             mConnections.put(addressId, conn);
             return conn;
         }
@@ -278,6 +270,10 @@ public class Peer {
                 conn.close();
                 return true;
             }
+        }
+        if (mEventListener != null) {
+            Address address = getAddress(addressId);
+            mEventListener.onHangup(Peer.this, address);
         }
         return false;
     }
@@ -310,11 +306,11 @@ public class Peer {
             Log.d(TAG, "@@ getListPeerList");
         }
 
-        mSignaling.listAllPeers(new SignalingClient.OnAllPeersCallback() {
+        mSignaling.listAllPeers(new Signaling.OnAllPeersCallback() {
             @Override
             public void onCallback(JSONArray peers) {
                 if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "@@ getListPeerList Response: " + peers);
+                    Log.e(TAG, "@@  Response: " + peers);
                 }
 
                 List<Address> addressList = new ArrayList<>();
@@ -325,7 +321,6 @@ public class Peer {
                     } catch (JSONException e) {
                         continue;
                     }
-
                     // if id is myself, not included int the list
                     if (mPeerId.equalsIgnoreCase(strValue)) {
                         continue;
@@ -367,19 +362,8 @@ public class Peer {
             Log.d(TAG, "@@@ connect");
         }
 
-        mSignaling = new SignalingClient(mConfig);
-        mSignaling.setOnSignalingCallback(new SignalingClient.OnSignalingCallback() {
-            @Override
-            public void onOpen(final String peerId) {
-                if (BuildConfig.DEBUG) {
-                    Log.d(TAG, "@@@ onOpen");
-                }
-
-                mPeerId = peerId;
-                if (callback != null) {
-                    callback.onConnected(Peer.this);
-                }
-            }
+        mSignaling = new SignalingFirebaseClient(WEBRTC_ROOM_NAME);
+        mSignaling.setOnSignalingCallback(new Signaling.OnFirebaseSignalingCallback() {
 
             @Override
             public void onClose() {
@@ -389,38 +373,46 @@ public class Peer {
             }
 
             @Override
-            public void onOffer(final JSONObject json) {
-                String src = json.optString("src");
-                mOfferMap.put(src, json);
+            public void onOffer(final String from, final String sdp) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "@@@ onOffer from:" + from + "\n" + sdp);
+                }
+                mOfferMap.put(from, sdp);
                 if (mEventListener != null) {
-                    Address address = getAddress(src);
+                    Address address = getAddress(from);
                     mEventListener.onIncoming(Peer.this, address);
                 }
             }
 
             @Override
-            public void onAnswer(final JSONObject json) {
-                String src = json.optString("src");
-                MediaConnection mc = getConnection(src);
+            public void onAnswer(final String from, final String sdp) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "@@@ onAnswer from:" + from + "\n" + sdp);
+                }
+                MediaConnection mc = getConnection(from);
                 if (mc != null) {
-                    mc.handleAnswer(json);
+                    mc.handleAnswer(sdp);
                 }
             }
 
             @Override
-            public void onCandidate(final JSONObject json) {
-                String src = json.optString("src");
-                MediaConnection mc = getConnection(src);
+            public void onCandidate(final String from, final String ice) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "@@@ onCandidate from:" + from + "\n"  + ice);
+                }
+
+                MediaConnection mc = getConnection(from);
                 if (mc != null) {
-                    mc.handleCandidate(json);
+                    mc.handleCandidate(ice);
                 }
             }
 
             @Override
-            public void onDisconnect() {
+            public void onDisconnect(final String from) {
                 if (BuildConfig.DEBUG) {
                     Log.w(TAG, "@@@@ onDisconnect");
                 }
+                hangup(from);
             }
 
             @Override
@@ -433,6 +425,11 @@ public class Peer {
                 }
             }
         });
+        mPeerId = mSignaling.getId();
+        if (callback != null) {
+            callback.onConnected(Peer.this);
+        }
+
     }
 
     /**
@@ -532,16 +529,13 @@ public class Peer {
         @Override
         public void onLocalDescription(final MediaConnection conn, final SessionDescription sdp) {
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "@@@ onLocalDescription");
+                Log.d(TAG, "@@@ onLocalDescription sdp type:" + sdp.type);
             }
 
             String type;
             switch (sdp.type) {
                 case OFFER:
                     type = "offer";
-                    break;
-                case PRANSWER:
-                    type = "pranswer";
                     break;
                 case ANSWER:
                     type = "answer";
@@ -555,22 +549,8 @@ public class Peer {
                 JSONObject sdpMsg = new JSONObject();
                 sdpMsg.put("sdp", sdp.description);
                 sdpMsg.put("type", type);
-
-                JSONObject payload = new JSONObject();
-                payload.put("sdp", sdpMsg);
-                payload.put("type", conn.getType());
-                payload.put("label", conn.getConnectionId());
-                payload.put("connectionId", conn.getConnectionId());
-                payload.put("reliable", "false");
-                payload.put("serialization", "binary");
-                payload.put("browser", "Supported");
-
-                JSONObject message = new JSONObject();
-                message.put("type", type.toUpperCase());
-                message.put("payload", payload);
-                message.put("dst", conn.getPeerId());
-
-                mSignaling.queueMessage(message.toString());
+                sdpMsg.put("from", conn.getPeerId());
+                mSignaling.queueMessage(sdpMsg.toString());
             } catch (Exception e) {
                 if (BuildConfig.DEBUG) {
                     Log.e(TAG, "Failed to create a message that send to a signaling server.", e);
@@ -588,15 +568,9 @@ public class Peer {
 
                 JSONObject payload = new JSONObject();
                 payload.put("candidate", candidateMsg);
-                payload.put("type", "media");
-                payload.put("connectionId", conn.getConnectionId());
-
-                JSONObject message = new JSONObject();
-                message.put("type", "CANDIDATE");
-                message.put("payload", payload);
-                message.put("dst", conn.getPeerId());
-
-                mSignaling.queueMessage(message.toString());
+                payload.put("type", "candidate");
+                payload.put("from", conn.getPeerId());
+                mSignaling.queueMessage(payload.toString());
             } catch (Exception e) {
                 if (BuildConfig.DEBUG) {
                     Log.e(TAG, "Failed to create a message that send to a signaling server.", e);

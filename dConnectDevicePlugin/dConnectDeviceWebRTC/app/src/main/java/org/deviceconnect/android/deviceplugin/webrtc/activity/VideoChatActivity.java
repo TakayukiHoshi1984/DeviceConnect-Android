@@ -20,7 +20,6 @@ import org.deviceconnect.android.deviceplugin.webrtc.BuildConfig;
 import org.deviceconnect.android.deviceplugin.webrtc.R;
 import org.deviceconnect.android.deviceplugin.webrtc.WebRTCApplication;
 import org.deviceconnect.android.deviceplugin.webrtc.core.MySurfaceViewRenderer;
-import org.deviceconnect.android.deviceplugin.webrtc.core.PeerConfig;
 import org.deviceconnect.android.deviceplugin.webrtc.core.WebRTCController;
 import org.deviceconnect.android.deviceplugin.webrtc.fragment.PercentFrameLayout;
 import org.deviceconnect.android.deviceplugin.webrtc.profile.WebRTCVideoChatProfile;
@@ -131,7 +130,7 @@ public class VideoChatActivity extends Activity {
             }
             ((WebRTCApplication) getApplication()).setCallTimeStamp(callTimeStamp);
 
-            PeerConfig config = intent.getParcelableExtra(EXTRA_CONFIG);
+            String serviceId = intent.getStringExtra(EXTRA_CONFIG);
             String videoUri = intent.getStringExtra(EXTRA_VIDEO_URI);
             String audioUri = intent.getStringExtra(EXTRA_AUDIO_URI);
             String addressId = intent.getStringExtra(EXTRA_ADDRESS_ID);
@@ -151,7 +150,7 @@ public class VideoChatActivity extends Activity {
             builder.setWebRTCEventListener(mListener);
             builder.setContext(this);
             builder.setEglBase(eglBase);
-            builder.setConfig(config);
+            builder.setConfig(serviceId);
             builder.setRemoteRender(mRemoteRender);
             builder.setLocalRender(mLocalRender);
             builder.setVideoUri(videoUri);

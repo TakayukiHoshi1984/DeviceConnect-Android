@@ -6,6 +6,14 @@
  */
 package org.deviceconnect.android.deviceplugin.webrtc;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
+
 import org.deviceconnect.android.deviceplugin.webrtc.profile.WebRTCSystemProfile;
 import org.deviceconnect.android.deviceplugin.webrtc.service.WebRTCService;
 import org.deviceconnect.android.deviceplugin.webrtc.util.WebRTCManager;
@@ -26,7 +34,6 @@ public class WebRTCDeviceService extends DConnectMessageService {
     private final Logger mLogger = Logger.getLogger("webrtc.dplugin");
 
     private WebRTCManager mWebRTCManager;
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -48,6 +55,10 @@ public class WebRTCDeviceService extends DConnectMessageService {
         // Managerアンインストール検知時の処理。
         if (BuildConfig.DEBUG) {
             mLogger.info("Plug-in : onManagerUninstalled");
+        }
+        if (mWebRTCManager != null) {
+            mWebRTCManager.destroy();
+            mWebRTCManager = null;
         }
     }
 
@@ -85,10 +96,10 @@ public class WebRTCDeviceService extends DConnectMessageService {
      * リソースリセット処理.
      */
     private void resetPluginResource() {
-        /** 全イベント削除. */
+        /* 全イベント削除. */
         EventManager.INSTANCE.removeAll();
 
-        /** Peer切断処理. */
+        /* Peer切断処理. */
         WebRTCApplication app = (WebRTCApplication) ((DConnectMessageService) getContext()).getApplication();
         if (app != null) {
             app.destroyPeer();

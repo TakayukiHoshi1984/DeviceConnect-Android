@@ -9,6 +9,7 @@ package org.deviceconnect.android.deviceplugin.webrtc.core;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.webrtc.BuildConfig;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.DataChannel;
 import org.webrtc.IceCandidate;
@@ -33,7 +34,7 @@ public class MediaConnection {
     /**
      * Tag for debugging.
      */
-    private static final String TAG = "WEBRTC";
+    private static final String TAG = "Firebase";
 
     private static final String PREFIX_MEDIA_PEERJS = "mc_";
 
@@ -221,26 +222,21 @@ public class MediaConnection {
 
     /**
      * Creates an answer message from json message.
-     * @param json offer message
+     * @param sdp offer message
      */
-    public void createAnswer(final JSONObject json) {
+    public void createAnswer(final String sdp) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "@@@ MediaConnection::createAnswer");
-            Log.d(TAG, "@@@@ json: " + json.toString());
+            Log.d(TAG, "@@@@ sdp: " + sdp);
         }
-
-        JSONObject payload = json.optJSONObject("payload");
-        JSONObject sdpObj = payload.optJSONObject("sdp");
-        String type = PeerUtil.getJSONString(sdpObj, "type", "");
-        String sdp = PeerUtil.getJSONString(sdpObj, "sdp", "");
+        String tempSdp = sdp;
         if (getType().equalsIgnoreCase("media")) {
-            sdp = preferCodec(sdp, AUDIO_CODEC_ISAC, true);
-            sdp = preferCodec(sdp, VIDEO_CODEC_H264, false);
+            tempSdp = preferCodec(tempSdp, AUDIO_CODEC_ISAC, true);
+            tempSdp = preferCodec(tempSdp, VIDEO_CODEC_H264, false);
         }
 
         SessionDescription.Type sdpType = SessionDescription.Type.OFFER;
-        mConnectionId = PeerUtil.getJSONString(payload, "connectionId", null);
-        mRemoteSdp = new SessionDescription(sdpType, sdp);
+        mRemoteSdp = new SessionDescription(sdpType, tempSdp);
         if (mPeerConnection != null) {
             mPeerConnection.setRemoteDescription(mSdpObserver, mRemoteSdp);
         }
@@ -250,26 +246,21 @@ public class MediaConnection {
 
     /**
      * Handles an answer message.
-     * @param json message
+     * @param sdp message
      */
-    public void handleAnswer(final JSONObject json) {
+    public void handleAnswer(final String sdp) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "@@@@ handleAnswer");
-            Log.d(TAG, "@@@@ json: " + json.toString());
+            Log.d(TAG, "@@@@ json: " + sdp);
         }
-
-        JSONObject payload = json.optJSONObject("payload");
-        JSONObject sdpObj = payload.optJSONObject("sdp");
-        String type = PeerUtil.getJSONString(sdpObj, "type", "");
-        String sdp = PeerUtil.getJSONString(sdpObj, "sdp", "");
+        String tempSdp = sdp;
         if (getType().equalsIgnoreCase("media")) {
-            sdp = preferCodec(sdp, AUDIO_CODEC_ISAC, true);
-            sdp = preferCodec(sdp, VIDEO_CODEC_H264, false);
+            tempSdp = preferCodec(tempSdp, AUDIO_CODEC_ISAC, true);
+            tempSdp = preferCodec(tempSdp, VIDEO_CODEC_H264, false);
         }
 
         SessionDescription.Type sdpType = SessionDescription.Type.ANSWER;
-        mBrowser = PeerUtil.getJSONString(payload, "browser", "Supported");
-        mRemoteSdp = new SessionDescription(sdpType, sdp);
+        mRemoteSdp = new SessionDescription(sdpType, tempSdp);
         if (mPeerConnection != null) {
             mPeerConnection.setRemoteDescription(mSdpObserver, mRemoteSdp);
         }
@@ -279,12 +270,12 @@ public class MediaConnection {
 
     /**
      * Handles a candidate message.
-     * @param json candidate message
+     * @param ice candidate message
      */
-    public void handleCandidate(final JSONObject json) {
+    public void handleCandidate(final String ice) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "@@@@ handleCandidate");
-            Log.d(TAG, "@@@@ json: " + json.toString());
+            Log.d(TAG, "@@@@ json: " + ice);
         }
 
         PeerConnection.IceConnectionState state = mPeerConnection.iceConnectionState();
@@ -292,20 +283,25 @@ public class MediaConnection {
             return;
         }
 
-        JSONObject payload = json.optJSONObject("payload");
-        JSONObject candidateObj = payload.optJSONObject("candidate");
-        String sdpMid = candidateObj.optString("sdpMid");
-        Integer sdpMLineIndex = candidateObj.optInt("sdpMLineIndex");
-        String candidate = candidateObj.optString("candidate");
+        JSONObject payload = null;
+        try {
+            payload = new JSONObject(ice);
 
-        IceCandidate ice = new IceCandidate(sdpMid, sdpMLineIndex, candidate);
-        boolean result = mPeerConnection.addIceCandidate(ice);
-        if (BuildConfig.DEBUG) {
-            if (!result) {
-                Log.i(TAG, "@@@ handleCandidate NG");
-            } else {
-                Log.i(TAG, "@@@ handleCandidate OK");
+            String sdpMid = payload.getString("sdpMid");
+            Integer sdpMLineIndex = payload.getInt("sdpMLineIndex");
+            String candidate = payload.getString("candidate");
+
+            IceCandidate iceCandidate = new IceCandidate(sdpMid, sdpMLineIndex, candidate);
+            boolean result = mPeerConnection.addIceCandidate(iceCandidate);
+            if (BuildConfig.DEBUG) {
+                if (!result) {
+                    Log.i(TAG, "@@@ handleCandidate NG");
+                } else {
+                    Log.i(TAG, "@@@ handleCandidate OK");
+                }
             }
+        } catch (JSONException e) {
+            Log.e(TAG, "ICE Message Parse Error", e);
         }
     }
 

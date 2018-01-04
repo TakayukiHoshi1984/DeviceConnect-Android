@@ -14,7 +14,6 @@ import android.widget.TextView;
 import org.deviceconnect.android.deviceplugin.webrtc.R;
 import org.deviceconnect.android.deviceplugin.webrtc.WebRTCApplication;
 import org.deviceconnect.android.deviceplugin.webrtc.core.Peer;
-import org.deviceconnect.android.deviceplugin.webrtc.core.PeerConfig;
 
 import java.util.List;
 
@@ -27,7 +26,7 @@ public class PeerSettingsFragment extends Fragment {
                              final Bundle savedInstanceState) {
 
         WebRTCApplication app = (WebRTCApplication) getActivity().getApplication();
-        mSettingsAdapter = new SettingsAdapter(app.getPeerConfig());
+        mSettingsAdapter = new SettingsAdapter(app.getServiceIds());
 
         View root = inflater.inflate(R.layout.settings_peer, null);
         ListView listView = (ListView) root.findViewById(R.id.listView);
@@ -58,9 +57,9 @@ public class PeerSettingsFragment extends Fragment {
             @Override
             public void onPositive() {
                 WebRTCApplication app = (WebRTCApplication) getActivity().getApplication();
-                PeerConfig config = (PeerConfig) mSettingsAdapter.getItem(position);
+                String config = (String) mSettingsAdapter.getItem(position);
                 app.destroyPeer(config);
-                mSettingsAdapter.setConfigs(app.getPeerConfig());
+                mSettingsAdapter.setConfigs(app.getServiceIds());
             }
             @Override
             public void onNegative() {
@@ -72,15 +71,15 @@ public class PeerSettingsFragment extends Fragment {
     public void reload() {
         if (mSettingsAdapter != null) {
             WebRTCApplication app = (WebRTCApplication) getActivity().getApplication();
-            mSettingsAdapter.setConfigs(app.getPeerConfig());
+            mSettingsAdapter.setConfigs(app.getServiceIds());
         }
     }
 
     private class SettingsAdapter extends BaseAdapter {
         private LayoutInflater mInflater;
-        private List<PeerConfig> mConfigs;
+        private List<String> mConfigs;
 
-        private SettingsAdapter(final List<PeerConfig> configs) {
+        private SettingsAdapter(final List<String> configs) {
             mInflater = (LayoutInflater) getActivity().getSystemService(
                     Context.LAYOUT_INFLATER_SERVICE);
             mConfigs = configs;
@@ -111,7 +110,7 @@ public class PeerSettingsFragment extends Fragment {
             WebRTCApplication app = (WebRTCApplication) getActivity().getApplication();
 
             String peerId = "";
-            PeerConfig config = (PeerConfig) getItem(position);
+            String config = (String) getItem(position);
             Peer peer = app.getPeer(config);
             if (peer != null) {
                 peerId = peer.getMyAddressId();
@@ -119,11 +118,11 @@ public class PeerSettingsFragment extends Fragment {
                     peerId = "";
                 }
             }
-            setViewText(view, config.getDomain(), peerId);
+            setViewText(view, config, peerId);
             return view;
         }
 
-        public void setConfigs(List<PeerConfig> configs) {
+        public void setConfigs(List<String> configs) {
             mConfigs = configs;
             notifyDataSetChanged();
         }

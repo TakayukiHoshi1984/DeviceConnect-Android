@@ -6,6 +6,8 @@
  */
 package org.deviceconnect.android.deviceplugin.webrtc.util;
 
+import android.util.Log;
+
 import org.deviceconnect.android.deviceplugin.webrtc.BuildConfig;
 
 import java.io.BufferedReader;
@@ -617,16 +619,19 @@ public class MixedReplaceMediaServer {
      * @return http header
      */
     private String generateHttpHeader() {
-        final String s1 = "HTTP/1.0 200 OK\r\n";
-        final String s2 = "Server: " + mServerName + "\r\n";
-        final String s3 = "Connection: close\r\n";
-        final String s4 = "Max-Age: 0\r\n";
-        final String s5 = "Expires: 0\r\n";
-        final String s6 = "Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0\r\n";
-        final String s7 = "Pragma: no-cache\r\n";
-        final String s8 = "Content-Type: multipart/x-mixed-replace; " + "boundary=" + mBoundary + "\r\n";
-        final String s9 = "\r\n";
-        return s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
+        StringBuilder sb = new StringBuilder();
+        sb.append("HTTP/1.0 200 OK\r\n");
+        sb.append("Server: " + mServerName + "\r\n");
+        sb.append("Connection: close\r\n");
+        sb.append("Max-Age: 0\r\n");
+        sb.append("Expires: 0\r\n");
+        sb.append("Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0\r\n");
+        sb.append("Pragma: no-cache\r\n");
+        sb.append("Access-Control-Allow-Origin: *\r\n");
+        sb.append("Content-Type: multipart/x-mixed-replace; ");
+        sb.append("boundary=" + mBoundary + "\r\n");
+        sb.append("\r\n");
+        return sb.toString();
     }
     
     /**

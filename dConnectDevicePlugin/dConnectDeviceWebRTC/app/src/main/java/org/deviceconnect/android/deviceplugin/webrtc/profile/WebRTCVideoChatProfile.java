@@ -17,7 +17,6 @@ import org.deviceconnect.android.deviceplugin.webrtc.WebRTCDeviceService;
 import org.deviceconnect.android.deviceplugin.webrtc.activity.VideoChatActivity;
 import org.deviceconnect.android.deviceplugin.webrtc.core.Address;
 import org.deviceconnect.android.deviceplugin.webrtc.core.Peer;
-import org.deviceconnect.android.deviceplugin.webrtc.core.PeerConfig;
 import org.deviceconnect.android.deviceplugin.webrtc.service.WebRTCService;
 import org.deviceconnect.android.deviceplugin.webrtc.setting.SettingUtil;
 import org.deviceconnect.android.deviceplugin.webrtc.util.WebRTCManager;
@@ -57,26 +56,9 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String configParam = request.getStringExtra(PARAM_CONFIG);
-
-            if (BuildConfig.DEBUG) {
-                Log.i(TAG, "@@ onGetProfile");
-                Log.i(TAG, "config: " + configParam);
-            }
-
-            PeerConfig config;
-            try {
-                config = new PeerConfig(configParam);
-            } catch (IllegalArgumentException e) {
-                if (BuildConfig.DEBUG) {
-                    Log.w(TAG, "", e);
-                }
-                MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-                return true;
-            }
 
             WebRTCApplication application = getWebRTCApplication();
-            application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+            application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
                 @Override
                 public void onGetPeer(final Peer peer) {
                     if (peer != null) {
@@ -105,27 +87,9 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            final String configParam = request.getStringExtra(PARAM_CONFIG);
             final String addressIdParam = request.getStringExtra(PARAM_ADDRESSID);
-
-            if (BuildConfig.DEBUG) {
-                Log.i(TAG, "@@ onGetAddress");
-                Log.i(TAG, "config: " + configParam);
-            }
-
-            PeerConfig config;
-            try {
-                config = new PeerConfig(configParam);
-            } catch (IllegalArgumentException e) {
-                if (BuildConfig.DEBUG) {
-                    Log.w(TAG, "", e);
-                }
-                MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-                return true;
-            }
-
             WebRTCApplication application = getWebRTCApplication();
-            application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+            application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
                 @Override
                 public void onGetPeer(final Peer peer) {
                     if (peer != null) {
@@ -170,31 +134,17 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String configParam = request.getStringExtra(PARAM_CONFIG);
             String groupIdParam = request.getStringExtra(PARAM_GROUPID);
-
             if (BuildConfig.DEBUG) {
                 Log.i(TAG, "@@ onPostCall");
             }
-
-            PeerConfig config;
-            try {
-                config = new PeerConfig(configParam);
-            } catch (IllegalArgumentException e) {
-                if (BuildConfig.DEBUG) {
-                    Log.w(TAG, "", e);
-                }
-                MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-                return true;
-            }
-
             if (groupIdParam != null) {
                 MessageUtils.setInvalidRequestParameterError(response, "groupId is not supported.");
                 return true;
             }
 
             final WebRTCApplication application = getWebRTCApplication();
-            application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+            application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
                 @Override
                 public void onGetPeer(final Peer peer) {
                     if (peer != null) {
@@ -253,7 +203,7 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
                                     intent.putExtra(VideoChatActivity.EXTRA_ADDRESS_ID, addressId);
                                     intent.putExtra(VideoChatActivity.EXTRA_VIDEO_URI, video);
                                     intent.putExtra(VideoChatActivity.EXTRA_AUDIO_URI, audio);
-                                    intent.putExtra(VideoChatActivity.EXTRA_CONFIG, peer.getConfig());
+                                    intent.putExtra(VideoChatActivity.EXTRA_CONFIG, getServiceID(request));
                                     intent.putExtra(VideoChatActivity.EXTRA_OFFER, offer);
                                     intent.putExtra(VideoChatActivity.EXTRA_AUDIOSAMPLERATE, audioSampleRate);
                                     intent.putExtra(VideoChatActivity.EXTRA_AUDIOBITDEPTH, audioBitDepth);
@@ -349,26 +299,11 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String configParam = request.getStringExtra(PARAM_CONFIG);
-
             if (BuildConfig.DEBUG) {
                 Log.i(TAG, "@@ onDeleteCall");
-                Log.i(TAG, "config:" + configParam);
             }
-
-            PeerConfig config;
-            try {
-                config = new PeerConfig(configParam);
-            } catch (IllegalArgumentException e) {
-                if (BuildConfig.DEBUG) {
-                    Log.w(TAG, "", e);
-                }
-                MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-                return true;
-            }
-
             WebRTCApplication application = getWebRTCApplication();
-            application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+            application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
                 @Override
                 public void onGetPeer(final Peer peer) {
                     if (peer != null) {
@@ -464,20 +399,8 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
      * @return true if returns a response immediately, false otherwise
      */
     private boolean registerEvent(final Intent request, final Intent response) {
-        String configParam = request.getStringExtra(PARAM_CONFIG);
-        PeerConfig config;
-        try {
-            config = new PeerConfig(configParam);
-        } catch (IllegalArgumentException e) {
-            if (BuildConfig.DEBUG) {
-                Log.w(TAG, "", e);
-            }
-            MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-            return true;
-        }
-
         WebRTCApplication application = getWebRTCApplication();
-        application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+        application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
             @Override
             public void onGetPeer(final Peer peer) {
                 if (peer == null) {
@@ -510,20 +433,8 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
      * @return true if returns a response immediately, false otherwise
      */
     private boolean unregisterEvent(final Intent request, final Intent response) {
-        String configParam = request.getStringExtra(PARAM_CONFIG);
-        PeerConfig config;
-        try {
-            config = new PeerConfig(configParam);
-        } catch (IllegalArgumentException e) {
-            if (BuildConfig.DEBUG) {
-                Log.w(TAG, "", e);
-            }
-            MessageUtils.setInvalidRequestParameterError(response, "config is invalid.");
-            return true;
-        }
-
         WebRTCApplication application = getWebRTCApplication();
-        application.getPeer(config, new WebRTCApplication.OnGetPeerCallback() {
+        application.getPeer(getServiceID(request), new WebRTCApplication.OnGetPeerCallback() {
             @Override
             public void onGetPeer(final Peer peer) {
                 if (peer == null) {
@@ -665,12 +576,42 @@ public class WebRTCVideoChatProfile extends VideoChatProfile {
             if (BuildConfig.DEBUG) {
                 Log.i(TAG, "@@@ run onDisconnected event");
             }
+            List<Event> events = EventManager.INSTANCE.getEventList(
+                    WebRTCService.PLUGIN_ID,
+                    PROFILE_NAME, null, ATTR_ONHANGUP);
+            if (events.size() != 0) {
+                Bundle arg = new Bundle();
+                arg.putString(PARAM_NAME, address.getName());
+                arg.putString(PARAM_ADDRESSID, address.getAddressId());
+                for (Event e : events) {
+                    Intent event = EventManager.createEventMessage(e);
+                    event.putExtra(PARAM_HANGUP, arg);
+                    DConnectMessageService s = (DConnectMessageService) getContext();
+                    s.sendEvent(event, e.getAccessToken());
+                }
+            }
         }
 
         @Override
         public void onCalling(final Peer peer, final Address address) {
             if (BuildConfig.DEBUG) {
                 Log.i(TAG, "@@@ run onCalling event");
+            }
+            List<Event> events = EventManager.INSTANCE.getEventList(
+                    WebRTCService.PLUGIN_ID,
+                    PROFILE_NAME, null, ATTR_ONCALL);
+            if (events.size() != 0) {
+                Bundle[] args = new Bundle[1];
+                Bundle arg = new Bundle();
+                arg.putString(PARAM_NAME, address.getName());
+                arg.putString(PARAM_ADDRESSID, address.getAddressId());
+                args[0] = arg;
+                for (Event e : events) {
+                    Intent event = EventManager.createEventMessage(e);
+                    event.putExtra(PARAM_ONCALL, args);
+                    DConnectMessageService s = (DConnectMessageService) getContext();
+                    s.sendEvent(event, e.getAccessToken());
+                }
             }
         }
     };
