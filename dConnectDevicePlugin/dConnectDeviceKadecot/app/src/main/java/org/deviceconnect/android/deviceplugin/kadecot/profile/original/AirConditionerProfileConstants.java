@@ -51,6 +51,11 @@ public interface AirConditionerProfileConstants extends DConnectProfileConstants
     /**
      * Attribute: {@value} .
      */
+    String ATTRIBUTE_TARGET_TEMPERATURE = "targetTemperature";
+
+    /**
+     * Attribute: {@value} .
+     */
     String ATTRIBUTE_AIR_FLOW = "airFlow";
 
     /**
@@ -81,7 +86,7 @@ public interface AirConditionerProfileConstants extends DConnectProfileConstants
     /**
      * Path: {@value} .
      */
-    String PATH_TEMPERATURE = PATH_PROFILE + SEPARATOR + ATTRIBUTE_TEMPERATURE;
+    String PATH_TEMPERATURE = PATH_PROFILE + SEPARATOR + ATTRIBUTE_TARGET_TEMPERATURE;
 
     /**
      * Path: {@value} .

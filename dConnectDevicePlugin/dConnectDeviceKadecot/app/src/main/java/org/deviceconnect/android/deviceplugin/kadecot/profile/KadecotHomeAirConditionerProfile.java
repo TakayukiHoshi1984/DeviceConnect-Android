@@ -63,7 +63,8 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
                         getAirConditionerOperationModeSetting(request, response);
                     } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_ROOM_TEMPERATURE, attr)) {
                         getAirConditionerRoomTemperature(request, response);
-                    } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TEMPERATURE, attr)) {
+                    } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TARGET_TEMPERATURE, attr)
+                            || isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TEMPERATURE, attr)) {
                         getAirConditionerTemperatureValue(request, response);
                     } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_AIR_FLOW, attr)) {
                         getAirConditionerAirFlowValue(request, response);
@@ -85,7 +86,8 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
                         putAirConditionerOperationPowerSaving(request, response);
                     } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_MODE_SETTING, attr)) {
                         putAirConditionerOperationModeSetting(request, response);
-                    } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TEMPERATURE, attr)) {
+                    } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TARGET_TEMPERATURE, attr)
+                            || isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_TEMPERATURE, attr)) {
                         putAirConditionerTemperatureValue(request, response);
                     } else if (isEqual(KadecotHomeAirConditionerProfile.ATTRIBUTE_AIR_FLOW, attr)) {
                         putAirConditionerAirFlowValue(request, response);
@@ -114,12 +116,14 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
         addApi(mGetOperationModeSettingApi);
         addApi(mGetRoomTemperatureApi);
         addApi(mGetTemperatureValueApi);
+        addApi(mGetTargetTemperatureValueApi);
         addApi(mGetAirFlowValueApi);
         addApi(mGetECHONETLitePropertyApi);
         addApi(mPutAirConditionerApi);
         addApi(mPutOperationPowerSavingApi);
         addApi(mPutOperationModeSettingApi);
         addApi(mPutTemperatureValueApi);
+        addApi(mPutTargetTemperatureValueApi);
         addApi(mPutAirFlowValueApi);
         addApi(mPutECHONETLitePropertyApi);
         addApi(mDeleteAirConditionerApi);
@@ -287,6 +291,18 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
         sendResponse(response);
     }
 
+    private final DConnectApi mGetTargetTemperatureValueApi = new GetApi() {
+        @Override
+        public String getAttribute() {
+            return ATTRIBUTE_TARGET_TEMPERATURE;
+        }
+
+        @Override
+        public boolean onRequest(final Intent request, final Intent response) {
+            new KadecotServerQueryTask().execute(request, response);
+            return false;
+        }
+    };
     private final DConnectApi mGetTemperatureValueApi = new GetApi() {
         @Override
         public String getAttribute() {
@@ -299,7 +315,6 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
             return false;
         }
     };
-
     /**
      * Get air conditioner temperature value.
      *
@@ -632,6 +647,18 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
         sendResponse(response);
     }
 
+    private final DConnectApi mPutTargetTemperatureValueApi = new PutApi() {
+        @Override
+        public String getAttribute() {
+            return ATTRIBUTE_TARGET_TEMPERATURE;
+        }
+
+        @Override
+        public boolean onRequest(final Intent request, final Intent response) {
+            new KadecotServerQueryTask().execute(request, response);
+            return false;
+        }
+    };
     private final DConnectApi mPutTemperatureValueApi = new PutApi() {
         @Override
         public String getAttribute() {
@@ -644,7 +671,6 @@ public class KadecotHomeAirConditionerProfile extends AirConditionerProfile {
             return false;
         }
     };
-
     /**
      * Put air conditioner temperature value.
      *
