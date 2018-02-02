@@ -273,7 +273,7 @@ public class IRKitVirtualDeviceFragment extends Fragment
     private void removeCheckVirtualDevices() {
         boolean isRemoved = false;
         for (int i = 0; i < mIsRemoves.size(); i++) {
-            if (mIsRemoves.get(i).booleanValue()) {
+            if (mIsRemoves.get(i)) {
                 VirtualDeviceData device = mVirtuals.get(i);
                 isRemoved = mDBHelper.removeVirtualDevice(device.getServiceId());
                 if (isRemoved) {
@@ -308,7 +308,7 @@ public class IRKitVirtualDeviceFragment extends Fragment
     private boolean isRemove() {
         boolean isRemoved = false;
         for (int i = 0; i < mIsRemoves.size(); i++) {
-            if (mIsRemoves.get(i).booleanValue()) {
+            if (mIsRemoves.get(i)) {
                 isRemoved = true;
                 break;
             }

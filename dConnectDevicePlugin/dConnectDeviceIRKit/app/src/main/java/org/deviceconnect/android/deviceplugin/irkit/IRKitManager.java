@@ -102,7 +102,11 @@ public enum IRKitManager {
     /**
      * IRKitのサービスタイプ.
      */
-    private static final String SERVICE_TYPE = "_irkit._tcp.local.";
+    private static final String IRKIT_SERVICE_TYPE = "_irkit._tcp.local.";
+    /**
+     * NatureRemoのサービスタイプ.
+     */
+    private static final String REMO_SERVICE_TYPE = "_remo._tcp.local.";
 
     /**
      * IRKit AIPサーバーのホスト.
@@ -569,7 +573,6 @@ public enum IRKitManager {
         } else {
             mIpValue = 0;
         }
-        
         new Thread(new Runnable() {
 
             @Override
@@ -587,7 +590,9 @@ public enum IRKitManager {
                         }
 
                         mDNS = JmDNS.create(ia);
-                        mDNS.addServiceListener(SERVICE_TYPE, mServiceListener);
+
+                        mDNS.addServiceListener(IRKIT_SERVICE_TYPE, mServiceListener);
+                        mDNS.addServiceListener(REMO_SERVICE_TYPE, mServiceListener);
                         mIsDetecting = true;
                         
                         if (BuildConfig.DEBUG) {
@@ -614,7 +619,8 @@ public enum IRKitManager {
             mRemoveHandler = null;
             mIsDetecting = false;
             mServices.clear();
-            mDNS.removeServiceListener(SERVICE_TYPE, mServiceListener);
+            mDNS.removeServiceListener(IRKIT_SERVICE_TYPE, mServiceListener);
+            mDNS.removeServiceListener(REMO_SERVICE_TYPE, mServiceListener);
             try {
                 mDNS.close();
                 if (BuildConfig.DEBUG) {
@@ -904,7 +910,8 @@ public enum IRKitManager {
                     HttpResponse res = client.execute(req);
                     Header[] headers = res.getAllHeaders();
                     for (Header h : headers) {
-                        if (h.getName().equals("Server") && h.getValue().contains("IRKit")) {
+                        if (h.getName().equals("Server")
+                                && (h.getValue().contains("IRKit") || h.getValue().contains("Remo"))) {
                             isIRKit = true;
                             break;
                         }
@@ -1108,7 +1115,8 @@ public enum IRKitManager {
             }
             synchronized (INSTANCE) {
                 if (mDetectionListener != null) {
-                    mDNS.requestServiceInfo(SERVICE_TYPE, event.getName(), RESOLVE_TIMEOUT);
+                    mDNS.requestServiceInfo(IRKIT_SERVICE_TYPE, event.getName(), RESOLVE_TIMEOUT);
+                    mDNS.requestServiceInfo(REMO_SERVICE_TYPE, event.getName(), RESOLVE_TIMEOUT);
                 }
             }
         }

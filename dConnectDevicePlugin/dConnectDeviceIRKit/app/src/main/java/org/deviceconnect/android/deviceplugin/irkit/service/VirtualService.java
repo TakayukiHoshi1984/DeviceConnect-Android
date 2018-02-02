@@ -108,7 +108,7 @@ public class VirtualService extends DConnectService {
     private boolean isIRExist() {
         List<VirtualProfileData> requests = mDBHelper.getVirtualProfiles(getId(), null);
         for (VirtualProfileData request : requests) {
-            if (request.getIr() != null && request.getIr().contains("{\"format\":\"raw\",")) {
+            if (request.getIr() != null && request.getIr().contains("{\"format")) {
                 return true;
             }
         }

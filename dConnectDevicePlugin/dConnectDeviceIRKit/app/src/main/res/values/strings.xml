@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">IRKit (Device Connect Device Plug-in)</string>
+    <string name="app_name" translatable="false">IRKit and NatureRemo (Device Connect Device Plug-in)</string>
     <string name="no_device" translatable="false">No device</string>
     <string name="hint_ssid" translatable="false">SSID</string>
     <string name="column_ssid" translatable="false">SSID</string>
@@ -14,6 +14,7 @@
     <string name="page04" translatable="false">[4/4] IRKitへの設定値の送信</string>
     <string name="index1" translatable="false">IRKitにPCやアダプタからなど、電力を供給できる状態にしたmicroUSBケーブルを接続すると、赤いランプが点滅します。</string>
     <string name="index1_1" translatable="false">赤いランプが点滅しない場合は、USBの横にあるリセットボタンを７秒押してリセットします。</string>
+    <string name="index1_2" translatable="false">NatureRemoの場合は、公式アプリでネットワークへ接続してください。</string>
     <string name="index2" translatable="false">IRKitを接続したいネットワークのWi-FiスポットのSSIDとパスワードを入力して、次のページに移動します。</string>
     <string name="index3" translatable="false">以下のボタンを押し、Wi-Fi設定画面からIRKitXXXXを選択してください。</string>
     <string name="index4" translatable="false">IRKitにWi-Fiの接続情報を送信します。ボタンをタップし、Wi-Fi設定画面からIRKitXXXX と接続を行ってください。Wi-Fi設定画面から本画面に戻ると、IRKitがWi-Fiスポットに接続します。接続が成功するとIRKitのLEDは緑の点滅・水色の点滅後に青に点灯します。</string>
