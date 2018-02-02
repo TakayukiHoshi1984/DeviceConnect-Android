@@ -3,6 +3,7 @@
  */
 package javax.jmdns.impl;
 
+import java.net.InetAddress;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -131,6 +132,16 @@ public interface DNSTaskStarter {
                 starter = _instances.get(jmDNSImpl);
             }
             return starter;
+        }
+
+        /**
+         * Dispose of the DNSTaskStarter instance associated with this JmDNS.
+         *
+         * @param jmDNSImpl
+         *            jmDNS instance
+         */
+        public void disposeStarter(JmDNSImpl jmDNSImpl) {
+            _instances.remove(jmDNSImpl);
         }
 
     }
@@ -380,8 +391,8 @@ public interface DNSTaskStarter {
          * @see javax.jmdns.impl.DNSTaskStarter#startResponder(javax.jmdns.impl.DNSIncoming, int)
          */
         @Override
-        public void startResponder(DNSIncoming in, int port) {
-            new Responder(_jmDNSImpl, in, port).start(_timer);
+        public void startResponder(DNSIncoming in, InetAddress addr, int port) {
+            new Responder(_jmDNSImpl, in, addr, port).start(_timer);
         }
     }
 
@@ -456,9 +467,11 @@ public interface DNSTaskStarter {
      *
      * @param in
      *            incoming message
+     * @param addr
+     *            incoming address
      * @param port
      *            incoming port
      */
-    public void startResponder(DNSIncoming in, int port);
+    public void startResponder(DNSIncoming in, InetAddress addr, int port);
 
 }

@@ -3,17 +3,17 @@
  */
 package javax.jmdns.impl;
 
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.jmdns.NetworkTopologyDiscovery;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class implements NetworkTopologyDiscovery.
@@ -21,33 +21,13 @@ import javax.jmdns.NetworkTopologyDiscovery;
  * @author Pierre Frisch
  */
 public class NetworkTopologyDiscoveryImpl implements NetworkTopologyDiscovery {
-    private final static Logger logger = Logger.getLogger(NetworkTopologyDiscoveryImpl.class.getName());
-
-    private final Method        _isUp;
-
-    private final Method        _supportsMulticast;
+    private final static Logger logger = LoggerFactory.getLogger(NetworkTopologyDiscoveryImpl.class.getName());
 
     /**
      *
      */
     public NetworkTopologyDiscoveryImpl() {
         super();
-        Method isUp;
-        try {
-            isUp = NetworkInterface.class.getMethod("isUp", (Class<?>[]) null);
-        } catch (Exception exception) {
-            // We do not want to throw anything if the method does not exist.
-            isUp = null;
-        }
-        _isUp = isUp;
-        Method supportsMulticast;
-        try {
-            supportsMulticast = NetworkInterface.class.getMethod("supportsMulticast", (Class<?>[]) null);
-        } catch (Exception exception) {
-            // We do not want to throw anything if the method does not exist.
-            supportsMulticast = null;
-        }
-        _supportsMulticast = supportsMulticast;
     }
 
     /*
@@ -63,52 +43,16 @@ public class NetworkTopologyDiscoveryImpl implements NetworkTopologyDiscovery {
                 NetworkInterface nif = nifs.nextElement();
                 for (Enumeration<InetAddress> iaenum = nif.getInetAddresses(); iaenum.hasMoreElements();) {
                     InetAddress interfaceAddress = iaenum.nextElement();
-                    if (logger.isLoggable(Level.FINEST)) {
-                        logger.finest("Found NetworkInterface/InetAddress: " + nif + " -- " + interfaceAddress);
-                    }
-                    if (this.useInetAddress(nif, interfaceAddress)) {
+                    logger.trace("Found NetworkInterface/InetAddress: {} -- {}",  nif , interfaceAddress);
+                    if (useInetAddress(nif, interfaceAddress)) {
                         result.add(interfaceAddress);
                     }
                 }
             }
         } catch (SocketException se) {
-            logger.warning("Error while fetching network interfaces addresses: " + se);
+            logger.warn("Error while fetching network interfaces addresses: " + se);
         }
         return result.toArray(new InetAddress[result.size()]);
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see javax.jmdns.JmmDNS.NetworkTopologyDiscovery#useInetAddress(java.net.NetworkInterface, java.net.InetAddress)
-     */
-    @Override
-    public boolean useInetAddress(NetworkInterface networkInterface, InetAddress interfaceAddress) {
-        try {
-            if (_isUp != null) {
-                try {
-                    if (!((Boolean) _isUp.invoke(networkInterface, (Object[]) null)).booleanValue()) {
-                        return false;
-                    }
-                } catch (Exception exception) {
-                    // We should hide that exception.
-                }
-            }
-            if (_supportsMulticast != null) {
-                try {
-                    if (!((Boolean) _supportsMulticast.invoke(networkInterface, (Object[]) null)).booleanValue()) {
-                        return false;
-                    }
-                } catch (Exception exception) {
-                    // We should hide that exception.
-                }
-            }
-            if (interfaceAddress.isLoopbackAddress()) {
-                return false;
-            }
-            return true;
-        } catch (Exception exception) {
-            return false;
-        }
     }
 
     /*
@@ -127,6 +71,31 @@ public class NetworkTopologyDiscoveryImpl implements NetworkTopologyDiscovery {
     @Override
     public void unlockInetAddress(InetAddress interfaceAddress) {
         // Default implementation does nothing.
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see javax.jmdns.JmmDNS.NetworkTopologyDiscovery#useInetAddress(java.net.NetworkInterface, java.net.InetAddress)
+     */
+    @Override
+    public boolean useInetAddress(NetworkInterface networkInterface, InetAddress interfaceAddress) {
+        try {
+            if (!networkInterface.isUp()) {
+                return false;
+            }
+
+            if (!networkInterface.supportsMulticast()) {
+                return false;
+            }
+
+            if (networkInterface.isLoopback()) {
+                return false;
+            }
+
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
 }
