@@ -462,6 +462,8 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 
 		uint32_t *interval;
 
+        LOGI("Frame Intervals: %d", frame->intervals);
+
 		if (frame->intervals) {
 			for (interval = frame->intervals; *interval; ++interval) {
 				if (UNLIKELY(!(*interval))) continue;
@@ -477,12 +479,15 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 				}
 			}
 		} else {
+		    LOGE("dwMinFrameInterval=%d, dwMaxFrameInterval=%d, dwFrameIntervalStep=%e", frame->dwMinFrameInterval, frame->dwMaxFrameInterval, frame->dwFrameIntervalStep);
+
 			int32_t fps;
 			for (fps = max_fps; fps >= min_fps; fps--) {
 				if (UNLIKELY(!fps)) continue;
 				uint32_t interval_100ns = 10000000 / fps;
 				uint32_t interval_offset = interval_100ns - frame->dwMinFrameInterval;
 				LOGV("fps:%d", fps);
+				LOGI("interval_100ns=%d, interval_offset=%d", interval_100ns, interval_offset);
 				if (interval_100ns >= frame->dwMinFrameInterval
 					&& interval_100ns <= frame->dwMaxFrameInterval
 					&& !(interval_offset
@@ -495,6 +500,7 @@ static uvc_error_t _uvc_get_stream_ctrl_format(uvc_device_handle_t *devh,
 					goto found;
 				}
 			}
+			LOGE("Not found");
 		}
 	}
 	result = UVC_ERROR_INVALID_MODE;
@@ -549,8 +555,8 @@ uvc_error_t uvc_get_stream_ctrl_format_size_fps(uvc_device_handle_t *devh,
 	{
 		DL_FOREACH(stream_if->format_descs, format)
 		{
-			if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
-				continue;
+			//if (!_uvc_frame_format_matches_guid(cf, format->guidFormat))
+			//	continue;
 
 			result = _uvc_get_stream_ctrl_format(devh, stream_if, ctrl, format, width, height, min_fps, max_fps);
 			if (!result) {	// UVC_SUCCESS

@@ -281,6 +281,8 @@ static const char *_uvc_name_for_subtype(const uint8_t subtype) {
 		return "Frame(FRAME_BASED,0x10)";
 	case UVC_VS_FORMAT_STREAM_BASED:	// 0x12
 		return "Format(STREAM_BASED,0x10)";
+	case UVC_VS_FORMAT_H264:	        // 0x13 //XXXX
+    	return "Format(h.264,0x13)";
 	default:
 		return "Unknown";
 	}

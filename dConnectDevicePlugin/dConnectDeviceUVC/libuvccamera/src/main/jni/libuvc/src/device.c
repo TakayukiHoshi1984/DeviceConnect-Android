@@ -91,7 +91,12 @@ uvc_error_t uvc_parse_vs_format_uncompressed(
 		size_t block_size);
 uvc_error_t uvc_parse_vs_format_mjpeg(uvc_streaming_interface_t *stream_if,
 		const unsigned char *block, size_t block_size);
+uvc_error_t uvc_parse_vs_format_h264(uvc_streaming_interface_t *stream_if, //XXXX
+		const unsigned char *block, size_t block_size);
 uvc_error_t uvc_parse_vs_frame_uncompressed(
+		uvc_streaming_interface_t *stream_if, const unsigned char *block,
+		size_t block_size);
+uvc_error_t uvc_parse_vs_frame_h264( //XXXX
 		uvc_streaming_interface_t *stream_if, const unsigned char *block,
 		size_t block_size);
 uvc_error_t uvc_parse_vs_frame_format(uvc_streaming_interface_t *stream_if,
@@ -297,6 +302,7 @@ uvc_error_t uvc_open(uvc_device_t *dev, uvc_device_handle_t **devh) {
 	/* enable automatic attach/detach kernel driver on supported platforms in libusb */
 	libusb_set_auto_detach_kernel_driver(usb_devh, 1);
 #endif
+
 	UVC_DEBUG("claiming control interface %d",
 			internal_devh->info->ctrl_if.bInterfaceNumber);
 	ret = uvc_claim_if(internal_devh,
@@ -378,7 +384,7 @@ uvc_error_t uvc_get_device_info(uvc_device_t *dev, uvc_device_info_t **info) {
 		UVC_EXIT(UVC_ERROR_NO_MEM);
 		return UVC_ERROR_NO_MEM;
 	}
-	if (libusb_get_config_descriptor(dev->usb_dev, 0, &(internal_info->config)) != 0) {
+	if (libusb_get_config_descriptor(dev->usb_dev, 1, &(internal_info->config)) != 0) {
 //	if (libusb_get_active_config_descriptor(dev->usb_dev, &(internal_info->config)) != 0) {
 		// XXX assume libusb_get_active_config_descriptor　is better
 		// but some buggy device will return error when get active config.
@@ -1358,6 +1364,28 @@ uvc_error_t uvc_parse_vs_format_mjpeg(uvc_streaming_interface_t *stream_if,
 	return UVC_SUCCESS;
 }
 
+//XXXX
+uvc_error_t uvc_parse_vs_format_h264(uvc_streaming_interface_t *stream_if,
+		const unsigned char *block, size_t block_size) {
+    UVC_ENTER();
+
+	uvc_format_desc_t *format = calloc(1, sizeof(*format));
+
+	// TODO parse vs_format_h264
+	format->parent = stream_if;
+	format->bDescriptorSubtype = block[2];
+	format->bFormatIndex = block[3];
+    format->bNumFrameDescriptors = block[4];
+    format->bDefaultFrameIndex = block[5];
+    //format->bMaxCodecConfigDelay = block[6];
+    //format->bmSupportedSliceModes = block[7];
+
+	DL_APPEND(stream_if->format_descs, format);
+
+    UVC_EXIT(UVC_SUCCESS);
+    return UVC_SUCCESS;
+}
+
 /** @internal
  * @brief Parse a VideoStreaming uncompressed frame block.
  * @ingroup device
@@ -1408,6 +1436,48 @@ uvc_error_t uvc_parse_vs_frame_frame(uvc_streaming_interface_t *stream_if,
 
   UVC_EXIT(UVC_SUCCESS);
   return UVC_SUCCESS;
+}
+
+//XXXX
+uvc_error_t uvc_parse_vs_frame_h264(
+		uvc_streaming_interface_t *stream_if, const unsigned char *block,
+		size_t block_size) {
+    uvc_format_desc_t *format;
+	uvc_frame_desc_t *frame;
+	uint8_t frame_type;
+	uint8_t n;
+	uint32_t interval;
+
+	const unsigned char *p;
+	int i;
+
+	UVC_ENTER();
+
+	format = stream_if->format_descs->prev;
+	frame = calloc(1, sizeof(*frame));
+
+	frame->parent = format;
+
+	frame_type = frame->bDescriptorSubtype = block[2];
+	frame->bDescriptorSubtype = block[2];
+    frame->bFrameIndex = block[3];
+    frame->wWidth = block[4] + (block[5] << 8);
+    frame->wHeight = block[6] + (block[7] << 8);
+
+    if (block[43] > 0) { //bNumFrameIntervals
+        frame->intervals = calloc(block[43] + 1, sizeof(frame->intervals[0]));
+        p = &block[44];
+        for (i = 0; i < block[43]; i++) {
+            frame->intervals[i] = DW_TO_INT(p);
+            p += 4;
+        }
+        frame->intervals[block[43]] = 0;
+    }
+
+	DL_APPEND(format->frame_descs, frame);
+
+    UVC_EXIT(UVC_SUCCESS);
+    return UVC_SUCCESS;
 }
 
 /** @internal
@@ -1491,6 +1561,8 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 	ret = UVC_SUCCESS;
 	descriptor_subtype = block[2];
 //	MARK("descriptor_subtype=0x%02x", descriptor_subtype);
+
+    LOGI("[UVC] descriptor_subtype: %d", descriptor_subtype);
 	switch (descriptor_subtype) {
 	case UVC_VS_INPUT_HEADER:
 		ret = uvc_parse_vs_input_header(stream_if, block, block_size);
@@ -1515,6 +1587,14 @@ uvc_error_t uvc_parse_vs(uvc_device_t *dev, uvc_device_info_t *info,
 		break;
 //	case UVC_VS_COLORFORMAT:	// FIXME unsupported now
 //		break;
+    case UVC_VS_FORMAT_H264: //XXXX
+        LOGI("[UVC] uvc_parse_vs UVC_VS_FORMAT_H264");
+        ret = uvc_parse_vs_format_h264(stream_if, block, block_size);
+        break;
+    case UVC_VS_FRAME_H264: //XXXX
+        LOGI("[UVC] uvc_parse_vs UVC_VS_FRAME_H264");
+        ret = uvc_parse_vs_frame_h264(stream_if, block, block_size);
+        break;
 	default:
 		/** @todo handle JPEG and maybe still frames or even DV... */
 		LOGV("unsupported descriptor_subtype(0x%02x)", descriptor_subtype);

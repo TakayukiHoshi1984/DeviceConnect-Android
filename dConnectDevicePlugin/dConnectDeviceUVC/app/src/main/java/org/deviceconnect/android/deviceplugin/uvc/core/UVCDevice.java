@@ -32,9 +32,11 @@ public class UVCDevice {
     private static final double DEFAULT_MAX_FPS = 30.0d;
 
     private static final int VS_FORMAT_MJPEG = 0x06;
+    private static final int VS_FORMAT_H264 = 0x13;
 
     private static final int[] SUPPORTED_PAYLOAD_FORMATS = {
-        VS_FORMAT_MJPEG
+        VS_FORMAT_MJPEG,
+        VS_FORMAT_H264
     };
 
     private final Logger mLogger = Logger.getLogger("uvc.dplugin");
@@ -318,7 +320,8 @@ public class UVCDevice {
         }
         try {
             if (mIsOpen) {
-                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
+                //mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
+                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_BASED);
             }
             mCurrentOption = new PreviewOption(width, height);
             return true;

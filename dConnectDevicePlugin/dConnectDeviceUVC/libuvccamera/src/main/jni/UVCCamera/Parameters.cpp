@@ -67,6 +67,8 @@ static const char *_uvc_name_for_format_subtype(uint8_t subtype) {
 		return "UncompressedFormat";
 	case UVC_VS_FORMAT_MJPEG:
 		return "MJPEGFormat";
+	case UVC_VS_FORMAT_H264:
+    		return "MJPEGFormat";
 	default:
 		return "Unknown";
 	}
@@ -237,6 +239,7 @@ static void writerFormatDescriptions(Writer<StringBuffer> &writer, uvc_streaming
 			switch (fmt_desc->bDescriptorSubtype) {
 			case UVC_VS_FORMAT_UNCOMPRESSED:
 			case UVC_VS_FORMAT_MJPEG:
+			case UVC_VS_FORMAT_H264:
 				writerFormat(writer, fmt_desc);
 				break;
 			default:
@@ -362,7 +365,9 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
 				{
 					writer.StartObject();
 					{
-						switch (fmt_desc->bDescriptorSubtype) {
+					    LOGI("Format Desc: bDescriptorSubtype=%d", fmt_desc->bDescriptorSubtype);
+
+					    switch (fmt_desc->bDescriptorSubtype) {
 						case UVC_VS_FORMAT_UNCOMPRESSED:
 						case UVC_VS_FORMAT_MJPEG:
                         // MODIFIED--->
@@ -370,6 +375,10 @@ char *UVCDiags::getSupportedSize(const uvc_device_handle_t *deviceHandle) {
                         case UVC_VS_FORMAT_DV:
                         case UVC_VS_FORMAT_FRAME_BASED:
                             // <---MODIFIED
+                        //XXXX--->
+                        case UVC_VS_FORMAT_H264:
+                        // <---XXXX
+
 							write(writer, "index", fmt_desc->bFormatIndex);
 							write(writer, "type", fmt_desc->bDescriptorSubtype);
 							write(writer, "default", fmt_desc->bDefaultFrameIndex);

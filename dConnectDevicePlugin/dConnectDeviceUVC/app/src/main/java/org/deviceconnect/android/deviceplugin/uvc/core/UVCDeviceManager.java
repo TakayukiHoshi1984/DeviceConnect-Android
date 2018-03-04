@@ -8,12 +8,17 @@ package org.deviceconnect.android.deviceplugin.uvc.core;
 
 
 import android.content.Context;
+import android.hardware.usb.UsbConfiguration;
 import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
 import android.os.Build;
+import android.util.Log;
 
 import com.serenegiant.usb.DeviceFilter;
 import com.serenegiant.usb.USBMonitor;
 
+import org.deviceconnect.android.deviceplugin.uvc.BuildConfig;
 import org.deviceconnect.android.deviceplugin.uvc.R;
 
 import java.util.ArrayList;
@@ -90,6 +95,24 @@ public class UVCDeviceManager {
                                   final boolean createNew) {
                 mLogger.info("onConnect: device = " + usbDevice.getDeviceName()
                     + ", ctrlBlock = " + ctrlBlock + ", createNew = " + createNew);
+
+                for (int i = 0; i < usbDevice.getConfigurationCount(); i++) {
+                    UsbConfiguration usbConfig = usbDevice.getConfiguration(i);
+                    Log.d("UVC", " Config: ID = " + usbConfig.getId()
+                            + ", name = " + usbConfig.getName()
+                            + ", numInterfaces = " + usbConfig.getInterfaceCount());
+
+                    for (int k = 0; k < usbConfig.getInterfaceCount(); k++) {
+                        UsbInterface usbInterface = usbConfig.getInterface(k);
+                        Log.d("UVC", "     Interface: ID = " + usbInterface.getId()
+                                + ", name = " + usbInterface.getName()
+                                + ", class = " + usbInterface.getInterfaceClass()
+                                + ", subClass = " + usbInterface.getInterfaceSubclass()
+                                + ", protocol = " + usbInterface.getInterfaceProtocol()
+                                + ", numEndpoints = " + usbInterface.getEndpointCount()
+                        );
+                    }
+                }
 
                 UVCDevice device = getDevice(usbDevice);
                 if (device != null) {

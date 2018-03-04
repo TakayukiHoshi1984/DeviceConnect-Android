@@ -158,6 +158,29 @@ int UVCCamera::connect(int vid, int pid, int fd, int busnum, int devaddr, const 
 		if (LIKELY(!result)) {
 			// カメラのopen処理
 			result = uvc_open(mDevice, &mDeviceHandle);
+
+            // 不要なカーネルをデタッチ
+            libusb_config_descriptor *config = mDeviceHandle->info->config;
+            libusb_interface ifc;
+            libusb_interface_descriptor ifc_desc;
+            for (int i = 0; i < config->bNumInterfaces; i++) {
+                ifc = config->interface[i];
+                LOGI("*** Alt settings: %d", ifc.num_altsetting);
+
+                for (int k = 0; k < ifc.num_altsetting; k++) {
+                    ifc_desc = ifc.altsetting[k];
+                    LOGI("***     Alt settings ID: %d, %d", ifc_desc.bInterfaceNumber, ifc_desc.iInterface);
+                }
+
+                LOGI("*** Detach kernel driver: ifc=%d, result=%d", ifc.altsetting[0].bInterfaceNumber, libusb_detach_kernel_driver(mDeviceHandle->usb_devh, ifc.altsetting[0].bInterfaceNumber));
+                LOGI("*** Release interface: ifc=%d, result=%d", ifc.altsetting[0].bInterfaceNumber, libusb_release_interface(mDeviceHandle->usb_devh, ifc.altsetting[0].bInterfaceNumber));
+            }
+            LOGI("*** Set config: result=%d", libusb_set_configuration(mDeviceHandle->usb_devh, 2));
+
+            // カメラの再open処理
+            result = uvc_open(mDevice, &mDeviceHandle);
+            LOGI("*** Re-open: result=%d", result);
+
 			if (LIKELY(!result)) {
 				// open出来た時
 #if LOCAL_DEBUG
