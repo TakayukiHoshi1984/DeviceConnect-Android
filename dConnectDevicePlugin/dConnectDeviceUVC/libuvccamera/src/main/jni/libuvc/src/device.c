@@ -384,6 +384,7 @@ uvc_error_t uvc_get_device_info(uvc_device_t *dev, uvc_device_info_t **info) {
 		UVC_EXIT(UVC_ERROR_NO_MEM);
 		return UVC_ERROR_NO_MEM;
 	}
+//	if (libusb_get_config_descriptor(dev->usb_dev, 0, &(internal_info->config)) != 0) {
 	if (libusb_get_config_descriptor(dev->usb_dev, 1, &(internal_info->config)) != 0) {
 //	if (libusb_get_active_config_descriptor(dev->usb_dev, &(internal_info->config)) != 0) {
 		// XXX assume libusb_get_active_config_descriptor　is better
@@ -1379,6 +1380,7 @@ uvc_error_t uvc_parse_vs_format_h264(uvc_streaming_interface_t *stream_if,
     format->bDefaultFrameIndex = block[5];
     //format->bMaxCodecConfigDelay = block[6];
     //format->bmSupportedSliceModes = block[7];
+    memcpy(format->fourccFormat, "H264", 4);
 
 	DL_APPEND(stream_if->format_descs, format);
 

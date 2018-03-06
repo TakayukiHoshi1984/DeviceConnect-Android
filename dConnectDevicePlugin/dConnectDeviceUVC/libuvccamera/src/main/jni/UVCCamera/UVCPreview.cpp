@@ -185,7 +185,7 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
-			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+			frameFormat(),
 			requestWidth, requestHeight, requestMinFps, requestMaxFps);
 	}
 	
@@ -325,6 +325,30 @@ void UVCPreview::callbackPixelFormatChanged() {
 	}
 }
 
+uvc_frame_format UVCPreview::frameFormat() {
+    switch(requestMode) {
+        case 0:
+            return UVC_FRAME_FORMAT_YUYV;
+        case 1:
+            return UVC_FRAME_FORMAT_MJPEG;
+        case 2:
+        default:
+            return UVC_FRAME_FORMAT_H264;
+    }
+}
+
+char* UVCPreview::frameFormatName() {
+    switch(requestMode) {
+        case 0:
+            return "YUYV";
+        case 1:
+            return "MJPEG";
+        case 2:
+        default:
+            return "H264";
+    }
+}
+
 void UVCPreview::clearDisplay() {
 	ENTER();
 
@@ -367,6 +391,7 @@ void UVCPreview::clearDisplay() {
 
 int UVCPreview::startPreview() {
 	ENTER();
+	LOGI("UVCPreview::startPreview");
 
 	int result = EXIT_FAILURE;
 	if (!isRunning()) {
@@ -428,6 +453,8 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
+    LOGI("uvc_preview_frame_callback");
+
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
 	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
 	if (UNLIKELY(
@@ -501,6 +528,8 @@ void *UVCPreview::preview_thread_func(void *vptr_args) {
 	int result;
 
 	ENTER();
+	LOGI("****** preview_thread_func");
+
 	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
 	if (LIKELY(preview)) {
 		uvc_stream_ctrl_t ctrl;
@@ -518,7 +547,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
-		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+		frameFormat(),
 		requestWidth, requestHeight, requestMinFps, requestMaxFps
 	);
 	if (LIKELY(!result)) {
@@ -530,7 +559,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 		if (LIKELY(!result)) {
 			frameWidth = frame_desc->wWidth;
 			frameHeight = frame_desc->wHeight;
-			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, (!requestMode ? "YUYV" : "MJPEG"));
+			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, frameFormatName());
 			pthread_mutex_lock(&preview_mutex);
 			if (LIKELY(mPreviewWindow)) {
 				ANativeWindow_setBuffersGeometry(mPreviewWindow,
@@ -561,6 +590,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	uvc_frame_t *frame_mjpeg = NULL;
 	uvc_error_t result = uvc_start_streaming_bandwidth(
 		mDeviceHandle, ctrl, uvc_preview_frame_callback, (void *)this, requestBandwidth, 0);
+	LOGE("");
 
 	if (LIKELY(!result)) {
 		clearPreviewFrame();
@@ -569,7 +599,9 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 #if LOCAL_DEBUG
 		LOGI("Streaming...");
 #endif
-		if (frameMode) {
+		if (frameMode == 1) {
+		    LOGI("Started MJPEG streaming");
+
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
@@ -600,7 +632,16 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					//}
 				}
 			}
+		} else if (frameMode == 2) {
+		    LOGI("Started H264 streaming");
+		    for ( ; LIKELY(isRunning()) ; ) {
+		        LOGI("Waiting preview frame...");
+		        waitPreviewFrame();
+		        LOGI("Received preview frame");
+		    }
 		} else {
+		    LOGI("Started Uncompressed streaming");
+
 			// yuvyv mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame = waitPreviewFrame();

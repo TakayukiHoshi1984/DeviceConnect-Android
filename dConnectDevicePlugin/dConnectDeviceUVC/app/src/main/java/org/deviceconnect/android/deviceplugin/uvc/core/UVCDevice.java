@@ -321,7 +321,7 @@ public class UVCDevice {
         try {
             if (mIsOpen) {
                 //mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
-                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_BASED);
+                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_H264);
             }
             mCurrentOption = new PreviewOption(width, height);
             return true;

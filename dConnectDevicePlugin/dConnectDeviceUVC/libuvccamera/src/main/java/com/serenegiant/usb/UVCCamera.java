@@ -53,7 +53,7 @@ public class UVCCamera {
 
 	public static final int FRAME_FORMAT_YUYV = 0;
 	public static final int FRAME_FORMAT_MJPEG = 1;
-	public static final int FRAME_FORMAT_BASED = 2;
+	public static final int FRAME_FORMAT_H264 = 2;
 
 	public static final int PIXEL_FORMAT_RAW = 0;
 	public static final int PIXEL_FORMAT_YUV = 1;
@@ -339,6 +339,7 @@ public class UVCCamera {
 
 	public List<Size> getSupportedSizeList() {
 		final int type = (mCurrentFrameFormat > 0) ? 0x13 : 0x06;
+		//final int type = (mCurrentFrameFormat > 0) ? 0x06 : 0x13;
 		return getSupportedSize(type, mSupportedSize);
 	}
 

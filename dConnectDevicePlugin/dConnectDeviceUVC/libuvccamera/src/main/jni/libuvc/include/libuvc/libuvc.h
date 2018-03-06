@@ -105,8 +105,10 @@ enum uvc_frame_format {
 	UVC_FRAME_FORMAT_MJPEG,
 	UVC_FRAME_FORMAT_GRAY8,
 	UVC_FRAME_FORMAT_BY8,
+	UVC_FRAME_FORMAT_H264,
+
 	/** Number of formats understood */
-	UVC_FRAME_FORMAT_COUNT,
+    UVC_FRAME_FORMAT_COUNT,
 };
 
 /* UVC_COLOR_FORMAT_* have been replaced with UVC_FRAME_FORMAT_*. Please use
@@ -122,6 +124,7 @@ enum uvc_frame_format {
 #define UVC_COLOR_FORMAT_RGBX UVC_FRAME_FORMAT_RGBX		// XXX
 #define UVC_COLOR_FORMAT_MJPEG UVC_FRAME_FORMAT_MJPEG
 #define UVC_COLOR_FORMAT_GRAY8 UVC_FRAME_FORMAT_GRAY8
+#define UVC_COLOR_FORMAT_H264 UVC_FRAME_FORMAT_H264 //XXXX
 
 /** VideoStreaming interface descriptor subtype (A.6) */
 enum uvc_vs_desc_subtype {
