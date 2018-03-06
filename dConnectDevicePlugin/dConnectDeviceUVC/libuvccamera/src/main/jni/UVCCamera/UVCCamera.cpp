@@ -272,6 +272,7 @@ int UVCCamera::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pix
 	}
 	RETURN(result, int);
 }
+
 // MODIFIED
 int UVCCamera::setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
 	ENTER();
@@ -282,6 +283,15 @@ int UVCCamera::setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, 
 	RETURN(result, int);
 }
 
+// MODIFIED
+int UVCCamera::setH264FrameCallback(JNIEnv *env, jobject frame_callback_obj) {
+	ENTER();
+	int result = EXIT_FAILURE;
+	if (mPreview) {
+		result = mPreview->setH264FrameCallback(env, frame_callback_obj);
+	}
+	RETURN(result, int);
+}
 
 int UVCCamera::startPreview() {
 	ENTER();

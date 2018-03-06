@@ -53,6 +53,7 @@ public class UVCCamera {
 
 	public static final int FRAME_FORMAT_YUYV = 0;
 	public static final int FRAME_FORMAT_MJPEG = 1;
+	public static final int FRAME_FORMAT_BASED = 2;
 
 	public static final int PIXEL_FORMAT_RAW = 0;
 	public static final int PIXEL_FORMAT_YUV = 1;
@@ -175,13 +176,23 @@ public class UVCCamera {
     protected int mAnalogVideoStandardMin, mAnalogVideoStandardMax, mAnalogVideoStandardDef;
     protected int mAnalogVideoLockStateMin, mAnalogVideoLockStateMax, mAnalogVideoLockStateDef;
     // until here
+
+	private final int mDefaultFrameFormat;
+
     /**
      * the sonctructor of this class should be call within the thread that has a looper
      * (UI thread or a thread that called Looper.prepare)
      */
-    public UVCCamera() {
+    public UVCCamera(final int defaultFrameFormat) {
     	mNativePtr = nativeCreate();
     	mSupportedSize = null;
+
+    	mDefaultFrameFormat = defaultFrameFormat;
+    	mCurrentFrameFormat = defaultFrameFormat;
+	}
+
+	public int getDefaultFrameFormat() {
+    	return mDefaultFrameFormat;
 	}
 
     /**
@@ -247,7 +258,7 @@ public class UVCCamera {
    			mCtrlBlock = null;
 		}
 		mControlSupports = mProcSupports = 0;
-		mCurrentFrameFormat = -1;
+		mCurrentFrameFormat = mDefaultFrameFormat;
 		mCurrentBandwidthFactor = 0;
 		mSupportedSize = null;
 		mCurrentSizeList = null;
@@ -337,7 +348,7 @@ public class UVCCamera {
 	}
 
 	public List<Size> getSupportedSizeList() {
-		final int type = (mCurrentFrameFormat > 0) ? 6 : 4;
+		final int type = mCurrentFrameFormat; //(mCurrentFrameFormat > 0) ? 6 : 4;
 		return getSupportedSize(type, mSupportedSize);
 	}
 
@@ -391,6 +402,7 @@ public class UVCCamera {
     	final Surface surface = new Surface(texture);	// XXX API >= 14
     	nativeSetPreviewDisplay(mNativePtr, surface);
     }
+
 	// MODIFIED
 	public void setPreviewFrameCallback(final IPreviewFrameCallback callback, final int pixelFormat) {
 		if (mNativePtr != 0) {
@@ -398,6 +410,12 @@ public class UVCCamera {
 		}
 	}
 
+//	// MODIFIED
+//	public void setH264FrameCallback(final IH264FrameCallback callback) {
+//		if (mNativePtr != 0) {
+//			nativeSetH264FrameCallback(mNativePtr, callback);
+//		}
+//	}
 
 	/**
      * set preview surface with Surface
@@ -1229,5 +1247,6 @@ public class UVCCamera {
     private static final native int nativeSetPrivacy(final long id_camera, final boolean privacy);
     private static final native int nativeGetPrivacy(final long id_camera);
 	private static final native int nativeSetPreviewFrameCallback(final long mNativePtr, final IPreviewFrameCallback callback, final int pixelFormat); // MODIFIED
+	//private static final native int nativeSetH264FrameCallback(final long mNativePtr, final IH264FrameCallback callback); // MODIFIED
 
 }

@@ -112,6 +112,9 @@ struct format_table_entry *_get_format_entry(enum uvc_frame_format format) {
 	FMT(UVC_FRAME_FORMAT_MJPEG,
 		{'M', 'J', 'P', 'G'})
 
+	FMT(UVC_FRAME_FORMAT_BASED,
+    {'H', '2', '6', '4', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+
 	default:
 		return NULL;
 	}
@@ -600,6 +603,7 @@ uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
  * @brief Swap the working buffer with the presented buffer and notify consumers
  */
 static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
+    LOGI("_uvc_swap_buffers");
 	uint8_t *tmp_buf;
 
 	pthread_mutex_lock(&strmh->cb_mutex);
@@ -832,14 +836,18 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			continue;
 		}
 
-		if (UNLIKELY(!pkt->actual_length)) {	// why transfered byte is zero...
+		if (UNLIKELY(!pkt->length /*!pkt->actual_length*/)) {	// why transfered byte is zero...
 //			MARK("zero packet (transfer):");
 //			strmh->bfh_err |= UVC_STREAM_ERR;	// don't set this flag here
+            LOGW("actual length of packet is zero");
 			continue;
 		}
 		// XXX accessing to pktbuf could lead to crash on the original implementation
 		// because the substances of pktbuf will be deleted in uvc_stream_stop.
+		//LOGI("pktbuf: %d", pktbuf);
 		pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
+		LOGI("pktbuf: %d", pktbuf);
+
 		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
 //			assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
 #ifdef __ANDROID__
@@ -860,12 +868,14 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			} else {
 				header_len = pktbuf[0];	// Header length field of Stream Header
 			}
+			LOGI("header_len: %d", header_len);
 
 			if (LIKELY(check_header)) {
 				header_info = pktbuf[1];
 				if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
 //					strmh->bfh_err |= UVC_STREAM_ERR;
 					MARK("bad packet:status=0x%2x", header_info);
+					LOGE("bad packet:status=0x%2x", header_info);
 					libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
 //					uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
 					uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
@@ -911,15 +921,17 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 #else
 				if (strmh->devh->is_isight) {
 					MARK("is_isight");
+					LOGE("is_isight");
 					continue; // don't look for data after an iSight header
 				}
 #endif
 			} // if LIKELY(check_header)
 
-			if (UNLIKELY(pkt->actual_length < header_len)) {
+			if (UNLIKELY(pkt->length < header_len /*pkt->actual_length < header_len*/)) {
 				/* Bogus packet received */
 				strmh->bfh_err |= UVC_STREAM_ERR;
 				MARK("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
+				LOGE("bogus packet: actual_len=%d, header_len=%zd", pkt->actual_length, header_len);
 				continue;
 			}
 
@@ -927,7 +939,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			// and there calculated value never become minus.
 			// therefor changed to "if (pkt->actual_length > header_len)"
 			// from "if (pkt->actual_length - header_len > 0)"
-			if (LIKELY(pkt->actual_length > header_len)) {
+			if (LIKELY(pkt->actual_length > header_len /*pkt->actual_length > header_len*/)) {
 				const size_t odd_bytes = pkt->actual_length - header_len;
 				assert(strmh->got_bytes + odd_bytes < strmh->size_buf);
 				assert(strmh->outbuf);
@@ -944,6 +956,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		} else {	// if (LIKELY(pktbuf))
 			strmh->bfh_err |= UVC_STREAM_ERR;
 			MARK("libusb_get_iso_packet_buffer_simple returned null");
+			LOGE("libusb_get_iso_packet_buffer_simple returned null");
 			continue;
 		}
 	}	// for
@@ -1422,8 +1435,15 @@ uvc_error_t uvc_stream_start_bandwidth(uvc_stream_handle_t *strmh,
 		LOGE("unlnown frame format");
 		goto fail;
 	}
-	const uint32_t dwMaxVideoFrameSize = ctrl->dwMaxVideoFrameSize <= frame_desc->dwMaxVideoFrameBufferSize
-		? ctrl->dwMaxVideoFrameSize : frame_desc->dwMaxVideoFrameBufferSize;
+
+    // XXXX
+    uint32_t maxSize = ctrl->dwMaxVideoFrameSize <= frame_desc->dwMaxVideoFrameBufferSize
+                            ? ctrl->dwMaxVideoFrameSize : frame_desc->dwMaxVideoFrameBufferSize;
+    if (!maxSize) {
+        maxSize = ctrl->dwMaxPayloadTransferSize;
+    }
+    const uint32_t dwMaxVideoFrameSize = maxSize;
+
 
 	// Get the interface that provides the chosen format and frame configuration
 	interface_id = strmh->stream_if->bInterfaceNumber;
@@ -1652,6 +1672,7 @@ static void *_uvc_user_caller(void *arg) {
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
+        LOGE("hold_bfh_err: %d", strmh->hold_bfh_err);
 		if (LIKELY(!strmh->hold_bfh_err))	// XXX
 			strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
 	}

@@ -58,6 +58,11 @@ typedef struct {
 	jmethodID onFrame;
 } Fields_ipreviewframecallback;
 
+// MODIFIED
+typedef struct {
+	jmethodID onH264Frame;
+} Fields_iH264callback;
+
 class UVCPreview {
 private:
 	uvc_device_handle_t *mDeviceHandle;
@@ -75,9 +80,12 @@ private:
 	ObjectArray<uvc_frame_t *> previewFrames;
 	int previewFormat;
 	size_t previewBytes;
+
 	// MODIFIED
 	jobject mPreviewFrameCallbackObj;
 	Fields_ipreviewframecallback ipreviewframecallback_fields;
+	jobject mH264CallbackObj;
+	Fields_iH264callback iH264callback_fields;
 
 	volatile bool mIsCapturing;
 	ANativeWindow *mCaptureWindow;
@@ -110,6 +118,7 @@ private:
 	// MODIFIED
 	void do_preview_pass_through(JNIEnv *env, uvc_frame_t *frame);
 	void do_preview_pass_through_mjpeg(JNIEnv *env, uvc_frame_t *frame);
+	void do_h264_callback(uvc_frame_t *frame);
 
 	void addCaptureFrame(uvc_frame_t *frame);
 	uvc_frame_t *waitCaptureFrame();
@@ -120,6 +129,9 @@ private:
 	void do_capture_idle_loop(JNIEnv *env);
 	void do_capture_callback(JNIEnv *env, uvc_frame_t *frame);
 	void callbackPixelFormatChanged();
+
+	uvc_frame_format frameFormat(int mode);
+	char *frameFormatName(int mode);
 public:
 	UVCPreview(uvc_device_handle_t *devh);
 	~UVCPreview();
@@ -129,6 +141,7 @@ public:
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 	int setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format); // MODIFIED
+	int setH264FrameCallback(JNIEnv *env, jobject callback); // MODIFIED
 	int startPreview();
 	int stopPreview();
 	inline const bool isCapturing() const;

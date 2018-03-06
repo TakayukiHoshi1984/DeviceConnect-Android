@@ -68,6 +68,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	mIsRunning(false),
 	mIsCapturing(false),
 	mPreviewFrameCallbackObj(NULL), // MODIFIED
+	mH264CallbackObj(NULL), // MODIFIED
 	captureQueu(NULL),
 	mFrameCallbackObj(NULL),
 	mFrameCallbackFunc(NULL),
@@ -185,7 +186,7 @@ int UVCPreview::setPreviewSize(int width, int height, int min_fps, int max_fps, 
 
 		uvc_stream_ctrl_t ctrl;
 		result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, &ctrl,
-			!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+			frameFormat(requestMode),
 			requestWidth, requestHeight, requestMinFps, requestMaxFps);
 	}
 	
@@ -255,8 +256,36 @@ int UVCPreview::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pi
 }
 
 // MODIFIED
-int UVCPreview::setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
+int UVCPreview::setH264FrameCallback(JNIEnv *env, jobject callback) {
+    ENTER();
+    if (!env->IsSameObject(mH264CallbackObj, callback))	{
+        iH264callback_fields.onH264Frame = NULL;
+        if (mH264CallbackObj) {
+            env->DeleteGlobalRef(mH264CallbackObj);
+        }
+        mH264CallbackObj = callback;
+        if (callback) {
+            // get method IDs of Java object for callback
+            jclass clazz = env->GetObjectClass(callback);
+            if (LIKELY(clazz)) {
+                iH264callback_fields.onH264Frame = env->GetMethodID(clazz,
+                    "onH264Frame",	"([B)V");
+            } else {
+                LOGW("failed to get object class");
+            }
+            env->ExceptionClear();
+            if (!iH264callback_fields.onH264Frame) {
+                LOGE("Can't find IPreviewFrameCallback#onFrame");
+                env->DeleteGlobalRef(callback);
+                mH264CallbackObj = callback = NULL;
+            }
+        }
+    }
+    RETURN(0, int);
+}
 
+// MODIFIED
+int UVCPreview::setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format) {
 	ENTER();
 	if (!env->IsSameObject(mPreviewFrameCallbackObj, frame_callback_obj))	{
 		ipreviewframecallback_fields.onFrame = NULL;
@@ -428,17 +457,16 @@ int UVCPreview::stopPreview() {
 //
 //**********************************************************************
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
-	UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
-	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) return;
+    UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
+	if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data || !frame->data_bytes) {
+	    return;
+	}
 	if (UNLIKELY(
-		((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
-		|| (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight) )) {
-
-#if LOCAL_DEBUG
-		LOGD("broken frame!:format=%d,actual_bytes=%d/%d(%d,%d/%d,%d)",
-			frame->frame_format, frame->actual_bytes, preview->frameBytes,
-			frame->width, frame->height, preview->frameWidth, preview->frameHeight);
-#endif
+		/*((frame->frame_format != UVC_FRAME_FORMAT_MJPEG) && (frame->actual_bytes < preview->frameBytes))
+		||*/ (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight) )) {
+        LOGE("broken frame!:format=%d,actual_bytes=%d/%d(%d,%d/%d,%d)",
+        			frame->frame_format, frame->actual_bytes, preview->frameBytes,
+        			frame->width, frame->height, preview->frameWidth, preview->frameHeight);
 		return;
 	}
 	if (LIKELY(preview->isRunning())) {
@@ -518,7 +546,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 
 	ENTER();
 	result = uvc_get_stream_ctrl_format_size_fps(mDeviceHandle, ctrl,
-		!requestMode ? UVC_FRAME_FORMAT_YUYV : UVC_FRAME_FORMAT_MJPEG,
+		frameFormat(requestMode),
 		requestWidth, requestHeight, requestMinFps, requestMaxFps
 	);
 	if (LIKELY(!result)) {
@@ -530,7 +558,7 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 		if (LIKELY(!result)) {
 			frameWidth = frame_desc->wWidth;
 			frameHeight = frame_desc->wHeight;
-			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, (!requestMode ? "YUYV" : "MJPEG"));
+			LOGI("frameSize=(%d,%d)@%s", frameWidth, frameHeight, frameFormatName(requestMode));
 			pthread_mutex_lock(&preview_mutex);
 			if (LIKELY(mPreviewWindow)) {
 				ANativeWindow_setBuffersGeometry(mPreviewWindow,
@@ -570,6 +598,14 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		LOGI("Streaming...");
 #endif
 		if (frameMode) {
+            for ( ; LIKELY(isRunning()) ; ) {
+                frame = waitPreviewFrame();
+                if (LIKELY(frame)) {
+                    do_h264_callback(frame);
+                 }
+            }
+
+		    /*
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
@@ -600,6 +636,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					//}
 				}
 			}
+			*/
 		} else {
 			// yuvyv mode
 			for ( ; LIKELY(isRunning()) ; ) {
@@ -1036,4 +1073,52 @@ void UVCPreview::do_preview_pass_through_mjpeg(JNIEnv *env, uvc_frame_t *frame) 
 		}
 	}
 	EXIT();
+}
+
+void UVCPreview::do_h264_callback(uvc_frame_t *frame) {
+    ENTER();
+    JavaVM *vm = getVM();
+    JNIEnv *env;
+    // attach to JavaVM
+    vm->AttachCurrentThread(&env, NULL);
+    if(!mPreviewFrameCallbackObj){
+        LOGE("this is mPreviewFrameCallbackObj is not null");
+        return;
+    }
+    if (LIKELY(frame)) {
+        int len = frame->data_bytes;
+        jbyteArray array = env->NewByteArray(len);
+        jbyte *elems = env->GetByteArrayElements(array, NULL);
+        memcpy(elems, frame->data, len);
+
+        env->CallVoidMethod(mPreviewFrameCallbackObj, ipreviewframecallback_fields.onFrame, array);
+        env->ExceptionClear();
+        env->ReleaseByteArrayElements(array, elems, 0);
+        env->DeleteLocalRef(array);
+    }
+    EXIT();
+}
+
+uvc_frame_format UVCPreview::frameFormat(int mode) {
+    switch(mode) {
+        case 0:
+            return UVC_FRAME_FORMAT_YUYV;
+        case 1:
+            return UVC_FRAME_FORMAT_MJPEG;
+        case 2:
+        default:
+            return UVC_FRAME_FORMAT_BASED;
+    }
+}
+
+char* UVCPreview::frameFormatName(int mode) {
+    switch(mode) {
+        case 0:
+            return "YUYV";
+        case 1:
+            return "MJPEG";
+        case 2:
+        default:
+            return "H264";
+    }
 }

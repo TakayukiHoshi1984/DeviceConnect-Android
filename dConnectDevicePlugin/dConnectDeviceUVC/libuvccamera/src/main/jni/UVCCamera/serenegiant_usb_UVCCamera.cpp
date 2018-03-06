@@ -275,6 +275,7 @@ static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,
 	}
 	RETURN(result, jint);
 }
+
 // MODIFIED
 static jint nativeSetPreviewFrameCallback(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jobject jIPreviewFrameCallback, jint pixel_format) {
@@ -289,6 +290,19 @@ static jint nativeSetPreviewFrameCallback(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
+// MODIFIED
+static jint nativeSetH264FrameCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIH264FrameCallback) {
+
+	jint result = JNI_ERR;
+	ENTER();
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	if (LIKELY(camera)) {
+		jobject frame_callback_obj = env->NewGlobalRef(jIH264FrameCallback);
+		result = camera->setH264FrameCallback(env, frame_callback_obj);
+	}
+	RETURN(result, jint);
+}
 
 static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera, jobject jSurface) {
@@ -2043,6 +2057,7 @@ static JNINativeMethod methods[] = {
 	{ "nativeSetPreviewDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetPreviewDisplay },
 	{ "nativeSetFrameCallback",			"(JLcom/serenegiant/usb/IFrameCallback;I)I", (void *) nativeSetFrameCallback },
     { "nativeSetPreviewFrameCallback",    "(JLcom/serenegiant/usb/IPreviewFrameCallback;I)I", (void *) nativeSetPreviewFrameCallback }, // MODIFIED
+    //{ "nativeSetH264FrameCallback",    "(JLcom/serenegiant/usb/IH264FrameCallback)I", (void *) nativeSetH264FrameCallback }, // MODIFIED
 	{ "nativeSetCaptureDisplay",		"(JLandroid/view/Surface;)I", (void *) nativeSetCaptureDisplay },
 
 	{ "nativeGetCtrlSupports",			"(J)J", (void *) nativeGetCtrlSupports },

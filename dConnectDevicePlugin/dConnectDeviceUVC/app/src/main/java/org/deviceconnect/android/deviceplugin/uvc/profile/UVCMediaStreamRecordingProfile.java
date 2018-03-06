@@ -44,9 +44,11 @@ public class UVCMediaStreamRecordingProfile extends MediaStreamRecordingProfile 
     private static final String RECORDER_ID = "0";
 
     private static final String RECORDER_MIME_TYPE_MJPEG = "video/x-mjpeg";
+    private static final String RECORDER_MIME_TYPE_RTP = "video/x-rtp";
 
     private static final String[] RECORDER_MIME_TYPE_LIST = {
-        RECORDER_MIME_TYPE_MJPEG
+            RECORDER_MIME_TYPE_MJPEG,
+            RECORDER_MIME_TYPE_RTP
     };
 
     private static final String RECORDER_CONFIG = ""; // No config.
@@ -62,17 +64,18 @@ public class UVCMediaStreamRecordingProfile extends MediaStreamRecordingProfile 
         @Override
         public void onFrame(final UVCDevice device, final byte[] frame, final int frameFormat,
                             final int width, final int height) {
-            //mLogger.info("onFrame: " + frame.length);
+            mLogger.info("onFrame: frameFormat=" + frameFormat + ", length=" + frame.length);
 
-            if (frameFormat != UVCCamera.FRAME_FORMAT_MJPEG) {
+            if (frameFormat == 0x06) {
+                PreviewContext context = mContexts.get(device.getId());
+                if (context != null) {
+                    final byte[] media = context.willResize() ? context.resize(frame) : frame;
+                    context.mServer.offerMedia(media);
+                }
+            } else if (frameFormat == 0x16) {
+
+            } else {
                 mLogger.warning("onFrame: unsupported frame format: " + frameFormat);
-                return;
-            }
-
-            PreviewContext context = mContexts.get(device.getId());
-            if (context != null) {
-                final byte[] media = context.willResize() ? context.resize(frame) : frame;
-                context.mServer.offerMedia(media);
             }
         }
     };

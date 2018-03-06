@@ -11,13 +11,11 @@ import android.hardware.usb.UsbDevice;
 import android.view.Surface;
 import android.view.TextureView;
 
-import com.serenegiant.usb.IFrameCallback;
 import com.serenegiant.usb.IPreviewFrameCallback;
 import com.serenegiant.usb.Size;
 import com.serenegiant.usb.USBMonitor;
 import com.serenegiant.usb.UVCCamera;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,9 +30,11 @@ public class UVCDevice {
     private static final double DEFAULT_MAX_FPS = 30.0d;
 
     private static final int VS_FORMAT_MJPEG = 0x06;
+    private static final int VS_FORMAT_BASED = 0x10;
 
     private static final int[] SUPPORTED_PAYLOAD_FORMATS = {
-        VS_FORMAT_MJPEG
+        VS_FORMAT_MJPEG,
+        VS_FORMAT_BASED
     };
 
     private final Logger mLogger = Logger.getLogger("uvc.dplugin");
@@ -172,7 +172,8 @@ public class UVCDevice {
             return false;
         }
 
-        mCamera = new UVCCamera();
+        int format = VS_FORMAT_BASED; //VS_FORMAT_MJPEG;
+        mCamera = new UVCCamera(format);
         mCamera.open(mCtrlBlock);
         mIsOpen = true;
 
@@ -185,14 +186,14 @@ public class UVCDevice {
         }
         mLogger.info("Selected Preview size: type = " + size.type +  ", width = " + size.width + ", height = " + size.height);
         if (mCurrentOption == null) {
-            mCurrentOption = new PreviewOption(size.width, size.height);
+            mCurrentOption = new PreviewOption(size.width, size.height, format);
         }
         final int width = mCurrentOption.getWidth();
         final int height = mCurrentOption.getHeight();
-        final int frameFormat = UVCCamera.FRAME_FORMAT_MJPEG;
         final int pixelFormat = UVCCamera.PIXEL_FORMAT_RAW;
 
         if (!setPreviewSize(width, height)) {
+            mLogger.severe("Failed to init preview size: ");
             mIsOpen = false;
             mCurrentOption = null;
             return false;
@@ -203,11 +204,17 @@ public class UVCDevice {
                 if (checkFrameInterval()) {
                     return;
                 }
-                notifyPreviewFrame(frame, frameFormat, width, height);
+                notifyPreviewFrame(frame, mCurrentOption.getFrameFormat(), width, height);
             }
-
-
         }, pixelFormat);
+//        mCamera.setH264FrameCallback(new IH264FrameCallback() {
+//            @Override
+//            public void onH264Frame(final byte[] frame) {
+//                if (checkFrameInterval()) {
+//                    return;
+//                }
+//            }
+//        });
 
         return true;
     }
@@ -318,9 +325,9 @@ public class UVCDevice {
         }
         try {
             if (mIsOpen) {
-                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_MJPEG);
+                mCamera.setPreviewSize(width, height, UVCCamera.FRAME_FORMAT_BASED);
             }
-            mCurrentOption = new PreviewOption(width, height);
+            mCurrentOption = new PreviewOption(width, height, mCamera.getDefaultFrameFormat());
             return true;
         } catch (IllegalArgumentException e) {
             return false;
@@ -474,13 +481,16 @@ public class UVCDevice {
 
         private final int mHeight;
 
-        private PreviewOption(final int width, final int height) {
+        private final int mFrameFormat;
+
+        private PreviewOption(final int width, final int height, final int frameFormat) {
             mWidth = width;
             mHeight = height;
+            mFrameFormat = frameFormat;
         }
 
         private PreviewOption(final Size size) {
-            this(size.width, size.height);
+            this(size.width, size.height, size.frame_type);
         }
 
         public int getWidth() {
@@ -489,6 +499,10 @@ public class UVCDevice {
 
         public int getHeight() {
             return mHeight;
+        }
+
+        public int getFrameFormat() {
+            return mFrameFormat;
         }
 
         public float getRatio() {

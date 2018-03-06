@@ -192,6 +192,7 @@ public:
 	int setPreviewDisplay(ANativeWindow *preview_window);
 	int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
     int setPreviewFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format); // MODIFIED
+    int setH264FrameCallback(JNIEnv *env, jobject callback); // MODIFIED
 	int startPreview();
 	int stopPreview();
 	int setCaptureDisplay(ANativeWindow *capture_window);
