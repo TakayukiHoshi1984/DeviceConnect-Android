@@ -53,29 +53,6 @@ public class UVCMediaStreamRecordingProfile extends MediaStreamRecordingProfile 
 
     private final UVCDeviceManager mDeviceMgr;
 
-    private final Map<String, PreviewContext> mContexts = new HashMap<String, PreviewContext>();
-
-    private final UVCDeviceManager.PreviewListener mPreviewListener
-        = new UVCDeviceManager.PreviewListener() {
-        @Override
-        public void onFrame(final UVCDevice device, final byte[] frame, final int frameFormat,
-                            final int width, final int height) {
-            mLogger.info("onFrame: frameFormat=" + frameFormat + ", length=" + frame.length);
-
-            if (frameFormat == 0x06) {
-                PreviewContext context = mContexts.get(device.getId());
-                if (context != null) {
-                    final byte[] media = context.willResize() ? context.resize(frame) : frame;
-                    context.mServer.offerMedia(media);
-                }
-            } else if (frameFormat == 0x16) {
-
-            } else {
-                mLogger.warning("onFrame: unsupported frame format: " + frameFormat);
-            }
-        }
-    };
-
     private final UVCDeviceManager.ConnectionListener mConnectionListener
         = new UVCDeviceManager.ConnectionListener() {
         @Override

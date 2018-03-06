@@ -283,9 +283,11 @@ public abstract class MediaStream implements Stream {
 	public synchronized  void stop() {
 		if (mStreaming) {
             mPacketizer.stop();
-            mMediaCodec.stop();
-            mMediaCodec.release();
-            mMediaCodec = null;
+            if (mMediaCodec != null) {
+				mMediaCodec.stop();
+				mMediaCodec.release();
+				mMediaCodec = null;
+			}
 			mStreaming = false;
 		}
 	}

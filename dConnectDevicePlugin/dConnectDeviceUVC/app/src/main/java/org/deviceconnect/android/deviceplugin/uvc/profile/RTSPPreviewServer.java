@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.media.MediaCodec;
 import android.preference.PreferenceManager;
 import android.view.Surface;
 
@@ -15,6 +16,7 @@ import net.majorkernelpanic.streaming.Session;
 import net.majorkernelpanic.streaming.SessionBuilder;
 import net.majorkernelpanic.streaming.rtsp.RtspServer;
 import net.majorkernelpanic.streaming.rtsp.RtspServerImpl;
+import net.majorkernelpanic.streaming.video.FrameBasedH264Stream;
 import net.majorkernelpanic.streaming.video.SurfaceH264Stream;
 import net.majorkernelpanic.streaming.video.VideoQuality;
 
@@ -23,6 +25,7 @@ import org.deviceconnect.android.deviceplugin.uvc.core.UVCDeviceManager;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,7 +43,7 @@ class RTSPPreviewServer implements PreviewServer,
 
     private final UVCDevice mDevice;
 
-    private SurfaceH264Stream mVideoStream;
+    private FrameBasedH264Stream mVideoStream;
 
     private final Logger mLogger = Logger.getLogger("uvc.plugin");
 
@@ -92,12 +95,12 @@ class RTSPPreviewServer implements PreviewServer,
             VideoQuality videoQuality = new VideoQuality();
             videoQuality.resX = mDevice.getPreviewWidth();
             videoQuality.resY = mDevice.getPreviewHeight();
-            videoQuality.bitrate = 256 * 8 * 1024; //1KB //mServerProvider.getPreviewBitRate();
+            videoQuality.bitrate = 256 * 8 * 1024; //256KB //mServerProvider.getPreviewBitRate();
             videoQuality.framerate = (int) mDevice.getFrameRate();
 
             synchronized (mLock) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-                mVideoStream = new SurfaceH264Stream(prefs, videoQuality);
+                mVideoStream = new FrameBasedH264Stream(prefs, videoQuality);
             }
 
             SessionBuilder builder = new SessionBuilder();
@@ -120,32 +123,37 @@ class RTSPPreviewServer implements PreviewServer,
 
     @Override
     public void onFrame(final UVCDevice device, final byte[] frame, final int frameFormat, final int width, final int height) {
-        if (frameFormat != UVCCamera.FRAME_FORMAT_MJPEG) {
+        if (frameFormat != 0x10) {
             mLogger.warning("onFrame: unsupported frame format: " + frameFormat);
             return;
         }
-        //mLogger.info("onFrame: " + width + " x " + height);
+        mLogger.info("onFrame: " + width + " x " + height + ", lenght=" + frame.length);
 
-        SurfaceH264Stream stream = mVideoStream;
-        if (stream != null) {
-            Surface surface = stream.getInputSurface();
-            Canvas canvas = surface.lockCanvas(null);
-            if (canvas == null) {
-                mLogger.severe("Failed to lock canvas");
-                return;
-            }
-            try {
-                Bitmap bitmap = BitmapFactory.decodeByteArray(frame, 0, frame.length);
-                if (bitmap != null) {
-                    canvas.drawBitmap(bitmap, 0, 0, null);
-                    bitmap.recycle();
-                    //mLogger.info("onFrame: draw JPEG frame to canvas: " + width + " x " + height);
-                } else {
-                    mLogger.warning("onFrame: Failed to decode JPEG to bitmap");
-                }
-            } finally {
-                surface.unlockCanvasAndPost(canvas);
-            }
+        FrameBasedH264Stream stream = mVideoStream;
+        if (stream != null && stream.isStreaming()) {
+            stream.addFrame(frame);
         }
+
+//        SurfaceH264Stream stream = mVideoStream;
+//        if (stream != null) {
+//            Surface surface = stream.getInputSurface();
+//            Canvas canvas = surface.lockCanvas(null);
+//            if (canvas == null) {
+//                mLogger.severe("Failed to lock canvas");
+//                return;
+//            }
+//            try {
+//                Bitmap bitmap = BitmapFactory.decodeByteArray(frame, 0, frame.length);
+//                if (bitmap != null) {
+//                    canvas.drawBitmap(bitmap, 0, 0, null);
+//                    bitmap.recycle();
+//                    //mLogger.info("onFrame: draw JPEG frame to canvas: " + width + " x " + height);
+//                } else {
+//                    mLogger.warning("onFrame: Failed to decode JPEG to bitmap");
+//                }
+//            } finally {
+//                surface.unlockCanvasAndPost(canvas);
+//            }
+//        }
     }
 }

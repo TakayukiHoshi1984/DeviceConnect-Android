@@ -22,65 +22,51 @@ package net.majorkernelpanic.streaming.video;
 
 import android.annotation.SuppressLint;
 import android.content.SharedPreferences;
-import android.hardware.Camera;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
-import android.util.Log;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceHolder.Callback;
 
-import net.majorkernelpanic.streaming.MediaStream;
 import net.majorkernelpanic.streaming.Stream;
-import net.majorkernelpanic.streaming.gl.SurfaceView;
 import net.majorkernelpanic.streaming.hw.EncoderDebugger;
-import net.majorkernelpanic.streaming.hw.NV21Convertor;
 import net.majorkernelpanic.streaming.rtp.MediaCodecInputStream;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 
 
-public abstract class SurfaceVideoStream extends VideoStream {
+public abstract class FrameBasedVideoStream extends VideoStream {
 
 	protected final static String TAG = "VideoStream";
 
 	protected final VideoQuality mQuality;
 	protected final SharedPreferences mSettings;
-	private final Surface mInputSurface;
+
+	private final PipedOutputStream mOutStream;
 
     @SuppressLint({ "InlinedApi", "NewApi" })
-	SurfaceVideoStream(final SharedPreferences prefs, final VideoQuality quality) throws IOException {
+    FrameBasedVideoStream(final SharedPreferences prefs, final VideoQuality quality) throws IOException {
 		super();
         mSettings = prefs;
         mQuality = quality;
-
-        EncoderDebugger debugger = EncoderDebugger.debug(mSettings, mQuality.resX, mQuality.resY);
-        mMediaCodec = MediaCodec.createByCodecName(debugger.getEncoderName());
-        MediaFormat mediaFormat = MediaFormat.createVideoFormat("video/avc", mQuality.resX, mQuality.resY);
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, mQuality.bitrate);
-        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mQuality.framerate);
-        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-        mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        mInputSurface = null; //mMediaCodec.createInputSurface();
+        mOutStream = new PipedOutputStream();;
 	}
 
-	public MediaCodec getMediaCodec() {
-        return mMediaCodec;
-    }
-
-	public Surface getInputSurface() {
-        return mInputSurface;
+	public void addFrame(final byte[] frame) {
+        try {
+            mOutStream.write(frame, 0, frame.length);
+            mOutStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @SuppressLint({ "InlinedApi", "NewApi" })
 	protected void encodeWithMediaCodec() throws IOException {
-        mMediaCodec.start();
-
-        // The packetizer encapsulates the bit stream in an RTP stream and send it over the network
-        mPacketizer.setInputStream(new MediaCodecInputStream(mMediaCodec));
+        PipedInputStream in = new PipedInputStream();
+        in.connect(mOutStream);
+        mPacketizer.setInputStream(in);
         mPacketizer.start();
 
         mStreaming = true;
