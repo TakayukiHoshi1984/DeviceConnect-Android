@@ -348,7 +348,9 @@ public class HostDeviceService extends DConnectMessageService {
      * @return 位置情報をサポートしている場合はtrue、それ以外はfalse
      */
     private boolean checkLocationHardware() {
-        return getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION);
+        return getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION)
+                || getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)
+                || getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_NETWORK);
     }
 
     /**
