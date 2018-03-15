@@ -41,6 +41,8 @@ public enum HueManager {
      * シングルトンなHueManagerのインスタンス.
      */
     INSTANCE;
+    /** Hue Warning code no. */
+    public static final int NOT_PRESSED_LINK_BUTTON = 101;
     /** Log's tag name. */
     private static final String TAG = "HueManager";
     /**

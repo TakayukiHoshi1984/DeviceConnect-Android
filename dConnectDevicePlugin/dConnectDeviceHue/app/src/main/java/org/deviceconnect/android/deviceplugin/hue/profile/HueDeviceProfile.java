@@ -34,6 +34,8 @@ import org.json.hue.JSONObject;
 import java.util.List;
 import java.util.Map;
 
+import static org.deviceconnect.android.deviceplugin.hue.db.HueManager.NOT_PRESSED_LINK_BUTTON;
+
 /**
  * スマートデバイスへの接続関連の機能を提供するAPI.
  *
@@ -113,6 +115,7 @@ public class HueDeviceProfile extends DConnectProfile {
 
                 @Override
                 public void onConnectionLost(final PHAccessPoint point) {
+                    mIsSearchBridge = false;
                     MessageUtils.setIllegalDeviceStateError(response, "Connection Lost: " + point.getIpAddress());
                     sendResponse(response);
                 }
@@ -125,8 +128,11 @@ public class HueDeviceProfile extends DConnectProfile {
 
                 @Override
                 public void onError(final int code, final String message) {
-                    MessageUtils.setIllegalDeviceStateError(response, "Illegal Bridge State: " + message);
-                    sendResponse(response);
+                    if (code != NOT_PRESSED_LINK_BUTTON) {  // Not pressed link buttonは、認証ボタン待ち。エラーではないため除外する
+                        mIsSearchBridge = false;
+                        MessageUtils.setIllegalDeviceStateError(response, "Illegal Bridge State: " + message);
+                        sendResponse(response);
+                    }
                 }
 
                 @Override
@@ -161,50 +167,7 @@ public class HueDeviceProfile extends DConnectProfile {
         }
     };
 
-    /**
-     * ライトの検索を行う.
-     * @param serviceId ブリッジの
-     */
-    private void searchLight(final String serviceId) {
-        HueManager.INSTANCE.searchLightAutomatic(new PHLightListener() {
-            @Override
-            public void onReceivingLightDetails(PHLight phLight) {
 
-            }
-
-            @Override
-            public void onReceivingLights(List<PHBridgeResource> list) {
-                for (PHBridgeResource header : list) {
-                    DConnectService service
-                            = ((HueDeviceService) getContext()).getServiceProvider()
-                                .getService(serviceId + "_" + header.getIdentifier());
-                    if (service == null) {
-                        service = new HueLightService(serviceId, header.getIdentifier(), header.getName());
-                        ((HueDeviceService) getContext()).getServiceProvider().addService(service);
-                    }
-                    service.setOnline(true);
-                }
-            }
-
-            @Override
-            public void onSearchComplete() {
-                mIsSearchBridge = false;
-            }
-
-            @Override
-            public void onSuccess() {
-            }
-
-            @Override
-            public void onError(int i, String s) {
-            }
-
-            @Override
-            public void onStateUpdate(Map<String, String> map, List<PHHueError> list) {
-
-            }
-        });
-    }
 
     /**
      * Hue Bridgeとの接続を解除する.
@@ -217,9 +180,7 @@ public class HueDeviceProfile extends DConnectProfile {
         @Override
         public boolean onRequest(Intent request, Intent response) {
             String serviceId = getServiceID(request);
-            if (mListener != null) {
-                HueManager.INSTANCE.removeSDKListener(mListener);
-            }
+
             PHBridge bridge = HueManager.INSTANCE.findBridge(serviceId);
 
             if (bridge != null) {
@@ -264,12 +225,51 @@ public class HueDeviceProfile extends DConnectProfile {
     private boolean isLocalNetworkEnabled() {
         ConnectivityManager convManager = (ConnectivityManager) getContext().getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo info = convManager.getActiveNetworkInfo();
-        boolean isEthernet = false;
-        if (info != null) {
-            return (info.getType() == ConnectivityManager.TYPE_ETHERNET
-                    || info.getType() == ConnectivityManager.TYPE_WIFI);
-        } else {
-            return false;
-        }
+        return (info != null) && ((info.getType() == ConnectivityManager.TYPE_ETHERNET
+                || info.getType() == ConnectivityManager.TYPE_WIFI));
+    }
+
+    /**
+     * ライトの検索を行う.
+     * @param serviceId ブリッジの
+     */
+    private void searchLight(final String serviceId) {
+        HueManager.INSTANCE.searchLightAutomatic(new PHLightListener() {
+            @Override
+            public void onReceivingLightDetails(PHLight phLight) {
+
+            }
+
+            @Override
+            public void onReceivingLights(List<PHBridgeResource> list) {
+                for (PHBridgeResource header : list) {
+                    DConnectService service
+                            = ((HueDeviceService) getContext()).getServiceProvider()
+                            .getService(serviceId + "_" + header.getIdentifier());
+                    if (service == null) {
+                        service = new HueLightService(serviceId, header.getIdentifier(), header.getName());
+                        ((HueDeviceService) getContext()).getServiceProvider().addService(service);
+                    }
+                    service.setOnline(true);
+                }
+            }
+
+            @Override
+            public void onSearchComplete() {
+                mIsSearchBridge = false;
+            }
+
+            @Override
+            public void onSuccess() {
+            }
+
+            @Override
+            public void onError(int i, String s) {
+            }
+
+            @Override
+            public void onStateUpdate(Map<String, String> map, List<PHHueError> list) {
+            }
+        });
     }
 }
