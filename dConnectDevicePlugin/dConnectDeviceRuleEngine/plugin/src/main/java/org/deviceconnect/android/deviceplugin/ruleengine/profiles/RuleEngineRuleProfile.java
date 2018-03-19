@@ -1252,23 +1252,23 @@ public class RuleEngineRuleProfile extends DConnectProfile {
                 if (jsonFormat.length == 1) {
                     boolean result = false;
                     try {
-                        String check = jsonResult.getString(jsonFormat[0]);
                         switch (value.getDataType()) {
                             case ComparisonUtil.TYPE_JSON_INT:
-                                result = value.setDataInt(ComparisonValue.FIRST, Integer.valueOf(check));
+                                result = value.setDataInt(ComparisonValue.FIRST, jsonResult.getInt(jsonFormat[0]));
                                 break;
                             case ComparisonUtil.TYPE_JSON_FLOAT:
-                                result = value.setDataFloat(ComparisonValue.FIRST, Float.valueOf(check));
+                                String doubleValue = Double.valueOf(jsonResult.getDouble(jsonFormat[0])).toString();
+                                result = value.setDataFloat(ComparisonValue.FIRST, Float.valueOf(doubleValue));
                                 break;
                             case ComparisonUtil.TYPE_JSON_DOUBLE:
-                                result = value.setDataDouble(ComparisonValue.FIRST, Double.valueOf(check));
+                                result = value.setDataDouble(ComparisonValue.FIRST, jsonResult.getDouble(jsonFormat[0]));
                                 break;
                             case ComparisonUtil.TYPE_JSON_BOOLEAN:
-                                result = value.setDataBooleam(ComparisonValue.FIRST, Boolean.valueOf(check));
+                                result = value.setDataBooleam(ComparisonValue.FIRST, jsonResult.getBoolean(jsonFormat[0]));
                                 break;
                             case ComparisonUtil.TYPE_JSON_STRING:
                             case ComparisonUtil.TYPE_JSON_DATE_TIME:
-                                result = value.setDataString(ComparisonValue.FIRST, check);
+                                result = value.setDataString(ComparisonValue.FIRST, jsonResult.getString(jsonFormat[0]));
                                 break;
                         }
 
