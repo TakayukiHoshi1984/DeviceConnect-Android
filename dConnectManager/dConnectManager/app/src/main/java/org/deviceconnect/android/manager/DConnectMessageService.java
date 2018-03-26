@@ -90,18 +90,6 @@ import java.util.logging.Logger;
 public abstract class DConnectMessageService extends Service
         implements DConnectProfileProvider, DevicePluginEventListener {
 
-    /** アクション名: プラグイン有効化要求. */
-    public static final String ACTION_ENABLE_PLUGIN = "org.deviceconnect.android.action.ENABLE_PLUGIN";
-
-    /** アクション名: プラグイン無効化要求. */
-    public static final String ACTION_DISABLE_PLUGIN = "org.deviceconnect.android.action.DISABLE_PLUGIN";
-
-    /** アクション名: プラグイン設定画面起動要求. */
-    public static final String ACTION_OPEN_SETTINGS = "org.deviceconnect.android.action.OPEN_SETTINGS";
-
-    /** エクストラ名: プラグインID. */
-    public static final String EXTRA_PLUGIN_ID = "pluginId";
-
     /** アクション名: パッケージインストール通知. */
     public static final String ACTION_PACKAGE_ADDED = "org.deviceconnect.android.action.PACKAGE_ADDED";
 
@@ -189,6 +177,8 @@ public abstract class DConnectMessageService extends Service
     /** バージョン名. */
     private String mVersionName;
 
+    private LocalOAuth2Main mLocalOAuth2Main;
+
     private IDConnectCallback mCallback = new IDConnectCallback.Stub() {
         @Override
         public void sendMessage(final Intent message) throws RemoteException {
@@ -240,11 +230,10 @@ public abstract class DConnectMessageService extends Service
             }
         });
 
+        mLocalOAuth2Main = new LocalOAuth2Main(this);
+
         // イベント管理クラスの初期化
         EventManager.INSTANCE.setController(new MemoryCacheController());
-
-        // Local OAuthの初期化
-        LocalOAuth2Main.initialize(getApplicationContext());
 
         // DConnect設定
         mSettings = ((DConnectApplication) getApplication()).getSettings();
@@ -259,7 +248,7 @@ public abstract class DConnectMessageService extends Service
         mEventBroker = new EventBroker(this, mEventSessionTable, mLocalOAuth, mPluginManager);
 
         // プロファイルの追加
-        addProfile(new AuthorizationProfile());
+        addProfile(new AuthorizationProfile(mLocalOAuth2Main));
         addProfile(new DConnectAvailabilityProfile());
         addProfile(new DConnectServiceDiscoveryProfile(null, mPluginManager));
         addProfile(new DConnectSystemProfile(this, mPluginManager));
@@ -294,7 +283,8 @@ public abstract class DConnectMessageService extends Service
         unregisterReceiver(mPackageReceiver);
         mPluginManager.removeEventListener(this);
         stopDConnect();
-        LocalOAuth2Main.destroy();
+        mLocalOAuth2Main.destroy();
+        mLocalOAuth2Main = null;
         super.onDestroy();
     }
 
@@ -311,47 +301,12 @@ public abstract class DConnectMessageService extends Service
             return START_STICKY;
         }
 
-        if (handleInternalMessage(intent)) {
-            return START_NOT_STICKY;
-        }
-
         if (!mRunningFlag) {
             return START_NOT_STICKY;
         }
 
         handleExternalMessage(intent);
         return START_STICKY;
-    }
-
-    private boolean handleInternalMessage(final Intent intent) {
-        String action = intent.getAction();
-        if (ACTION_ENABLE_PLUGIN.equals(action)) {
-            final DevicePlugin plugin = findPlugin(intent);
-            if (plugin != null) {
-                mExecutor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        plugin.enable();
-                    }
-                });
-            }
-            return true;
-        } else if (ACTION_DISABLE_PLUGIN.equals(action)) {
-            final DevicePlugin plugin = findPlugin(intent);
-            if (plugin != null) {
-                mExecutor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        plugin.disable();
-                    }
-                });
-            }
-            return true;
-        } else if (ACTION_OPEN_SETTINGS.equals(action)) {
-            openSettings(intent);
-            return true;
-        }
-        return false;
     }
 
     private void handleExternalMessage(final Intent intent) {
@@ -378,16 +333,12 @@ public abstract class DConnectMessageService extends Service
         }
     }
 
-    private DevicePlugin findPlugin(final Intent intent) {
-        String pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID);
-        if (pluginId == null) {
-            return null;
-        }
-        return mPluginManager.getDevicePlugin(pluginId);
+    LocalOAuth2Main getLocalOAuth2Main() {
+        return mLocalOAuth2Main;
     }
 
-    private void openSettings(final Intent intent) {
-        DevicePlugin plugin = findPlugin(intent);
+    public void openPluginSettings(final String pluginId) {
+        DevicePlugin plugin = mPluginManager.getDevicePlugin(pluginId);
         if (plugin == null) {
             return;
         }
@@ -401,6 +352,24 @@ public abstract class DConnectMessageService extends Service
         SystemProfile.setAttribute(request, SystemProfile.ATTRIBUTE_WAKEUP);
         request.putExtra("pluginId", plugin.getPluginId());
         sendMessage(plugin, request);
+    }
+
+    public void setEnablePlugin(final String pluginId, final boolean enable) {
+        final DevicePlugin plugin = mPluginManager.getDevicePlugin(pluginId);
+        if (plugin == null) {
+            return;
+        }
+
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (enable) {
+                    plugin.enable();
+                } else {
+                    plugin.disable();
+                }
+            }
+        });
     }
 
     /**
@@ -466,7 +435,7 @@ public abstract class DConnectMessageService extends Service
         if (mSettings.isUseALocalOAuth()) {
             // アクセストークンの取得
             String accessToken = request.getStringExtra(AuthorizationProfile.PARAM_ACCESS_TOKEN);
-            CheckAccessTokenResult result = LocalOAuth2Main.checkAccessToken(accessToken,
+            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken,
                     profileName.toLowerCase(),
                     DConnectLocalOAuth.IGNORE_PROFILES);
             if (result.checkResult()) {
@@ -562,7 +531,9 @@ public abstract class DConnectMessageService extends Service
             final String profileName = profile.getProfileName();
             try {
                 profile.setProfileSpec(loadProfileSpec(profileName));
-                mLogger.info("Loaded a profile spec: " + profileName);
+                if (BuildConfig.DEBUG) {
+                    mLogger.info("Loaded a profile spec: " + profileName);
+                }
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load a profile spec: " + profileName, e);
             } catch (JSONException e) {
@@ -985,7 +956,7 @@ public abstract class DConnectMessageService extends Service
      * @return Origin
      */
     private String findOrigin(final String accessToken) {
-        ClientPackageInfo packageInfo = LocalOAuth2Main.findClientPackageInfoByAccessToken(accessToken);
+        ClientPackageInfo packageInfo = mLocalOAuth2Main.findClientPackageInfoByAccessToken(accessToken);
         if (packageInfo == null) {
             return null;
         }

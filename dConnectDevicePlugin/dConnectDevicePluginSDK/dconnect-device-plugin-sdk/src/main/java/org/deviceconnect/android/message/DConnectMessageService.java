@@ -142,6 +142,8 @@ public abstract class DConnectMessageService extends Service implements DConnect
      */
     private DConnectPluginSpec mPluginSpec;
 
+    private LocalOAuth2Main mLocalOAuth2Main;
+
     private final IBinder mLocalBinder = new LocalBinder();
 
     private final IBinder mRemoteBinder = new PluginBinder();
@@ -199,7 +201,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         mExecutorService = Executors.newSingleThreadScheduledExecutor();
 
         // LocalOAuthの初期化
-        LocalOAuth2Main.initialize(this);
+        mLocalOAuth2Main = new LocalOAuth2Main(this);
 
         // キーストア管理クラスの初期化
         mKeyStoreMgr = new EndPointKeyStoreManager(getApplicationContext(), getKeyStoreFileName(), getCertificateAlias());
@@ -212,10 +214,12 @@ public abstract class DConnectMessageService extends Service implements DConnect
         }
 
         // 認証プロファイルの追加
-        addProfile(new AuthorizationProfile(this));
+        addProfile(new AuthorizationProfile(this, mLocalOAuth2Main));
+
         // 必須プロファイルの追加
         addProfile(new ServiceDiscoveryProfile(mServiceProvider));
         addProfile(getSystemProfile());
+
         registerReceiver();
     }
 
@@ -228,13 +232,15 @@ public abstract class DConnectMessageService extends Service implements DConnect
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
         // スレッドの停止
         if (mExecutorService != null) {
             mExecutorService.shutdown();
         }
+
         // LocalOAuthの後始末
-        LocalOAuth2Main.destroy();
+        mLocalOAuth2Main.destroy();
+        mLocalOAuth2Main = null;
+
         // コールバック一覧を削除
         mBindingSenders.clear();
 
@@ -243,16 +249,24 @@ public abstract class DConnectMessageService extends Service implements DConnect
         }
 
         unregisterReceiver(mUninstallReceiver);
+
+        super.onDestroy();
     }
 
     @Override
     public IBinder onBind(final Intent intent) {
-        mLogger.info("onBind: " + getClass().getName());
+        if (BuildConfig.DEBUG) {
+            mLogger.info("onBind: " + getClass().getName());
+        }
         if (isCalledFromLocal()) {
-            mLogger.info("onBind: Local binder");
+            if (BuildConfig.DEBUG) {
+                mLogger.info("onBind: Local binder");
+            }
             return mLocalBinder;
         }
-        mLogger.info("onBind: Remote binder");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("onBind: Remote binder");
+        }
         return mRemoteBinder;
     }
 
@@ -438,7 +452,10 @@ public abstract class DConnectMessageService extends Service implements DConnect
                     throw new RuntimeException("Profile spec is not found: " + profileName);
                 }
                 pluginSpec.addProfileSpec(profileName.toLowerCase(), assets.open(filePath));
-                mLogger.info("Loaded a profile spec: " + profileName);
+
+                if (BuildConfig.DEBUG) {
+                    mLogger.info("Loaded a profile spec: " + profileName);
+                }
             } catch (IOException | JSONException e) {
                 throw new RuntimeException("Failed to load a profile spec: " + profileName, e);
             }
@@ -598,7 +615,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
             // アクセストークン
             String accessToken = request.getStringExtra(AuthorizationProfile.PARAM_ACCESS_TOKEN);
             // LocalOAuth処理
-            CheckAccessTokenResult result = LocalOAuth2Main.checkAccessToken(accessToken, profileName,
+            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken, profileName,
                 IGNORE_PROFILES);
             if (result.checkResult()) {
                 send = executeRequest(profileName, request, response);
@@ -737,7 +754,7 @@ public abstract class DConnectMessageService extends Service implements DConnect
         }
 
         if (isUseLocalOAuth()) {
-            CheckAccessTokenResult result = LocalOAuth2Main.checkAccessToken(accessToken,
+            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken,
                     event.getStringExtra(DConnectMessage.EXTRA_PROFILE), IGNORE_PROFILES);
             if (!result.checkResult()) {
                 return false;
@@ -844,7 +861,9 @@ public abstract class DConnectMessageService extends Service implements DConnect
      * </p>
      */
     protected void onManagerUninstalled() {
-        mLogger.info("SDK : onManagerUninstalled");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onManagerUninstalled");
+        }
     }
 
     /**
@@ -854,7 +873,9 @@ public abstract class DConnectMessageService extends Service implements DConnect
      * </p>
      */
     protected void onManagerLaunched() {
-        mLogger.info("SDK : onManagerLaunched");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onManagerLaunched");
+        }
     }
 
     /**
@@ -864,7 +885,9 @@ public abstract class DConnectMessageService extends Service implements DConnect
      * </p>
      */
     protected void onManagerTerminated() {
-        mLogger.info("SDK : onManagerTerminated");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onManagerTerminated");
+        }
     }
 
     /**
@@ -876,7 +899,9 @@ public abstract class DConnectMessageService extends Service implements DConnect
      * @param origin イベント停止が要求されたオリジン
      */
     protected void onManagerEventTransmitDisconnected(final String origin) {
-        mLogger.info("SDK : onManagerEventTransmitDisconnected: " + origin);
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onManagerEventTransmitDisconnected: " + origin);
+        }
     }
 
     /**
@@ -887,21 +912,27 @@ public abstract class DConnectMessageService extends Service implements DConnect
      * </p>
      */
     protected void onDevicePluginReset() {
-        mLogger.info("SDK : onDevicePluginReset");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onDevicePluginReset");
+        }
     }
 
     /**
      * Device Connect Managerからプラグイン有効通知を受信した時に呼ばれる処理部.
      */
     protected void onDevicePluginEnabled() {
-        mLogger.info("SDK : onEnabled");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onEnabled");
+        }
     }
 
     /**
      * Device Connect Managerからプラグイン無効通知を受信した時に呼ばれる処理部.
      */
     protected void onDevicePluginDisabled() {
-        mLogger.info("SDK : onDisabled");
+        if (BuildConfig.DEBUG) {
+            mLogger.info("SDK : onDisabled");
+        }
     }
 
     /**
