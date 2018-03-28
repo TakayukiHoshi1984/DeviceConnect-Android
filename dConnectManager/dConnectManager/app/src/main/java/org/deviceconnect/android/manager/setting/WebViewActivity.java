@@ -136,6 +136,7 @@ public class WebViewActivity extends AppCompatActivity {
      * 現在選択されているServiceの
      */
     private String mCurrentServiceId;
+    /*
      * SSL通信フラグ.
      */
     private String mSSL;
