@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId "org.deviceconnect.android.manager"
-        minSdkVersion 19
+        minSdkVersion 14
         targetSdkVersion 26
         versionCode 1
         versionName getVersionName()
@@ -67,8 +67,8 @@ android {
     productFlavors {
         DeviceWebApi {
             dimension "common"
-            versionCode 28
-            versionName "2.2.5"
+            versionCode 29
+            versionName "2.3.0"
             manifestPlaceholders = [
                     appIcon: "@drawable/icon",
                     appName: "@string/app_name"
