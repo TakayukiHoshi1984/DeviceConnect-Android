@@ -219,9 +219,10 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void loadUrl(final WebView view, final String url) {
         Uri uri = Uri.parse(url);
-        if ("file".equals(uri.getScheme())) {
-            uri = appendSSL(uri);
-        }
+        //Android 4.0対策のため、JavaScriptInterfaceを経由してパラメータを送るようにする。
+//        if ("file".equals(uri.getScheme())) {
+//            uri = appendSSL(uri);
+//        }
         view.loadUrl(uri.toString());
     }
 
@@ -596,6 +597,7 @@ public class WebViewActivity extends AppCompatActivity {
         private String mMimeType;
         private String mResource;
         private String mProfile;
+        private String mPort;
         JavaScriptInterface() {
             mPref = getSharedPreferences("__cookie.dat", Context.MODE_PRIVATE);
         }
@@ -622,6 +624,18 @@ public class WebViewActivity extends AppCompatActivity {
         @JavascriptInterface
         public String getCurrentServiceId() {
             return mCurrentServiceId;
+        }
+        @JavascriptInterface
+        public String isSSL() {
+            return mSSL;
+        }
+        @JavascriptInterface
+        public String getPort() {
+            return mPort;
+        }
+        @JavascriptInterface
+        public void setPort(final String port) {
+            mPort = port;
         }
 
         @JavascriptInterface

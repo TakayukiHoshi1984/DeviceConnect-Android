@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -14,6 +15,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.deviceconnect.android.manager.BuildConfig;
 import org.deviceconnect.android.manager.DConnectService;
 import org.deviceconnect.android.manager.R;
 
@@ -27,8 +29,10 @@ public class ExportCertificateDialogFragment extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(final Bundle savedInstanceState) {
-        String fileDirsStr = getContext().getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS).getPath();
-
+        String fileDirsStr = Environment.getExternalStorageDirectory() + "/Documents";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getContext().getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS).getPath();
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.dialog_export_certificate, null);

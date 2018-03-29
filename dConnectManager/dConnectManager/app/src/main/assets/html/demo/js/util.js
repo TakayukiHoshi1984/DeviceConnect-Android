@@ -49,8 +49,8 @@ var util = (function(parent, global) {
     var mSessionKey = "test-session-key";
     var mHost = "localhost";
     var mScopes = initScope();
-    var mSSLEnabled = getQuery("ssl") === "on";
-    var mPort = getQuery("port") == null ? 4035 : parseInt(getQuery("port"), 10);
+    var mSSLEnabled = Android.isSSL() === "on";
+    var mPort = Android.getPort() == null ? 4035 : parseInt(Android.getPort(), 10);
 
     function init(callback) {
         loadScope();
