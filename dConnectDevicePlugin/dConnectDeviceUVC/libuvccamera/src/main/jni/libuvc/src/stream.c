@@ -603,8 +603,7 @@ uvc_error_t uvc_probe_stream_ctrl(uvc_device_handle_t *devh,
  * @brief Swap the working buffer with the presented buffer and notify consumers
  */
 static void _uvc_swap_buffers(uvc_stream_handle_t *strmh) {
-    LOGI("_uvc_swap_buffers");
-	uint8_t *tmp_buf;
+    uint8_t *tmp_buf;
 
 	pthread_mutex_lock(&strmh->cb_mutex);
 	{
@@ -846,7 +845,7 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		// because the substances of pktbuf will be deleted in uvc_stream_stop.
 		//LOGI("pktbuf: %d", pktbuf);
 		pktbuf = libusb_get_iso_packet_buffer_simple(transfer, packet_id);
-		LOGI("pktbuf: %d", pktbuf);
+		//LOGI("pktbuf: %d", pktbuf);
 
 		if (LIKELY(pktbuf)) {	// XXX add null check because libusb_get_iso_packet_buffer_simple could return null
 //			assert(pktbuf < transfer->buffer + transfer->length - 1);	// XXX
@@ -868,7 +867,6 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			} else {
 				header_len = pktbuf[0];	// Header length field of Stream Header
 			}
-			LOGI("header_len: %d", header_len);
 
 			if (LIKELY(check_header)) {
 				header_info = pktbuf[1];
@@ -1672,7 +1670,6 @@ static void *_uvc_user_caller(void *arg) {
 		}
 		pthread_mutex_unlock(&strmh->cb_mutex);
 
-        LOGE("hold_bfh_err: %d", strmh->hold_bfh_err);
 		if (LIKELY(!strmh->hold_bfh_err))	// XXX
 			strmh->user_cb(&strmh->frame, strmh->user_ptr);	// call user callback function
 	}

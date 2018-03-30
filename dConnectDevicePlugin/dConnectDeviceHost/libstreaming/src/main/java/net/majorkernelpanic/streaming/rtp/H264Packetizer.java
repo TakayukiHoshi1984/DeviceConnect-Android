@@ -144,16 +144,20 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
 		int sum = 1, len = 0, type;
 
 		if (streamType == 0) {
-			// NAL units are preceeded by their length, we parse the length
-			fill(header,0,5);
+			seek();
+			byte[] naluHeader = new byte[1];
+			fill(naluHeader, 0, 1);
+
 			ts += delay;
-			naluLength = header[3]&0xFF | (header[2]&0xFF)<<8 | (header[1]&0xFF)<<16 | (header[0]&0xFF)<<24;
-			if (naluLength > 100000 || naluLength < 0) {
-				resync();
-			}
+			byte[] naluSize = new byte[2];
+			fill(naluSize, 0, 2);
+
+			type = (naluHeader[0] & 0x1F);
+			naluLength = (naluSize[0] & 0xff) << 8 | (naluSize[1] & 0xff);
+
 		} else if (streamType == 1) {
 			// NAL units are preceeded with 0x00000001
-			fill(header,0,5);
+			fillNaluHeader(header);
 			ts = ((MediaCodecInputStream) is).getLastBufferInfo().presentationTimeUs * 1000L;
 			//ts += delay;
 			naluLength = is.available() + 1;
@@ -163,23 +167,24 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
 				streamType = 2; 
 				return;
 			}
+
+			// Parses the NAL unit type
+			type = header[4]&0x1F;
 		} else {
 			// Nothing preceededs the NAL units
-			fill(header,0,1);
+			fillNaluHeader(header);
 			header[4] = header[0];
 			ts = ((MediaCodecInputStream)is).getLastBufferInfo().presentationTimeUs*1000L;
 			//ts += delay;
 			naluLength = is.available()+1;
+			// Parses the NAL unit type
+			type = header[4]&0x1F;
 		}
-
-		// Parses the NAL unit type
-		type = header[4]&0x1F;
-
 
 		// The stream already contains NAL unit type 7 or 8, we don't need 
 		// to add them to the stream ourselves
 		if (type == 7 || type == 8) {
-			//Log.v(TAG,"SPS or PPS present in the stream.");
+			Log.d(TAG,"SPS or PPS present in the stream.");
 			count++;
 			if (count>4) {
 				sps = null;
@@ -189,7 +194,7 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
 
 		// We send two packets containing NALU type 7 (SPS) and 8 (PPS)
 		// Those should allow the H264 stream to be decoded even if no SDP was sent to the decoder.
-		if (type == 5 && sps != null && pps != null) {
+		if (streamType != 0 && type == 5 && sps != null && pps != null) {
 			buffer = socket.requestBuffer();
 			socket.markNextPacket();
 			socket.updateTimestamp(ts);
@@ -239,7 +244,51 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
 		}
 	}
 
-	private int fill(byte[] buffer, int offset,int length) throws IOException {
+	private void seek() throws IOException {
+		byte[] startCode = new byte[4];
+		int len = is.read(startCode, 0, startCode.length);
+		if (len < 0) {
+			throw new IOException("End of stream");
+		}
+		byte[] nextByte = new byte[1];
+		while (true) {
+			if ((startCode[0] & 0xff) == 0x00
+					&& (startCode[1] & 0xff) == 0x00
+					&& (startCode[2] & 0xff) == 0x00
+					&& (startCode[3] & 0xff) == 0x01) {
+				Log.d(TAG, "H.264 Start Code is found.");
+				break;
+			}
+			len = is.read(nextByte, 0, 1);
+			if (len != 1) {
+				throw new IOException("End of stream");
+			}
+			push(startCode, nextByte[0]);
+		}
+	}
+
+	private void push(byte[] array, byte value) {
+		for (int i = 0; i < array.length - 1; i++) {
+			array[i] = array[i + 1];
+		}
+		array[array.length - 1] = value;
+	}
+
+	private int fillNaluHeader(byte[] header) throws IOException {
+		seek();
+		return is.read(header, 0, 5);
+	}
+
+	private int readIntLittleEndian(byte[] buffer, int offset, int size) {
+		int result = 0x00;
+		for (int i = 0; i < size; i++) {
+			int value = (buffer[offset + i] & 0xff);
+			result |= (value << (8 * i));
+		}
+		return result;
+	}
+
+	private int fill(byte[] buffer, int offset, int length) throws IOException {
 		int sum = 0, len;
 		while (sum<length) {
 			len = is.read(buffer, offset+sum, length-sum);

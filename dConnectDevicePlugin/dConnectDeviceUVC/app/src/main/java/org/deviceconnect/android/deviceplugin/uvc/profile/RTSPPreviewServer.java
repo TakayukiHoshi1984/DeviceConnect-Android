@@ -127,7 +127,7 @@ class RTSPPreviewServer implements PreviewServer,
             mLogger.warning("onFrame: unsupported frame format: " + frameFormat);
             return;
         }
-        mLogger.info("onFrame: " + width + " x " + height + ", lenght=" + frame.length);
+        //mLogger.info("onFrame: " + width + " x " + height + ", lenght=" + frame.length);
 
         FrameBasedH264Stream stream = mVideoStream;
         if (stream != null && stream.isStreaming()) {
