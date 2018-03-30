@@ -56,7 +56,7 @@ android {
     productFlavors {
         Moverio {
             dimension "DeviceWebAPI"
-            versionCode 18
+            versionCode 19
             versionName "2.2.0"
             manifestPlaceholders = [
                     appIcon: "@drawable/dconnect_icon",
@@ -66,8 +66,8 @@ android {
         }
         Vuzix {
             dimension "DeviceWebAPI"
-            versionCode 17
-            versionName "2.1.4"
+            versionCode 19
+            versionName "2.2.0"
             manifestPlaceholders = [
                     appIcon: "@drawable/dconnect_icon",
                     appName: "@string/app_name_for_device_web_api"
