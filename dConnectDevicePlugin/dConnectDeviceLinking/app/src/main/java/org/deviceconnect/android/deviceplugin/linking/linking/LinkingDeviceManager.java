@@ -7,6 +7,7 @@ import com.nttdocomo.android.sdaiflib.DeviceInfo;
 import com.nttdocomo.android.sdaiflib.ErrorCode;
 import com.nttdocomo.android.sdaiflib.GetDeviceInformation;
 import com.nttdocomo.android.sdaiflib.SendNotification;
+import com.nttdocomo.android.sdaiflib.SendOther;
 
 import org.deviceconnect.android.deviceplugin.linking.BuildConfig;
 import org.deviceconnect.android.deviceplugin.linking.R;
@@ -18,6 +19,11 @@ import java.util.List;
 public class LinkingDeviceManager {
 
     private static final String TAG = "LinkingPlugIn";
+    private static final byte LINKING_DURATION_ID = 0x10;
+    private static final int OFF_VALUE = 33;
+    private static final int ON_VALUE = 34;
+    private static final int DEFAULT_DURATION = 37; // ３分
+    private static final int DEFAULT_COLOR = 1;
 
     private Context mContext;
 
@@ -171,6 +177,74 @@ public class LinkingDeviceManager {
         int result = notify.send();
         return (result != ErrorCode.RESULT_OK);
     }
+    public boolean sendLEDOther(final LinkingDevice device, final boolean on) {
+        if (device == null) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "device is null.");
+            }
+            return false;
+        }
+
+        if (!device.isSupportLED()) {
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Not support led. name=" + device.getDisplayName());
+            }
+            return false;
+        }
+        SendOther sendOther = new SendOther(mContext);
+        sendOther.setDispNameEn("Linking Device Plug-in");
+        sendOther.setDispNameJa("Linking Device Plug-in");
+        sendOther.setDuration(new byte[]{ LINKING_DURATION_ID, DEFAULT_DURATION });
+        sendOther.setDeviceID(device.getModelId());
+        sendOther.setDeviceUID(new int[]{ device.getUniqueId() });
+        // バイブレーションと通知音をOFFにしないと一緒に動いてしまうので
+        setVibration(sendOther, getVibrationOffSetting(device));
+        setBeep(sendOther, OFF_VALUE); // Not Used.
+
+        if (on) {
+            setIllumination(sendOther, getLightPatternSetting(device), getLightColorSetting(device));
+        } else {
+            setIllumination(sendOther, getLightOffSetting(device), getLightColorSetting(device));
+        }
+        int result = sendOther.send();
+
+        return (result != ErrorCode.RESULT_OK);
+
+    }
+    public boolean sendVibrationOther(final LinkingDevice device, final boolean on) {
+        if (device == null) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "device is null.");
+            }
+            return false;
+        }
+
+        if (!device.isSupportLED()) {
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Not support led. name=" + device.getDisplayName());
+            }
+            return false;
+        }
+        SendOther sendOther = new SendOther(mContext);
+        sendOther.setDispNameEn("Linking Device Plug-in");
+        sendOther.setDispNameJa("Linking Device Plug-in");
+        sendOther.setDuration(new byte[]{ LINKING_DURATION_ID, DEFAULT_DURATION });
+
+        sendOther.setDeviceID(device.getModelId());
+        sendOther.setDeviceUID(new int[]{ device.getUniqueId() });
+        setBeep(sendOther, OFF_VALUE); // Not Used.
+        if (on) {
+            setVibration(sendOther, getVibrationOnSetting(device));
+        } else {
+            setVibration(sendOther, getVibrationOffSetting(device));
+        }
+        setIllumination(sendOther, getLightOffSetting(device), getLightColorSetting(device));
+        int result = sendOther.send();
+
+        return (result != ErrorCode.RESULT_OK);
+
+    }
+
 
     public boolean sendVibrationCommand(final LinkingDevice device, final boolean on) {
         if (device == null) {
@@ -235,7 +309,39 @@ public class LinkingDeviceManager {
         vibration[1] = pattern;
         notify.setVibration(vibration);
     }
-
+    private void setVibration(final SendOther other, final Integer patternId) {
+        if (patternId == null) {
+            return;
+        }
+        byte pattern = (byte) (patternId & 0xFF);
+        byte[] vibration = new byte[2];
+        vibration[0] = 0x10;
+        vibration[1] = pattern;
+        other.setVibration(vibration);
+    }
+    private void setBeep(final SendOther other, final Integer patternId) {
+        if (patternId == null) {
+            return;
+        }
+        byte pattern = (byte) (patternId & 0xFF);
+        byte[] beep = new byte[2];
+        beep[0] = 0x10;
+        beep[1] = pattern;
+        other.setBeep(beep);
+    }
+    private void setIllumination(final SendOther other, final Integer patternId, final Integer colorId) {
+        if (patternId == null || colorId == null) {
+            return;
+        }
+        byte pattern = (byte) (patternId & 0xFF);
+        byte color = (byte) (colorId & 0xFF);
+        byte[] illumination = new byte[4];
+        illumination[0] = 0x20;
+        illumination[1] = pattern;
+        illumination[2] = 0x30;
+        illumination[3] = color;
+        other.setIllumination(illumination);
+    }
     private void setIllumination(final SendNotification notify, final Integer patternId, final Integer colorId) {
         if (patternId == null || colorId == null) {
             return;
@@ -251,23 +357,43 @@ public class LinkingDeviceManager {
     }
 
     private Integer getVibrationOnSetting(final LinkingDevice device) {
-        return PreferenceUtil.getInstance(mContext).getVibrationOnSetting(device.getBdAddress());
+        Integer onValue =  PreferenceUtil.getInstance(mContext).getVibrationOnSetting(device.getBdAddress());
+        if (onValue == null) {
+            return ON_VALUE;
+        }
+        return onValue;
     }
 
     private Integer getVibrationOffSetting(final LinkingDevice device) {
-        return PreferenceUtil.getInstance(mContext).getVibrationOffSetting(device.getBdAddress());
+        Integer offValue = PreferenceUtil.getInstance(mContext).getVibrationOffSetting(device.getBdAddress());
+        if (offValue == null) {
+            return OFF_VALUE;
+        }
+        return offValue;
     }
 
     private Integer getLightColorSetting(final LinkingDevice device) {
-        return PreferenceUtil.getInstance(mContext).getLEDColorSetting(device.getBdAddress());
+        Integer color =  PreferenceUtil.getInstance(mContext).getLEDColorSetting(device.getBdAddress());
+        if (color == null) {
+            return DEFAULT_COLOR;
+        }
+        return color;
     }
 
     private Integer getLightPatternSetting(final LinkingDevice device) {
-        return PreferenceUtil.getInstance(mContext).getLEDPatternSetting(device.getBdAddress());
+        Integer onValue =  PreferenceUtil.getInstance(mContext).getLEDPatternSetting(device.getBdAddress());
+        if (onValue == null) {
+            return ON_VALUE;
+        }
+        return onValue;
     }
 
     private Integer getLightOffSetting(final LinkingDevice device) {
-        return PreferenceUtil.getInstance(mContext).getLEDOffSetting(device.getBdAddress());
+        Integer offValue =  PreferenceUtil.getInstance(mContext).getLEDOffSetting(device.getBdAddress());
+        if (offValue == null) {
+            return OFF_VALUE;
+        }
+        return offValue;
     }
 
     public enum Range {

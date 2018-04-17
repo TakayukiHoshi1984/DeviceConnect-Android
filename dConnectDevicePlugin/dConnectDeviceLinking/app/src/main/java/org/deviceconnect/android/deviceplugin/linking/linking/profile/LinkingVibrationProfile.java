@@ -52,7 +52,7 @@ public class LinkingVibrationProfile extends VibrationProfile {
             if (pattern != null) {
                 patternVibrate(manager, device, pattern);
             } else {
-                manager.sendVibrationCommand(device, true);
+                manager.sendVibrationOther(device, true);
             }
             setResult(response, DConnectMessage.RESULT_OK);
             return true;
@@ -72,7 +72,7 @@ public class LinkingVibrationProfile extends VibrationProfile {
                 return true;
             }
             LinkingDeviceManager manager = getLinkingDeviceManager();
-            manager.sendVibrationCommand(device, false);
+            manager.sendVibrationOther(device, false);
             setResult(response, DConnectMessage.RESULT_OK);
             return true;
         }
@@ -86,7 +86,7 @@ public class LinkingVibrationProfile extends VibrationProfile {
         mVibrationExecutor.setVibrationControllable(new VibrationExecutor.VibrationControllable() {
             @Override
             public void changeVibration(final boolean isOn, final VibrationExecutor.CompleteListener listener) {
-                manager.sendVibrationCommand(device, isOn);
+                manager.sendVibrationOther(device, isOn);
                 listener.onComplete();
             }
         });

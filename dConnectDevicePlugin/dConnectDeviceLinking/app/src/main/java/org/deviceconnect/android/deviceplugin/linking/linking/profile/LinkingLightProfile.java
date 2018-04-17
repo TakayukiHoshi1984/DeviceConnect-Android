@@ -87,7 +87,7 @@ public class LinkingLightProfile extends LightProfile {
             if (flashing != null) {
                 flashing(manager, device, flashing);
             } else {
-                manager.sendLEDCommand(device, true);
+                manager.sendLEDOther(device, true);
             }
             setResult(response, DConnectMessage.RESULT_OK);
             sendResponse(response);
@@ -110,7 +110,7 @@ public class LinkingLightProfile extends LightProfile {
                 return true;
             }
 
-            getLinkingDeviceManager().sendLEDCommand(device, false);
+            getLinkingDeviceManager().sendLEDOther(device, false);
 
             setResult(response, DConnectMessage.RESULT_OK);
             sendResponse(response);
@@ -126,7 +126,7 @@ public class LinkingLightProfile extends LightProfile {
         mFlashingExecutor.setLightControllable(new FlashingExecutor.LightControllable() {
             @Override
             public void changeLight(final boolean isOn, final FlashingExecutor.CompleteListener listener) {
-                manager.sendLEDCommand(device, isOn);
+                manager.sendLEDOther(device, isOn);
                 listener.onComplete();
             }
         });

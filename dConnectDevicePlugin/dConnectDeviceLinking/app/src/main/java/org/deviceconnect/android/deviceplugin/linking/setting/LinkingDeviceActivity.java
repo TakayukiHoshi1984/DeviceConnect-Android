@@ -852,7 +852,7 @@ public class LinkingDeviceActivity extends AppCompatActivity implements Confirma
         }
 
         LinkingDeviceManager mgr = getLinkingDeviceManager();
-        mgr.sendLEDCommand(mDevice, isOn);
+        mgr.sendLEDOther(mDevice, isOn);
     }
 
     private void onClickVibration(final boolean isOn) {
@@ -862,7 +862,7 @@ public class LinkingDeviceActivity extends AppCompatActivity implements Confirma
         }
 
         LinkingDeviceManager mgr = getLinkingDeviceManager();
-        mgr.sendVibrationCommand(mDevice, isOn);
+        mgr.sendVibrationOther(mDevice, isOn);
     }
 
     private void onClickSensor(final boolean isOn) {
