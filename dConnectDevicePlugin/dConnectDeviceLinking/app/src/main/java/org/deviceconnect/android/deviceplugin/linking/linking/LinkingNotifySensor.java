@@ -84,7 +84,7 @@ class LinkingNotifySensor {
             Log.i(TAG, "LinkingNotifySensor:startOrientation: " + device.getDisplayName());
         }
 
-        startSensor(device.getBdAddress(), getSupportSensorType(device), 200);
+        startSensor(device.getBdAddress(), getSupportSensorType(device), 0);
     }
 
     public synchronized void disableListenOrientation(final LinkingDevice device,
@@ -438,6 +438,21 @@ class LinkingNotifySensor {
                         }
                         break;
                 }
+            }
+
+            @Override
+            public void onPauseSensor(final String bd, final int type) {
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "onPauseSensor: type:[" + type + "] bd: " + bd);
+                }
+            }
+
+            @Override
+            public void onResumeSensor(final String bd, final int type) {
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "onResumeSensor: type:[" + type + "] bd: " + bd);
+                }
+
             }
 
             @Override

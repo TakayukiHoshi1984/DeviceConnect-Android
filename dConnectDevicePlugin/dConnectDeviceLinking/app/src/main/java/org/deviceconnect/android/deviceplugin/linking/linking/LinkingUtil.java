@@ -32,6 +32,8 @@ public final class LinkingUtil {
     public static final String ACTION_SENSOR_DATA = "com.nttdocomo.android.smartdeviceagent.action.SENSOR_DATA";
     public static final String ACTION_SENSOR_STOP = "com.nttdocomo.android.smartdeviceagent.action.STOP_SENSOR";
     public static final String ACTION_START_SENSOR = "com.nttdocomo.android.smartdeviceagent.action.START_SENSOR";
+    public static final String ACTION_SENSOR_PAUSE = "com.nttdocomo.android.smartdeviceagent.action.PAUSE_SENSOR";
+    public static final String ACTION_START_RESUME = "com.nttdocomo.android.smartdeviceagent.action.RESUME_SENSOR";
     public static final String ACTION_START_SENSOR_RESULT = "com.nttdocomo.android.smartdeviceagent.action.START_SENSOR_RESULT";
 
     public static final Uri URI_DEVICES = Uri.parse("content://com.nttdocomo.android.smartdeviceagent/devices");

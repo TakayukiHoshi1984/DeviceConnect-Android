@@ -27,6 +27,8 @@ public class NotifySensorData {
         IntentFilter filter = new IntentFilter();
         filter.addAction(LinkingUtil.ACTION_SENSOR_DATA);
         filter.addAction(LinkingUtil.ACTION_SENSOR_STOP);
+        filter.addAction(LinkingUtil.ACTION_SENSOR_PAUSE);
+        filter.addAction(LinkingUtil.ACTION_START_RESUME);
         filter.addAction(LinkingUtil.ACTION_START_SENSOR_RESULT);
         mReceiver = new ReceiveSensorData(requestObserver, observer);
         mContext.registerReceiver(mReceiver, filter);
