@@ -19,7 +19,6 @@ import android.text.Editable;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,12 +31,12 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.philips.lighting.hue.listener.PHLightListener;
-import com.philips.lighting.hue.sdk.PHAccessPoint;
-import com.philips.lighting.hue.sdk.exception.PHHueInvalidAPIException;
-import com.philips.lighting.model.PHBridgeResource;
-import com.philips.lighting.model.PHHueError;
-import com.philips.lighting.model.PHLight;
+import com.philips.lighting.hue.sdk.wrapper.connection.FoundDevicesCallback;
+import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryResult;
+import com.philips.lighting.hue.sdk.wrapper.domain.Bridge;
+import com.philips.lighting.hue.sdk.wrapper.domain.HueError;
+import com.philips.lighting.hue.sdk.wrapper.domain.device.Device;
+import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightPoint;
 
 import org.deviceconnect.android.deviceplugin.hue.db.HueManager;
 import org.deviceconnect.android.deviceplugin.hue.BuildConfig;
@@ -51,34 +50,28 @@ import java.util.Map;
  * Hue setting fragment (4).
  */
 public class HueFragment04 extends Fragment {
-    /** Hue access point. */
-    private PHAccessPoint mAccessPoint;
 
     /** List adapter. */
     private ListAdapter mListAdapter;
 
     /** Progress dialog. */
     private AlertDialog mProgressBar;
+    /** アクセスポイント. */
+    private BridgeDiscoveryResult mBridge;
 
     /**
      * newInstance.
      * 
-     * @param accessPoint Access point.
      * @return fragment Fragment instance.
      */
-    public static HueFragment04 newInstance(final PHAccessPoint accessPoint) {
+    public static HueFragment04 newInstance(final BridgeDiscoveryResult bridge) {
         HueFragment04 fragment = new HueFragment04();
-        fragment.setPHAccessPoint(accessPoint);
+        fragment.setBridge(bridge);
         return fragment;
     }
 
-    /**
-     * Set PHAccessPoint.
-     *
-     * @param accessPoint Access point.
-     */
-    private void setPHAccessPoint(final PHAccessPoint accessPoint) {
-        mAccessPoint = accessPoint;
+    private void setBridge(final BridgeDiscoveryResult bridge) {
+        mBridge = bridge;
     }
 
     @Override
@@ -86,11 +79,11 @@ public class HueFragment04 extends Fragment {
             final ViewGroup container, final Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.hue_fragment_04, container, false);
 
-        List<PHLight> lights = HueManager.INSTANCE.getCacheLights();
-        if (lights != null) {
+        List<LightPoint> lights = HueManager.INSTANCE.getCacheLights(mBridge.getIP());
+        if (lights.size() > 0) {
             mListAdapter = new ListAdapter(getActivity(), lights);
         } else {
-            mListAdapter = new ListAdapter(getActivity(), new ArrayList<PHLight>());
+            mListAdapter = new ListAdapter(getActivity(), new ArrayList<LightPoint>());
         }
 
         ListView listView = (ListView) view.findViewById(R.id.light_list_view);
@@ -119,7 +112,7 @@ public class HueFragment04 extends Fragment {
      * Update ListView.
      */
     private void updateListView() {
-        mListAdapter.setLights(HueManager.INSTANCE.getCacheLights());
+        mListAdapter.setLights(HueManager.INSTANCE.getCacheLights(mBridge.getIP()));
         mListAdapter.notifyDataSetChanged();
     }
 
@@ -197,13 +190,8 @@ public class HueFragment04 extends Fragment {
      */
     private void searchLightAutomatic() {
         openProgressBar();
-
-        try {
-            HueManager.INSTANCE.searchLightAutomatic(new PHLightListenerImpl());
-        } catch (PHHueInvalidAPIException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e("Hue", "error", e);
-            }
+        Bridge bridge = HueManager.INSTANCE.searchLightAutomatic(mBridge.getIP(), new FoundDeviceCallbackImpl());
+        if (bridge == null) {
             closeProgressBar();
         }
     }
@@ -215,13 +203,8 @@ public class HueFragment04 extends Fragment {
      */
     private void searchLightManually(final String serial) {
         openProgressBar();
-
-        try {
-            HueManager.INSTANCE.searchLightManually(serial, new PHLightListenerImpl());
-        } catch (PHHueInvalidAPIException e) {
-            if (BuildConfig.DEBUG) {
-                Log.e("Hue", "error", e);
-            }
+        Bridge bridge = HueManager.INSTANCE.searchLightManually(mBridge.getIP(), serial, new FoundDeviceCallbackImpl());
+        if (bridge == null) {
             closeProgressBar();
         }
     }
@@ -342,7 +325,7 @@ public class HueFragment04 extends Fragment {
         private LayoutInflater mInflater;
 
         /** Light list. */
-        private List<PHLight> mLights;
+        private List<LightPoint> mLights;
 
         /**
          * Constructor.
@@ -350,7 +333,7 @@ public class HueFragment04 extends Fragment {
          * @param context Context.
          * @param lights Light list.
          */
-        ListAdapter(final Context context, final List<PHLight> lights) {
+        ListAdapter(final Context context, final List<LightPoint> lights) {
             mInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             setLights(lights);
         }
@@ -378,51 +361,34 @@ public class HueFragment04 extends Fragment {
                 view = mInflater.inflate(R.layout.hue_access_point, parent, false);
             }
 
-            PHLight light = mLights.get(position);
+            LightPoint light = mLights.get(position);
 
             TextView titleView = (TextView) view.findViewById(R.id.title);
             titleView.setText(light.getName());
 
             return view;
         }
-
-        /**
-         * Set lights.
-         * 
-         * @param lights Light list.
-         */
-        private void setLights(final List<PHLight> lights) {
+        public void setLights(final List<LightPoint> lights) {
             mLights = lights;
         }
     }
 
-    /**
-     * Light Listener.
-     */
-    private class PHLightListenerImpl implements PHLightListener {
+
+    private class FoundDeviceCallbackImpl extends FoundDevicesCallback {
         /** Bridge resource list. */
-        private final List<PHBridgeResource> mLightHeaders = new ArrayList<PHBridgeResource>();
+        private final List<Device> mLightHeaders = new ArrayList<Device>();
+
 
         @Override
-        public void onError(final int code, final String message) {
-            closeProgressBar();
-
-            if (code == PHHueError.AUTHENTICATION_FAILED) {
-                showAuthenticationFailed();
-            } else {
-                showToast(message);
+        public void onDevicesFound(Bridge bridge, List<Device> list, List<HueError> errors) {
+            if (errors != null) {
+                closeProgressBar();
+                showToast(errors.get(0).toString());
+                return;
             }
-        }
-
-        @Override
-        public void onSuccess() {
-        }
-
-        @Override
-        public void onReceivingLights(final List<PHBridgeResource> lightHeaders) {
-            for (PHBridgeResource header : lightHeaders) {
+            for (Device header : list) {
                 boolean duplicated = false;
-                for (PHBridgeResource cache : mLightHeaders) {
+                for (Device cache : mLightHeaders) {
                     if (cache.getIdentifier().equals(header.getIdentifier())) {
                         duplicated = true;
                         break;
@@ -435,7 +401,7 @@ public class HueFragment04 extends Fragment {
         }
 
         @Override
-        public void onSearchComplete() {
+        public void onDeviceSearchFinished(Bridge bridge, List<HueError> list) {
             if (mLightHeaders.size() == 0) {
                 showToast(getString(R.string.frag04_not_found_new_light));
             } else {
@@ -454,14 +420,6 @@ public class HueFragment04 extends Fragment {
                     }
                 }, 400);
             }
-        }
-
-        @Override
-        public void onStateUpdate(final Map<String, String> list, final  List<PHHueError> error) {
-        }
-
-        @Override
-        public void onReceivingLightDetails(final PHLight light) {
         }
     }
 }

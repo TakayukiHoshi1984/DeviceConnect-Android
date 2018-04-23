@@ -17,7 +17,7 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 
-import com.philips.lighting.hue.sdk.PHAccessPoint;
+import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryResult;
 
 import org.deviceconnect.android.deviceplugin.hue.R;
 
@@ -27,11 +27,11 @@ import org.deviceconnect.android.deviceplugin.hue.R;
 public class HueFragment03 extends Fragment implements OnClickListener {
 
     /** 接続したアクセスポイント. */
-    private PHAccessPoint mAccessPoint;
+    private BridgeDiscoveryResult mBridge;
 
-    public static HueFragment03 newInstance(final PHAccessPoint accessPoint) {
+    public static HueFragment03 newInstance(final BridgeDiscoveryResult bridge) {
         HueFragment03 fragment = new HueFragment03();
-        fragment.setPHAccessPoint(accessPoint);
+        fragment.setBridge(bridge);
         return fragment;
     }
 
@@ -58,8 +58,8 @@ public class HueFragment03 extends Fragment implements OnClickListener {
         super.onDestroy();
     }
 
-    private void setPHAccessPoint(final PHAccessPoint accessPoint) {
-        mAccessPoint = accessPoint;
+    private void setBridge(final BridgeDiscoveryResult bridge) {
+        mBridge = bridge;
     }
 
     private void moveNextFragment() {
@@ -67,7 +67,7 @@ public class HueFragment03 extends Fragment implements OnClickListener {
         FragmentTransaction transaction = manager.beginTransaction();
         transaction.setCustomAnimations(R.anim.fragment_slide_right_enter, R.anim.fragment_slide_left_exit,
                 R.anim.fragment_slide_left_enter, R.anim.fragment_slide_right_exit);
-        transaction.replace(R.id.fragment_frame, HueFragment04.newInstance(mAccessPoint));
+        transaction.replace(R.id.fragment_frame, HueFragment04.newInstance(mBridge));
         transaction.commit();
     }
 }

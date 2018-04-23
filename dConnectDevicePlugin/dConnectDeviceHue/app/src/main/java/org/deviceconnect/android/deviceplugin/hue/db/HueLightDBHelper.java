@@ -13,8 +13,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
-import com.philips.lighting.hue.sdk.PHAccessPoint;
-import com.philips.lighting.model.PHLight;
+
+import org.deviceconnect.android.deviceplugin.hue.service.HueLightService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,14 +26,14 @@ import java.util.List;
 public class HueLightDBHelper {
 
     /**
-     * Define the name of the database.
+     * データベース名.
      */
     private static final String DB_NAME = "hue_light.db";
 
     /**
-     * Define the version of the database.
+     * データベースのバージョン.
      */
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
 
     /**
      * ライトの情報を格納するテーブル名.
@@ -55,14 +55,9 @@ public class HueLightDBHelper {
      */
     private static final String COL_LIGHT_NAME = "light_name";
     /**
-     * バージョンNOを格納するカラム名.
+     * ライトのオンライン・オフライン情報を持つフラグ.
      */
-    private static final String COL_VERSION_NUMBER = "version_number";
-
-    /**
-     * モデルNOを格納するカラム名.
-     */
-    private static final String COL_MODEL_NUMBER = "model_number";
+    private static final String COL_REGISTER_FLAG = "register_flag";
 
 
     /**
@@ -70,23 +65,28 @@ public class HueLightDBHelper {
      */
     private DBHelper mDBHelper;
 
+    /**
+     * コンストラクタ.
+     * @param context Context
+     */
     HueLightDBHelper(final Context context) {
         mDBHelper = new DBHelper(context);
     }
 
     /**
      * ライトを追加します.
-     * @param bridgeIp 追加するライト
      * @param light 追加するライト
      * @return 追加した行番号
      */
-    synchronized long addLight(final String bridgeIp, final PHLight light) {
+    synchronized long addLight(final HueLightService light) {
+        String[] ids = light.getId().split(":");
+        String ip = ids[0];
+        String lightId = ids[1];
         ContentValues values = new ContentValues();
-        values.put(COL_LIGHT_ID, light.getIdentifier());
+        values.put(COL_LIGHT_ID, lightId);
         values.put(COL_LIGHT_NAME, light.getName());
-        values.put(COL_VERSION_NUMBER, light.getVersionNumber());
-        values.put(COL_MODEL_NUMBER, light.getModelNumber());
-        values.put(COL_BRIDGE_IP, bridgeIp);
+        values.put(COL_BRIDGE_IP, ip);
+        values.put(COL_REGISTER_FLAG, light.isOnline()? 1 : 0);
 
         SQLiteDatabase db = mDBHelper.getWritableDatabase();
         try {
@@ -95,7 +95,6 @@ public class HueLightDBHelper {
             db.close();
         }
     }
-
     /**
      * 指定されたLightIDと同じライトを削除します.
      * @param ipAddress 削除するライトのIPアドレス
@@ -114,43 +113,27 @@ public class HueLightDBHelper {
             db.close();
         }
     }
-    /**
-     * 指定されたLightIdと同じライトを削除します.
-     * @param lightId 削除するライトのLightId
-     * @return 削除した個数
-     */
-    synchronized int removeLightByLightId(final String lightId) {
-        String whereClause = COL_LIGHT_ID + "=?";
-        String[] whereArgs = {
-                lightId
-        };
 
-        SQLiteDatabase db = mDBHelper.getWritableDatabase();
-        try {
-            return db.delete(TBL_NAME, whereClause, whereArgs);
-        } finally {
-            db.close();
-        }
-    }
+
     /**
      * ライト一覧を取得します.
      * @param ip 取得するブリッジのIP
      * @return ライト
      */
-    synchronized List<PHLight> getLightsForIp(final String ip) {
+    synchronized List<HueLightService> getLightsForIp(final String ip) {
         String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_BRIDGE_IP + "=?";
         String[] selectionArgs = {ip};
 
         SQLiteDatabase db = mDBHelper.getReadableDatabase();
         Cursor cursor = db.rawQuery(sql, selectionArgs);
         try {
-            List<PHLight> lights = new ArrayList<>();
+            List<HueLightService> lights = new ArrayList<>();
             boolean next = cursor.moveToFirst();
             while (next) {
-                PHLight light = new PHLight(cursor.getString(cursor.getColumnIndex(COL_LIGHT_NAME)),
+                HueLightService light = new HueLightService(cursor.getString(cursor.getColumnIndex(COL_BRIDGE_IP)),
                         cursor.getString(cursor.getColumnIndex(COL_LIGHT_ID)),
-                        cursor.getString(cursor.getColumnIndex(COL_VERSION_NUMBER)),
-                        cursor.getString(cursor.getColumnIndex(COL_MODEL_NUMBER)));
+                        cursor.getString(cursor.getColumnIndex(COL_LIGHT_NAME)));
+                light.setOnline(cursor.getInt(cursor.getColumnIndex(COL_REGISTER_FLAG)) == 1);
                 lights.add(light);
                 next = cursor.moveToNext();
             }
@@ -165,17 +148,19 @@ public class HueLightDBHelper {
      * @param light 更新するライト情報
      * @return 更新したライトの個数
      */
-    synchronized long updateLight(final String bridgeIp, final PHLight light) {
+    synchronized long updateLight(final HueLightService light) {
+        String[] ids = light.getId().split(":");
+        String ip = ids[0];
+        String lightId = ids[1];
         ContentValues values = new ContentValues();
-        values.put(COL_LIGHT_ID, light.getIdentifier());
+        values.put(COL_LIGHT_ID, lightId);
         values.put(COL_LIGHT_NAME, light.getName());
-        values.put(COL_VERSION_NUMBER, light.getVersionNumber());
-        values.put(COL_MODEL_NUMBER, light.getModelNumber());
-        values.put(COL_BRIDGE_IP, bridgeIp);
+        values.put(COL_BRIDGE_IP, ip);
+        values.put(COL_REGISTER_FLAG, light.isOnline()? 1 : 0);
 
-        String whereClause = COL_LIGHT_ID + "=?";
+        String whereClause =  COL_BRIDGE_IP + "=? AND " + COL_LIGHT_ID + "=?";
         String[] whereArgs = {
-                light.getIdentifier()
+                ip, lightId
         };
 
         SQLiteDatabase db = mDBHelper.getWritableDatabase();
@@ -186,20 +171,26 @@ public class HueLightDBHelper {
         }
     }
 
-    synchronized PHLight getLightByLightId(final String lightId) {
-        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_LIGHT_ID + "=?";
+    /**
+     * 指定したブリッジに属するライトの情報を返す.
+     * @param bridgeIp ブリッジのIP
+     * @param lightId ライトID
+     * @return ライトの情報
+     */
+    synchronized HueLightService getLight(final String bridgeIp, final String lightId) {
+        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_BRIDGE_IP + "=? AND " + COL_LIGHT_ID + "=?";
         String[] whereArgs = {
-                lightId
+                bridgeIp, lightId
         };
 
         SQLiteDatabase db = mDBHelper.getReadableDatabase();
         Cursor cursor = db.rawQuery(sql, whereArgs);
         try {
             if (cursor.moveToFirst()) {
-                PHLight light = new PHLight(cursor.getString(cursor.getColumnIndex(COL_LIGHT_NAME)),
+                HueLightService light = new HueLightService(cursor.getString(cursor.getColumnIndex(COL_BRIDGE_IP)),
                         cursor.getString(cursor.getColumnIndex(COL_LIGHT_ID)),
-                        cursor.getString(cursor.getColumnIndex(COL_VERSION_NUMBER)),
-                        cursor.getString(cursor.getColumnIndex(COL_MODEL_NUMBER)));
+                        cursor.getString(cursor.getColumnIndex(COL_LIGHT_NAME)));
+                light.setOnline(cursor.getInt(cursor.getColumnIndex(COL_REGISTER_FLAG)) == 1);
                 return light;
             } else {
                 return null;
@@ -250,9 +241,8 @@ public class HueLightDBHelper {
                     + BaseColumns._ID + " INTEGER PRIMARY KEY, "
                     + COL_LIGHT_ID + " TEXT NOT NULL, "
                     + COL_LIGHT_NAME + " TEXT NOT NULL, "
-                    + COL_VERSION_NUMBER + " TEXT NOT NULL, "
-                    + COL_MODEL_NUMBER + " TEXT NOT NULL, "
-                    + COL_BRIDGE_IP + " TEXT NOT NULL "
+                    + COL_BRIDGE_IP + " TEXT NOT NULL, "
+                    + COL_REGISTER_FLAG + " INTEGER"
                     + ");";
             db.execSQL(sql);
         }

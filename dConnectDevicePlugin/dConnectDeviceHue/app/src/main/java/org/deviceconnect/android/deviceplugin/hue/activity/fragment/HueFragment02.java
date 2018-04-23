@@ -10,6 +10,7 @@ package org.deviceconnect.android.deviceplugin.hue.activity.fragment;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -23,15 +24,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.philips.lighting.hue.sdk.PHAccessPoint;
-import com.philips.lighting.hue.sdk.PHMessageType;
-import com.philips.lighting.hue.sdk.PHSDKListener;
-import com.philips.lighting.model.PHBridge;
-import com.philips.lighting.model.PHHueError;
-import com.philips.lighting.model.PHHueParsingError;
+import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryResult;
+import com.philips.lighting.hue.sdk.wrapper.domain.HueError;
+import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightPoint;
 
+import org.deviceconnect.android.deviceplugin.hue.HueConstants;
 import org.deviceconnect.android.deviceplugin.hue.db.HueManager;
 import org.deviceconnect.android.deviceplugin.hue.R;
+import org.deviceconnect.android.deviceplugin.hue.service.HueLightService;
+import org.deviceconnect.android.deviceplugin.hue.service.HueService;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -46,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 public class HueFragment02 extends Fragment implements OnClickListener {
 
     /** アクセスポイント. */
-    private PHAccessPoint mAccessPoint;
+    private BridgeDiscoveryResult mBridge;
 
     /** ステータスを表示するTextView. */
     private TextView mTextViewStatus;
@@ -75,62 +76,14 @@ public class HueFragment02 extends Fragment implements OnClickListener {
 
 
     /**
-     * hueブリッジのNotificationを受け取るためのリスナー.
-     */
-    private PHSDKListener mListener = new PHSDKListener() {
-
-        @Override
-        public void onAuthenticationRequired(final PHAccessPoint accessPoint) {
-            mHueStatus = HueManager.HueState.INIT;
-            HueManager.INSTANCE.startPushlinkAuthentication(accessPoint);
-            authenticateHueBridge();
-        }
-
-        @Override
-        public void onAccessPointsFound(final List<PHAccessPoint> accessPoint) {
-        }
-
-        @Override
-        public void onCacheUpdated(final List<Integer> list, final PHBridge bridge) {
-        }
-
-        @Override
-        public void onBridgeConnected(final PHBridge phBridge, final String s) {
-            mHueStatus = HueManager.HueState.AUTHENTICATE_SUCCESS;
-            successAuthorization();
-        }
-
-        @Override
-        public void onConnectionLost(final PHAccessPoint accessPoint) {
-        }
-
-        @Override
-        public void onConnectionResumed(final PHBridge bridge) {
-        }
-
-        @Override
-        public void onError(final int code, final String message) {
-            if (code == PHMessageType.PUSHLINK_AUTHENTICATION_FAILED) {
-                failAuthorization();
-            } else if (code == PHHueError.NO_CONNECTION || code == PHHueError.BRIDGE_NOT_RESPONDING) {
-                showNotConnection();
-            }
-        }
-
-        @Override
-        public void onParsingErrors(final List<PHHueParsingError> errors) {
-        }
-    };
-
-    /**
      * HueFragment02を返す.
      *
-     * @param accessPoint 選択されたアクセスポイント
+     * @param bridge 選択されたアクセスポイント
      * @return HueFragment02
      */
-    public static HueFragment02 newInstance(final PHAccessPoint accessPoint) {
+    public static HueFragment02 newInstance(final BridgeDiscoveryResult bridge) {
         HueFragment02 fragment = new HueFragment02();
-        fragment.setPHAccessPoint(accessPoint);
+        fragment.setBridge(bridge);
         return fragment;
     }
 
@@ -141,11 +94,11 @@ public class HueFragment02 extends Fragment implements OnClickListener {
         View rootView = inflater.inflate(R.layout.hue_fragment_02, container, false);
         // Macアドレスを画面に反映.
         TextView macTextView = (TextView) rootView.findViewById(R.id.text_mac);
-        macTextView.setText(mAccessPoint.getMacAddress());
+        macTextView.setText(mBridge.getUniqueID());
 
         // IPアドレスを画面に反映.
         TextView ipTextView = (TextView) rootView.findViewById(R.id.text_ip);
-        ipTextView.setText(mAccessPoint.getIpAddress());
+        ipTextView.setText(mBridge.getIP());
 
         // 現在の状態を表示.
         mTextViewStatus = (TextView) rootView.findViewById(R.id.textStatus);
@@ -170,16 +123,12 @@ public class HueFragment02 extends Fragment implements OnClickListener {
 
         // ステータスを初期状態(INIT)に設定.
         mHueStatus = HueManager.HueState.INIT;
-
-        HueManager.INSTANCE.addSDKListener(mListener);
         // Hueブリッジへの認証開始
         startAuthenticate();
     }
 
     @Override
     public void onPause() {
-        HueManager.INSTANCE.stopPushlinkAuthentication();
-        HueManager.INSTANCE.removeSDKListener(mListener);
         stopAnimation();
 
         super.onPause();
@@ -192,7 +141,7 @@ public class HueFragment02 extends Fragment implements OnClickListener {
             FragmentTransaction transaction = manager.beginTransaction();
             transaction.setCustomAnimations(R.anim.fragment_slide_right_enter, R.anim.fragment_slide_left_exit,
                     R.anim.fragment_slide_left_enter, R.anim.fragment_slide_right_exit);
-            transaction.replace(R.id.fragment_frame, HueFragment03.newInstance(mAccessPoint));
+            transaction.replace(R.id.fragment_frame, HueFragment03.newInstance(mBridge));
             transaction.commit();
         } else {
             mButton.setVisibility(View.INVISIBLE);
@@ -200,10 +149,9 @@ public class HueFragment02 extends Fragment implements OnClickListener {
         }
     }
 
-    private void setPHAccessPoint(final PHAccessPoint accessPoint) {
-        mAccessPoint = accessPoint;
+    private void setBridge(final BridgeDiscoveryResult result) {
+        mBridge = result;
     }
-
     /**
      * Hueブリッジのボタン押下アニメーションを開始します.
      */
@@ -313,16 +261,39 @@ public class HueFragment02 extends Fragment implements OnClickListener {
      * </p>
      */
     private void startAuthenticate() {
-        HueManager.INSTANCE.startAuthenticate(mAccessPoint, new HueManager.HueConnectionListener() {
+        HueManager.INSTANCE.connectToBridge(mBridge.getIP(), new HueManager.HueBridgeConnectionListener() {
             @Override
-            public void onConnected() {
-                mHueStatus = HueManager.HueState.AUTHENTICATE_SUCCESS;
-                successAuthorization();
+            public void onPushlinkingBridge(final String ip) {
+                mHueStatus = HueManager.HueState.INIT;
+                authenticateHueBridge();
             }
 
             @Override
-            public void onNotConnected() {
-                authenticateHueBridge();
+            public void onConnectedBridge(final String ip) {
+                List<LightPoint> lights = HueManager.INSTANCE.getCacheLights(ip);
+                for (LightPoint light : lights) {
+                    HueLightService service = new HueLightService(ip, light.getIdentifier(), light.getName());
+                    service.setOnline(true);
+                    HueManager.INSTANCE.saveLightForDB(service);
+                }
+                HueService service = new HueService(mBridge.getIP(), mBridge.getUniqueID());
+                service.setOnline(true);
+                HueManager.INSTANCE.saveBridgeForDB(service);
+
+                mHueStatus = HueManager.HueState.AUTHENTICATE_SUCCESS;
+                successAuthorization();
+                Intent restartBridge = new Intent(HueConstants.ACTION_CONNECTED_BRIDGE);
+                getContext().sendBroadcast(restartBridge);
+            }
+
+            @Override
+            public void onDisconnectedBridge(final String ip) {
+            }
+
+            @Override
+            public void onError(final String ip, List<HueError> list) {
+                failAuthorization();
+                showNotConnection();
             }
         });
     }

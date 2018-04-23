@@ -22,7 +22,12 @@ public interface HueConstants {
      */
     String USERNAME = "DConnectDeviceHueAndroid";
     /**
-     * デバイスがオフラインの時のユーザ名.
+     * サービス確認画面でサービスが削除されたことを知らせるIntent名.
      */
-    String OFFLINE_USERNAME = "=====OFFLINE====";
+    String ACTION_REMOVE_BRIDGE = "org.deviceconnect.android.deviceplugin.hue.ACTION_REMOVE_BRIDGE";
+    /**
+     * ブリッジと接続処理が行われたことを通知するIntent名.
+     */
+    String ACTION_CONNECTED_BRIDGE = "org.deviceconnect.android.deviceplugin.hue.ACTION_CONNECTED_BRIDGE";
+
 }

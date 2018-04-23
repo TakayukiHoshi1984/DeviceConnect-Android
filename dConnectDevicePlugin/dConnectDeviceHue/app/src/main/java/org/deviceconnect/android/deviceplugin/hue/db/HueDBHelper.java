@@ -13,7 +13,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
-import com.philips.lighting.hue.sdk.PHAccessPoint;
+
+import org.deviceconnect.android.deviceplugin.hue.service.HueService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +26,14 @@ import java.util.List;
 public class HueDBHelper {
 
     /**
-     * Define the name of the database.
+     * データベース名.
      */
     private static final String DB_NAME = "hue_bridge.db";
 
     /**
-     * Define the version of the database.
+     * データベースのバージョン.
      */
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
 
     /**
      * アクセスポイントの情報を格納するテーブル名.
@@ -53,6 +54,11 @@ public class HueDBHelper {
      * Macアドレスを格納するカラム.
      */
     private static final String COL_MAC_ADDRESS = "mac_address";
+    /**
+     * ブリッジがオンラインであるかオフラインであるかを表すフラグ.
+     */
+    private static final String COL_REGISTER_FLAG = "register_flag";
+
 
     /**
      * DB管理ヘルパー.
@@ -65,14 +71,15 @@ public class HueDBHelper {
 
     /**
      * アクセスポイントを追加します.
-     * @param accessPoint 追加するアクセスポイント
+     * @param service 追加するアクセスポイント
      * @return 追加した行番号
      */
-    synchronized long addAccessPoint(final PHAccessPoint accessPoint) {
+    synchronized long addHueBridgeService(final HueService service) {
         ContentValues values = new ContentValues();
-        values.put(COL_USER_NAME, accessPoint.getUsername());
-        values.put(COL_IP_ADDRESS, accessPoint.getIpAddress());
-        values.put(COL_MAC_ADDRESS, accessPoint.getMacAddress());
+        values.put(COL_USER_NAME, service.getName());
+        values.put(COL_IP_ADDRESS, service.getId());
+        values.put(COL_MAC_ADDRESS, service.getName());
+        values.put(COL_REGISTER_FLAG, service.isOnline()? 1 : 0);
 
         SQLiteDatabase db = mDBHelper.getWritableDatabase();
         try {
@@ -87,7 +94,7 @@ public class HueDBHelper {
      * @param ipAddress 削除するアクセスポイントのIPアドレス
      * @return 削除した個数
      */
-    synchronized int removeAccessPointByIpAddress(final String ipAddress) {
+    synchronized int removeBridgeByIpAddress(final String ipAddress) {
         String whereClause = COL_IP_ADDRESS + "=?";
         String[] whereArgs = {
                 ipAddress
@@ -100,47 +107,47 @@ public class HueDBHelper {
             db.close();
         }
     }
-
     /**
-     * アクセスポイント一覧を取得します.
-     * @return アクセスポイント
+     * ブリッジ一覧を取得します.
+     * @return ブリッジ
      */
-    synchronized List<PHAccessPoint> getAccessPoints() {
+    synchronized List<HueService> getBridgeServices() {
         String sql = "SELECT * FROM " + TBL_NAME;
         String[] selectionArgs = {};
 
         SQLiteDatabase db = mDBHelper.getReadableDatabase();
         Cursor cursor = db.rawQuery(sql, selectionArgs);
         try {
-            List<PHAccessPoint> accessPoints = new ArrayList<PHAccessPoint>();
+            List<HueService> results = new ArrayList<HueService>();
             boolean next = cursor.moveToFirst();
             while (next) {
-                PHAccessPoint accessPoint = new PHAccessPoint();
-                accessPoint.setUsername(cursor.getString(cursor.getColumnIndex(COL_USER_NAME)));
-                accessPoint.setIpAddress(cursor.getString(cursor.getColumnIndex(COL_IP_ADDRESS)));
-                accessPoint.setMacAddress(cursor.getString(cursor.getColumnIndex(COL_MAC_ADDRESS)));
-                accessPoints.add(accessPoint);
+                HueService result = new HueService(
+                        cursor.getString(cursor.getColumnIndex(COL_IP_ADDRESS)),
+                        cursor.getString(cursor.getColumnIndex(COL_MAC_ADDRESS)));
+                result.setOnline(cursor.getInt(cursor.getColumnIndex(COL_REGISTER_FLAG)) == 1);
+                results.add(result);
                 next = cursor.moveToNext();
             }
-            return accessPoints;
+            return results;
         } finally {
             cursor.close();
         }
     }
-
     /**
      * アクセスポイント情報を更新します.
-     * @param accessPoint 更新するアクセスポイント情報
+     * @param service 更新するアクセスポイント情報
      * @return 更新したアクセスポイントの個数
      */
-    synchronized long updateAccessPoint(final PHAccessPoint accessPoint) {
+    synchronized long updateBridge(final HueService service) {
         ContentValues values = new ContentValues();
-        values.put(COL_USER_NAME, accessPoint.getUsername());
-        values.put(COL_IP_ADDRESS, accessPoint.getIpAddress());
+        values.put(COL_USER_NAME, service.getName());
+        values.put(COL_IP_ADDRESS, service.getId());
+        values.put(COL_MAC_ADDRESS, service.getName());
+        values.put(COL_REGISTER_FLAG, service.isOnline()? 1 : 0);
 
-        String whereClause = COL_MAC_ADDRESS + "=?";
+        String whereClause = COL_IP_ADDRESS + "=?";
         String[] whereArgs = {
-                accessPoint.getMacAddress()
+                service.getId()
         };
 
         SQLiteDatabase db = mDBHelper.getWritableDatabase();
@@ -151,21 +158,26 @@ public class HueDBHelper {
         }
     }
 
-    synchronized PHAccessPoint getAccessPointByMacAddress(final String macAddress) {
-        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_MAC_ADDRESS + "=?";
+    /**
+     * 指定したIPのブリッジの情報を返す.
+     * @param ip ブリッジのIPアドレス
+     * @return ブリッジの情報
+     */
+    synchronized HueService getBridgeServiceByIpAddress(final String ip) {
+        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_IP_ADDRESS + "=?";
         String[] whereArgs = {
-                macAddress
+                ip
         };
 
         SQLiteDatabase db = mDBHelper.getReadableDatabase();
         Cursor cursor = db.rawQuery(sql, whereArgs);
         try {
             if (cursor.moveToFirst()) {
-                PHAccessPoint accessPoint = new PHAccessPoint();
-                accessPoint.setUsername(cursor.getString(cursor.getColumnIndex(COL_USER_NAME)));
-                accessPoint.setIpAddress(cursor.getString(cursor.getColumnIndex(COL_IP_ADDRESS)));
-                accessPoint.setMacAddress(cursor.getString(cursor.getColumnIndex(COL_MAC_ADDRESS)));
-                return accessPoint;
+                HueService result = new HueService(
+                        cursor.getString(cursor.getColumnIndex(COL_IP_ADDRESS)),
+                        cursor.getString(cursor.getColumnIndex(COL_MAC_ADDRESS)));
+                result.setOnline(cursor.getInt(cursor.getColumnIndex(COL_REGISTER_FLAG)) == 1);
+                return result;
             } else {
                 return null;
             }
@@ -173,16 +185,15 @@ public class HueDBHelper {
             cursor.close();
         }
     }
-
     /**
-     * 指定されたアクセスポイントが格納されているかを確認します.
-     * @param accessPoint 存在確認をするアクセスポイント
+     * 指定されたIPのブリッジが格納されているかを確認します.
+     * @param ip 存在確認をするブリッジ
      * @return 存在する場合にはtrue、それ以外はfalse
      */
-    synchronized boolean hasAccessPoint(final PHAccessPoint accessPoint) {
-        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_MAC_ADDRESS + "=?";
+    synchronized boolean hasBridgeService(final String ip) {
+        String sql = "SELECT * FROM " + TBL_NAME + " WHERE " + COL_IP_ADDRESS + "=?";
         String[] whereArgs = {
-                accessPoint.getMacAddress()
+                ip
         };
 
         SQLiteDatabase db = mDBHelper.getReadableDatabase();
@@ -215,7 +226,8 @@ public class HueDBHelper {
                     + BaseColumns._ID + " INTEGER PRIMARY KEY, "
                     + COL_USER_NAME + " TEXT NOT NULL, "
                     + COL_IP_ADDRESS + " TEXT NOT NULL, "
-                    + COL_MAC_ADDRESS + " TEXT NOT NULL "
+                    + COL_MAC_ADDRESS + " TEXT NOT NULL, "
+                    + COL_REGISTER_FLAG + " INTEGER"
                     + ");";
             db.execSQL(sql);
         }

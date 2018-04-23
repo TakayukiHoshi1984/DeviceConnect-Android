@@ -8,6 +8,9 @@ package org.deviceconnect.android.deviceplugin.hue;
 
 import android.app.Application;
 
+import com.philips.lighting.hue.sdk.wrapper.HueLog;
+import com.philips.lighting.hue.sdk.wrapper.Persistence;
+
 import org.deviceconnect.android.deviceplugin.hue.BuildConfig;
 import org.deviceconnect.android.logger.AndroidHandler;
 
@@ -24,7 +27,6 @@ public class HueDeviceApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-
         Logger logger = Logger.getLogger("hue.dplugin");
         if (BuildConfig.DEBUG) {
             AndroidHandler handler = new AndroidHandler(logger.getName());

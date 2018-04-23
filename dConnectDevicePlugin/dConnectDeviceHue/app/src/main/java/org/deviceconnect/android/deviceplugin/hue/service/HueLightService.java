@@ -6,7 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.hue.service;
 
-import com.philips.lighting.model.PHLight;
+import com.philips.lighting.hue.sdk.wrapper.domain.device.light.LightPoint;
 
 import org.deviceconnect.android.deviceplugin.hue.profile.HueLightProfile;
 import org.deviceconnect.android.service.DConnectService;
@@ -17,13 +17,25 @@ import org.deviceconnect.android.service.DConnectService;
  * @author NTT DOCOMO, INC.
  */
 public class HueLightService extends DConnectService {
-    public HueLightService(final String ip, final PHLight light) {
+    /**
+     * コンストラクタ.
+     * @param ip ブリッジのIP
+     * @param light ブリッジに付随するLightオブジェクト
+     */
+    public HueLightService(final String ip, final LightPoint light) {
         //LightのServiceIdは、IPアドレスとライトIDを「:」で区切る
         super(ip + ":" + light.getIdentifier());
         setName(light.getName());
         setNetworkType(NetworkType.WIFI);
         addProfile(new HueLightProfile());
     }
+
+    /**
+     * コンストラクタ.
+     * @param ip ブリッジのIP
+     * @param id ライトID
+     * @param name ライト名
+     */
     public HueLightService(final String ip, final String id, final String name) {
         //LightのServiceIdは、IPアドレスとライトIDを「:」で区切る
         super(ip + ":" + id);

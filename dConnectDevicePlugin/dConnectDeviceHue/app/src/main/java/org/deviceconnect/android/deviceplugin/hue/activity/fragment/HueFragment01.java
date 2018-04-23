@@ -28,15 +28,13 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.philips.lighting.hue.sdk.PHAccessPoint;
-import com.philips.lighting.hue.sdk.PHMessageType;
-import com.philips.lighting.hue.sdk.PHSDKListener;
-import com.philips.lighting.model.PHBridge;
-import com.philips.lighting.model.PHHueParsingError;
+import com.philips.lighting.hue.sdk.wrapper.discovery.BridgeDiscoveryResult;
 
 import org.deviceconnect.android.deviceplugin.hue.db.HueManager;
 import org.deviceconnect.android.deviceplugin.hue.R;
+import org.deviceconnect.android.deviceplugin.hue.service.HueService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -52,61 +50,6 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     /** 再検索ボタン. */
     private Button mSearchButton;
-
-    /**
-     * hueブリッジのNotificationを受け取るためのリスナー.
-     */
-    private PHSDKListener mListener = new PHSDKListener() {
-
-        @Override
-        public void onAuthenticationRequired(final PHAccessPoint accessPoint) {
-        }
-
-        @Override
-        public void onAccessPointsFound(final List<PHAccessPoint> accessPoint) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mAdapter.updateData(accessPoint);
-                    mProgressView.setVisibility(View.GONE);
-                    mSearchButton.setVisibility(View.VISIBLE);
-                }
-            });
-        }
-
-        @Override
-        public void onCacheUpdated(final List<Integer> list, final PHBridge bridge) {
-        }
-
-        @Override
-        public void onBridgeConnected(final PHBridge phBridge, final String userName) {
-        }
-
-        @Override
-        public void onConnectionLost(final PHAccessPoint point) {
-        }
-
-        @Override
-        public void onConnectionResumed(final PHBridge bridge) {
-        }
-
-        @Override
-        public void onError(final int code, final String message) {
-            if (code == PHMessageType.BRIDGE_NOT_FOUND) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mProgressView.setVisibility(View.GONE);
-                        mSearchButton.setVisibility(View.VISIBLE);
-                    }
-                });
-            }
-        }
-
-        @Override
-        public void onParsingErrors(final List<PHHueParsingError> error) {
-        }
-    };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -128,8 +71,7 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
             mProgressView = rootView.findViewById(R.id.progress_zone);
             mProgressView.setVisibility(View.VISIBLE);
 
-            mAdapter = new CustomAdapter(getActivity().getBaseContext(),
-                    HueManager.INSTANCE.getAccessPoint());
+            mAdapter = new CustomAdapter(getActivity().getBaseContext());
 
             ListView listView = (ListView) rootView.findViewById(R.id.bridge_list2);
             listView.setOnItemClickListener(this);
@@ -144,9 +86,6 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
     @Override
     public void onResume() {
         super.onResume();
-
-        HueManager.INSTANCE.addSDKListener(mListener);
-
         if (isWifiEnabled()) {
             // ローカルBridgeのUPNP Searchを開始する.
             doBridgeSearch();
@@ -159,8 +98,7 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     @Override
     public void onPause() {
-        // リスナーを解除
-        HueManager.INSTANCE.removeSDKListener(mListener);
+        HueManager.INSTANCE.stopBridgeDiscovery();
         super.onPause();
     }
 
@@ -176,7 +114,7 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     @Override
     public void onItemClick(final AdapterView<?> parent, final View view, final int position, final long id) {
-        moveNextFragment((PHAccessPoint) mAdapter.getItem(position));
+        moveNextFragment((BridgeDiscoveryResult) mAdapter.getItem(position));
     }
 
     private void runOnUiThread(final Runnable run) {
@@ -190,14 +128,24 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
      * ローカルBridgeのUPNP Searchを開始する.
      */
     private void doBridgeSearch() {
-        mAdapter.updateData(HueManager.INSTANCE.getAccessPoint());
-        HueManager.INSTANCE.searchHueBridge();
-
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mProgressView.setVisibility(View.VISIBLE);
                 mSearchButton.setVisibility(View.GONE);
+            }
+        });
+        HueManager.INSTANCE.startBridgeDiscovery(new HueManager.HueBridgeDiscoveryListener() {
+            @Override
+            public void onFoundedBridge(final List<BridgeDiscoveryResult> results) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mAdapter.updateData(results);
+                        mProgressView.setVisibility(View.GONE);
+                        mSearchButton.setVisibility(View.VISIBLE);
+                    }
+                });
             }
         });
     }
@@ -228,14 +176,14 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     /**
      * 指定されたアクセスポイントを指定して、次のフラグメントを開く.
-     * @param accessPoint アクセスポイント
+     * @param bridge アクセスポイント
      */
-    private void moveNextFragment(final PHAccessPoint accessPoint) {
+    private void moveNextFragment(final BridgeDiscoveryResult bridge) {
         FragmentManager manager = getFragmentManager();
         FragmentTransaction transaction = manager.beginTransaction();
         transaction.setCustomAnimations(R.anim.fragment_slide_right_enter, R.anim.fragment_slide_left_exit,
                 R.anim.fragment_slide_left_enter, R.anim.fragment_slide_right_exit);
-        transaction.replace(R.id.fragment_frame, HueFragment02.newInstance(accessPoint));
+        transaction.replace(R.id.fragment_frame, HueFragment02.newInstance(bridge));
         transaction.commit();
     }
 
@@ -256,26 +204,25 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
         private final Context mContext;
 
         /** Access Point. */
-        private List<PHAccessPoint> mAccessPoints;
+        private List<BridgeDiscoveryResult> mBridges;
 
         /**
          * コンストラクタ.
          * 
          * @param context コンテキスト
-         * @param accessPoints Access Point
          */
-        CustomAdapter(final Context context, final List<PHAccessPoint> accessPoints) {
+        CustomAdapter(final Context context) {
             mContext = context;
-            mAccessPoints = accessPoints;
+            mBridges = new ArrayList<>();
         }
 
         /**
          * Access Pointリストのアップデートを行う.
          * 
-         * @param accessPoints Access Point
+         * @param bridges Access Point
          */
-        private void updateData(final List<PHAccessPoint> accessPoints) {
-            mAccessPoints = accessPoints;
+        private void updateData(final List<BridgeDiscoveryResult> bridges) {
+            mBridges = bridges;
             notifyDataSetChanged();
         }
 
@@ -288,21 +235,22 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
             TextView mTextView = (TextView) rowView.findViewById(R.id.row_textview1);
 
-            String listTitle = mAccessPoints.get(position).getMacAddress() + "("
-                    + mAccessPoints.get(position).getIpAddress() + ")";
+            String listTitle = mBridges.get(position).getUniqueID() + "("
+                    + mBridges.get(position).getIP() + ")";
             mTextView.setText(listTitle);
-
+            HueService service = new HueService(mBridges.get(position).getIP(), mBridges.get(position).getUniqueID());
+            HueManager.INSTANCE.saveBridgeForDB(service);
             return rowView;
         }
 
         @Override
         public int getCount() {
-            return mAccessPoints.size();
+            return mBridges.size();
         }
 
         @Override
         public Object getItem(final int position) {
-            return mAccessPoints.get(position - 1);
+            return mBridges.get(position - 1);
         }
 
         @Override
