@@ -323,6 +323,13 @@ public enum HueManager {
                 connectToBridge(bridge.getId(), l);
             }
             provider.addService(bridge);
+            List<HueLightService> lights = mHueLightDBHelper.getLightsForIp(bridge.getId());
+            for (HueLightService lightService : lights) {
+                if (lightService.isOnline()) {
+                    lightService.setOnline(false);
+                }
+                provider.addService(lightService);
+            }
         }
     }
 
