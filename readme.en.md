@@ -92,7 +92,6 @@ If the following response is returned, you can check that Device Connect Manager
 |:-----------|:---------|
 |[dConnectDeviceAllJoyn](dConnectDevicePlugin/dConnectDeviceAllJoyn)|Device Plug-in for AllJoyn.|
 |[dConnectDeviceAndroidWear](dConnectDevicePlugin/dConnectDeviceAndroidWear)|Device Plug-in for AndroidWear.|
-|[dConnectDeviceAWSIoT](dConnectDevicePlugin/dConnectDeviceAWSIot)|Plug-in for AWSIoT.|
 |[dConnectDeviceChromeCast](dConnectDevicePlugin/dConnectDeviceChromeCast)|Device Plug-in for ChromeCast.|
 |[dConnectDeviceFaBo](dConnectDevicePlugin/dConnectDeviceFaBo)|Device Plug-in for FaBo.|
 |[dConnectDeviceFPLUG](dConnectDevicePlugin/dConnectDeviceFPLUG)|Device Plug-in for F-PLUG.|
@@ -108,14 +107,11 @@ If the following response is returned, you can check that Device Connect Manager
 |[dConnectDeviceKadecot](dConnectDevicePlugin/dConnectDeviceKadecot)|Device Plug-in for Kadecot.|
 |[dConnectDeviceLinking](dConnectDevicePlugin/dConnectDeviceLinking)|Device Plug-in for Linking.|
 |[dConnectDevicePebble](dConnectDevicePlugin/dConnectDevicePebble)|Device Plug-in for Pebble.|
-|[dConnectDeviceSlackMessageHook](dConnectDevicePlugin/dConnectDeviceSlackMessageHook)|Plug-in for Slack.|
-|[dConnectDeviceSmartMeter](dConnectDevicePlugin/dConnectDeviceSmartMeter)|Plug-in for Smart Meter.|
 |[dConnectDeviceSonyCamera](dConnectDevicePlugin/dConnectDeviceSonyCamera)|Device Plug-in for SonyCamera such as QX10.|
 |[dConnectDeviceSonySW](dConnectDevicePlugin/dConnectDeviceSonySW)|Device Plug-in for SonySmartWatch<br>※SmartWatch3 is not supported.|
 |[dConnectDeviceSphero](dConnectDevicePlugin/dConnectDeviceSphero)|Device Plug-in for Sphero.|
 |[dConnectDeviceTheta](dConnectDevicePlugin/dConnectDeviceTheta)|Device Plug-in for THETA.|
 |[dConnectDeviceUVC](dConnectDevicePlugin/dConnectDeviceUVC)|Device Plug-in for UVC Camera.|
-|[dConnectDeviceWebRTC](dConnectDevicePlugin/dConnectDeviceWebRTC)|Device Plug-in for WebRTC.|
 |[dConnectDeviceTest](dConnectDevicePlugin/dConnectDeviceTest)|Device Plug-in for test of DeviceConnect.|
 |[dConnectDevicePluginSDK](dConnectDevicePlugin/dConnectDevicePluginSDK)|SDK for creating DevicePlugin. dConnectSDKForAndroid necessary.|
 
@@ -184,6 +180,3 @@ People who want to develop the DeviceConnectManager and device Plug-ins, please 
 * [Theta](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Theta-Build)
 * [UVC](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/UVC-Build)
 * [AndroidWear](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/AndroidWear-Build)
-* [WebRTC](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/WebRTC-Build)
-* [AWSIoT](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/AWSIoT-Build)
-* [SlackMessageHook](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/SlackBot-Build)
