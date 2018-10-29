@@ -29,7 +29,7 @@
             android:summary="@string/activity_settings_export_server_keystore_summay">
         </PreferenceScreen>
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="@string/key_settings_dconn_allow_external_ip"
             android:summaryOff="@string/activity_settings_dconn_disabled"
             android:summaryOn="@string/activity_settings_dconn_enabled"
