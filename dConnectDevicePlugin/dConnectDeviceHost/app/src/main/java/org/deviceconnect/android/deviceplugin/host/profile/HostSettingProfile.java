@@ -297,6 +297,8 @@ public class HostSettingProfile extends SettingProfile {
             MessageUtils.setInvalidRequestParameterError(response, "level is invalid.");
             return;
         }
+        Settings.System.putInt(getContext().getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
+                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
         Settings.System.putInt(getContext().getContentResolver(), Settings.System.SCREEN_BRIGHTNESS,
                 (int) (MAX_LIGHT_LEVEL * level));
         setResult(response, DConnectMessage.RESULT_OK);
