@@ -15,6 +15,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
+import org.deviceconnect.android.deviceplugin.host.profile.utils.DeviceOrientationHelper;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
@@ -81,6 +82,15 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
     /** 角速度データが準備できているかどうかのフラグ */
     private AtomicBoolean mIsGyroReady = new AtomicBoolean(false);
 
+
+    private double mMagneticFluxX;
+    private double mMagneticFluxY;
+    private double mMagneticFluxZ;
+
+
+    /** 角速度データが準備できているかどうかのフラグ */
+    private AtomicBoolean mIsMagneticFluxReady = new AtomicBoolean(false);
+
     /** 前回の加速度の計測時間を保持する. */
     private long mAccelLastTime;
 
@@ -95,6 +105,8 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
 
     /** Device Orientationのキャッシュを残す時間を定義する. */
     private static final long DEVICE_ORIENTATION_CACHE_TIME = 100;
+
+    private DeviceOrientationHelper mDeviceOrientationHelper = new DeviceOrientationHelper();
 
     private final DConnectApi mGetOnDeviceOrientationApi = new GetApi() {
 
@@ -248,9 +260,17 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
                 unsupported++;
             }
 
+
             if (unsupported == NO_SENSOR) {
                 MessageUtils.setNotSupportAttributeError(response);
                 return true;
+            }
+
+            sensors = mSensorManager.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+            if (sensors.size() > 0) {
+                Sensor sensor = sensors.get(0);
+                mSensorManager.registerListener(l, sensor,
+                        SensorManager.SENSOR_DELAY_NORMAL);
             }
 
             invalidateLatestData();
@@ -274,6 +294,7 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
      *            サービスID
      */
     private void registerDeviceOrientationEvent(final Intent response, final String serviceId) {
+        mDeviceOrientationHelper.init();
 
         mServiceId = serviceId;
         mSensorManager = getSensorManager();
@@ -305,6 +326,12 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
             mSensorManager.registerListener(this, sensor, (int)mSensorInterval * 1000);
         } else {
             unsupported++;
+        }
+
+        sensors = mSensorManager.getSensorList(Sensor.TYPE_MAGNETIC_FIELD);
+        if (sensors.size() > 0) {
+            Sensor sensor = sensors.get(0);
+            mSensorManager.registerListener(this, sensor, (int)mSensorInterval * 1000);
         }
 
         if (unsupported == NO_SENSOR) {
@@ -355,6 +382,14 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
         DeviceOrientationProfile.setBeta(r, mGyroY);
         DeviceOrientationProfile.setGamma(r, mGyroZ);
 
+        // デバイスの向き
+        float[] direction = mDeviceOrientationHelper.getOrientationValues();
+        Bundle deviceDirection = new Bundle();
+        deviceDirection.putFloat("x", direction[0]);
+        deviceDirection.putFloat("y", direction[1]);
+        deviceDirection.putFloat("z", direction[2]);
+        orientation.putBundle("direction", deviceDirection);
+
         DeviceOrientationProfile.setAcceleration(orientation, a1);
         DeviceOrientationProfile.setAccelerationIncludingGravity(orientation, a2);
         DeviceOrientationProfile.setRotationRate(orientation, r);
@@ -381,6 +416,12 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
             mGyroZ = Math.toDegrees(sensorEvent.values[2]);
 
             mIsGyroReady.compareAndSet(false, true);
+        } else if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            mMagneticFluxX = Math.toDegrees(sensorEvent.values[0]);
+            mMagneticFluxY = Math.toDegrees(sensorEvent.values[1]);
+            mMagneticFluxZ = Math.toDegrees(sensorEvent.values[2]);
+
+            mIsMagneticFluxReady.compareAndSet(false, true);
         }
     }
 
@@ -398,6 +439,12 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
         processSensorData(sensorEvent);
 
         if (mIsAccellReady.get() || mIsGravityReady.get() || mIsGyroReady.get()) {
+            mDeviceOrientationHelper.calc(new float[] {
+                    (float) mGravityX,(float) mGravityY,(float) mGravityZ
+            }, new float[] {
+                    (float) mMagneticFluxX, (float) mMagneticFluxY, (float) mMagneticFluxZ
+            });
+
             Bundle orientation = createOrientation();
             mAccelLastTime = System.currentTimeMillis();
 
