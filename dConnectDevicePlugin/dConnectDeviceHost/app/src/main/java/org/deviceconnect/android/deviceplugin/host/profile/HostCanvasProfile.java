@@ -15,6 +15,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.activity.CanvasProfileActivity;
+import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.CanvasProfile;
@@ -47,6 +48,9 @@ public class HostCanvasProfile extends CanvasProfile {
     /** Edit Image Thread. */
     private ExecutorService mImageService = Executors.newSingleThreadExecutor();
 
+    /** Canvas Settings. */
+    private HostCanvasSettings mSettings;
+
     private final DConnectApi mDrawImageApi = new PostApi() {
 
         @Override
@@ -56,15 +60,32 @@ public class HostCanvasProfile extends CanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            if (!mSettings.isCanvasActivityNeverShowFlag()) {
+                MessageUtils.setIllegalServerStateError(response,
+                        "The function of Canvas API is turned off.\n" +
+                                "Please cancel on the setting screen of Host plug-in.");
+                return true;
+            }
+            String className = getClassnameOfTopActivity();
+            // 連続起動のダイアログが表示中かどうか
+            if (mSettings.isCanvasMultipleShowFlag()
+                    && CanvasProfileActivity.class.getName().equals(className)) {
+                MessageUtils.setIllegalServerStateError(response,
+                        "Canvas API may be executed continuously.");
+                return true;
+            }
             String mode = getMode(request);
-            String mimeType = getMIMEType(request);
+            final String mimeType = getMIMEType(request);
             final CanvasDrawImageObject.Mode enumMode = CanvasDrawImageObject.convertMode(mode);
             if (enumMode == null) {
                 MessageUtils.setInvalidRequestParameterError(response);
                 return true;
             }
-
-            if (mimeType != null && !mimeType.contains("image")) {
+            // サポートしているMIME-Typeをチェック
+            if (mimeType != null
+                    && (!mimeType.contains("image")
+                        && !mimeType.contains("video")
+                        && !mimeType.contains("text/html"))) {
                 MessageUtils.setInvalidRequestParameterError(response,
                     "Unsupported mimeType: " + mimeType);
                 return true;
@@ -76,8 +97,8 @@ public class HostCanvasProfile extends CanvasProfile {
             final double y = getY(request);
             if (data == null) {
                 if (uri != null) {
-                    if (uri.startsWith("http")) {
-                        drawImage(response, uri, enumMode, x, y);
+                    if (uri.startsWith("http") || uri.startsWith("rtsp")) {
+                        drawImage(response, uri, enumMode, mimeType, x, y);
                     } else {
                         MessageUtils.setInvalidRequestParameterError(response, "Invalid uri.");
                     }
@@ -86,11 +107,9 @@ public class HostCanvasProfile extends CanvasProfile {
                 }
                 return true;
             } else {
-                mImageService.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        sendImage(data, response, enumMode, x, y);
-                    }
+                // CanvasActivityの更新
+                mImageService.execute(() -> {
+                    sendImage(data, response, enumMode, mimeType, x, y);
                 });
                 return false;
             }
@@ -122,9 +141,10 @@ public class HostCanvasProfile extends CanvasProfile {
     /**
      * コンストラクタ.
      */
-    public HostCanvasProfile() {
+    public HostCanvasProfile(final HostCanvasSettings settings) {
         addApi(mDrawImageApi);
         addApi(mDeleteImageApi);
+        mSettings = settings;
     }
 
     /**
@@ -132,12 +152,13 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param data binary
      * @param response response message
      * @param enumMode image mode
+     * @param mimeType MIME-Type
      * @param x position
      * @param y position
      */
-    private void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, double x, double y) {
+    private void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
         try {
-            drawImage(response, writeForImage(data), enumMode, x, y);
+            drawImage(response, writeForImage(data, mimeType), enumMode, mimeType, x, y);
         } catch (OutOfMemoryError e) {
             MessageUtils.setIllegalDeviceStateError(response, e.getMessage());
         } catch (IOException e) {
@@ -151,11 +172,12 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param response response message
      * @param uri image url
      * @param enumMode image mode
+     * @param mimeType MIME-Type
      * @param x position
      * @param y position
      */
-    private void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, double x, double y) {
-        CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, x, y);
+    private void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
+        CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, mimeType, x, y);
 
         String className = getClassnameOfTopActivity();
         if (CanvasProfileActivity.class.getName().equals(className)) {
@@ -186,15 +208,20 @@ public class HostCanvasProfile extends CanvasProfile {
     /**
      * 画像の保存
      * @param data binary
+     * @param mimeType MIME-Type
      * @return URI
      * @throws IOException
      * @throws OutOfMemoryError
      */
-    private String writeForImage(final byte[] data) throws IOException, OutOfMemoryError {
+    private String writeForImage(final byte[] data, final String mimeType) throws IOException, OutOfMemoryError {
         File file = getContext().getCacheDir();
         FileOutputStream out = null;
         checkAndRemove(file);
-        File dstFile = File.createTempFile(CANVAS_PREFIX, ".tmp", file);
+        String suffix = ".tmp";
+        if (mimeType.equals("text/html")) {  //htmlファイルの時は拡張子を変える
+            suffix = ".html";
+        }
+        File dstFile = File.createTempFile(CANVAS_PREFIX + System.currentTimeMillis(), suffix, file);
         try {
             out = new FileOutputStream(dstFile);
             out.write(data);
