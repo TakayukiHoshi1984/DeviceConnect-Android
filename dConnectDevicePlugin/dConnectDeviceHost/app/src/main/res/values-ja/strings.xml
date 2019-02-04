@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="host_ok">OK</string>
+    <string name="host_cancel">キャンセル</string>
     <string name="app_name_host">Host (Device Connect Device Plug-in)</string>
 
     <string name="shutter">シャッター</string>
@@ -24,7 +25,7 @@
 
     <string name="host_settings_title">Host設定</string>
 
-    <string name="gps_settings_title">GPS設定 [1/2]</string>
+    <string name="gps_settings_title">GPS設定 [1/3]</string>
     <string name="gps_settings_body">このデバイスプラグインでは、GPS機能を使用しますので、端末のGPS設定画面より設定をONにしてください。</string>
     <string name="gps_settings_button">設定画面を開く</string>
     <string name="gps_settings_gps_detail">Android 6.0からGPSを使用するには、位置情報のパーミッションが必要になりました。\nこのプラグインを使用するためには、以下のパーミッションを許可してください。\n許可を取り消すには、アプリの設定画面から行うことができます。</string>
@@ -32,11 +33,10 @@
     <string name="gps_settings_gps_permission_on">取得済み</string>
     <string name="gps_settings_gps_permission_off">取得</string>
 
-    <string name="recorder_settings_preview_jpeg_title">JPEG品質 - プレビュー [2/2]</string>
+    <string name="recorder_settings_preview_jpeg_title">JPEG品質 - プレビュー [2/3]</string>
 
     <string name="host_setting_dialog_error_permission">GPSを使用するためのパーミッションが許可されていないために検索できません。\nGPS設定画面から位置情報の許可を取得してください。</string>
     <string name="host_setting_dialog_disable_gps">GPSが無効になっているために検索できません。\nGPS設定画面からGPSを有効に設定してください。</string>
-    <string name="host_setting_gps_dialog_cancel">キャンセル</string>
 
     <string name="host_canvas_download_title">ダウンロード</string>
     <string name="host_canvas_download_message">ダウンロード中...</string>
@@ -48,5 +48,25 @@
     <string name="host_notification_channel_id">org.deviceconnect.android.intent.action.notifiy.host</string>
     <string name="host_notification_channel_title">Device Connect Notification</string>
     <string name="host_notification_channel_desc">DeviceConnectの通知</string>
+    <!-- Canvas Messages-->
+    <string name="host_canvas_warning_dialog_title">警告</string>
+    <string name="host_canvas_multiple_warning_dialog_message">連続でCanvasが開かれた恐れがあります。\nこれ以上Canvasが表示されることを許可しませんか？\n許可しない場合はチェックボックスにチェックを入れてください。</string>
+    <string name="host_canvas_warning_dialog_check">Canvasをこれ以上表示しない。</string>
+    <string name="host_canvas_warning_dialog_uncheck">再びCanvasを有効にする場合は、Hostプラグインの設定画面から解除してください。</string>
+    <string name="host_canvas_external_resource_warning_dialog_message">外部ネットワーク上にあるリソースにアクセスしようとしています。\nよろしいですか？\nこの確認ダイアログを表示しなくて良い場合は、Hostプラグインの設定画面から設定してください。</string>
 
+    <!-- Canvas Settings -->
+
+    <string name="canvas_settings_title">Canvas 設定 [3/3]</string>
+    <string name="canvas_settings_multiple_show_title">Canvas起動停止</string>
+    <string name="canvas_settings_multiple_show_body">Canvasが連続で起動されそうになった場合の防止策としてCanvasの起動を停止します。</string>
+    <string name="canvas_settings_multiple_show_permission">Canvas起動停止</string>
+    <string name="canvas_settings_multiple_show_permission_on">起動</string>
+    <string name="canvas_settings_multiple_show_permission_off">停止</string>
+
+    <string name="canvas_settings_external_access_title">外部リソースへのアクセス</string>
+    <string name="canvas_settings_external_access_body">Canvasが外部のリソースにアクセスを行う際に確認ダイアログを出すかどうかを設定します。</string>
+    <string name="canvas_settings_external_access_permission">アクセスの確認</string>
+    <string name="canvas_settings_external_access_permission_on">確認を行う</string>
+    <string name="canvas_settings_external_access_permission_off">確認を行わない</string>
 </resources>

@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.view.WindowManager;
 
+import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.battery.HostBatteryManager;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
@@ -95,7 +96,7 @@ public class HostDeviceService extends DConnectMessageService {
      * Phone プロファイルの実装.
      */
     private HostPhoneProfile mPhoneProfile;
-
+    private HostCanvasSettings mSettings;
     /**
      * ブロードキャストレシーバー.
      */
@@ -137,12 +138,12 @@ public class HostDeviceService extends DConnectMessageService {
         mRecorderMgr.start();
 
         mHostMediaPlayerManager = new HostMediaPlayerManager(getPluginContext());
-
+        mSettings = new HostCanvasSettings(this);
         DConnectService hostService = new DConnectService(SERVICE_ID);
         hostService.setName(SERVICE_NAME);
         hostService.setOnline(true);
         hostService.addProfile(new HostBatteryProfile(mHostBatteryManager));
-        hostService.addProfile(new HostCanvasProfile());
+        hostService.addProfile(new HostCanvasProfile(mSettings));
         hostService.addProfile(new HostConnectionProfile(BluetoothAdapter.getDefaultAdapter()));
         hostService.addProfile(new HostFileProfile(mFileMgr));
         hostService.addProfile(new HostKeyEventProfile());

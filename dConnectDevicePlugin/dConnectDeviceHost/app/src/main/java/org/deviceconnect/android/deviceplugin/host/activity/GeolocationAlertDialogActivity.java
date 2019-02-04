@@ -16,7 +16,6 @@ import android.support.v4.app.FragmentActivity;
 import android.view.Window;
 
 import org.deviceconnect.android.deviceplugin.host.R;
-import org.deviceconnect.android.message.DConnectMessageService;
 import org.deviceconnect.android.message.MessageUtils;
 
 /**
@@ -67,7 +66,7 @@ public class GeolocationAlertDialogActivity extends FragmentActivity {
                             }
                         });
         // キャンセルボタン処理
-        alertDialogBuilder.setNegativeButton(R.string.host_setting_gps_dialog_cancel,
+        alertDialogBuilder.setNegativeButton(R.string.host_cancel,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         if (mResponse != null) {
