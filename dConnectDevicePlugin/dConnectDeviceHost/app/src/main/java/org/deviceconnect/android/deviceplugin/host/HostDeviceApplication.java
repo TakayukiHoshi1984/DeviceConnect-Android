@@ -7,15 +7,11 @@
 package org.deviceconnect.android.deviceplugin.host;
 
 import android.app.Application;
-import android.content.Intent;
 import android.os.Bundle;
 
 import org.deviceconnect.android.logger.AndroidHandler;
-import org.deviceconnect.android.profile.BatteryProfile;
 import org.deviceconnect.android.profile.KeyEventProfile;
 import org.deviceconnect.android.profile.TouchProfile;
-import org.deviceconnect.message.DConnectMessage;
-import org.deviceconnect.message.intent.message.IntentDConnectMessage;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -83,7 +79,6 @@ public class HostDeviceApplication extends Application {
     public static final String STATE_MOVE = "move";
     /** Touch State cancel. */
     public static final String STATE_CANCEL = "cancel";
-
     /**
      * Get Touch cache data.
      * 
@@ -255,5 +250,6 @@ public class HostDeviceApplication extends Application {
         } else {
             logger.setLevel(Level.OFF);
         }
+
     }
 }

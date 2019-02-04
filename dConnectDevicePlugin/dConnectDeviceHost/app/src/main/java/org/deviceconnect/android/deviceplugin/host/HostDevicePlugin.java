@@ -15,8 +15,8 @@ import android.content.pm.PackageManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
-import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.battery.HostBatteryManager;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
@@ -118,6 +118,7 @@ public class HostDevicePlugin extends DevicePluginContext {
         }
     };
 
+    private HostCanvasSettings mSettings;
     /**
      * コンストラクタ.
      *
@@ -128,7 +129,6 @@ public class HostDevicePlugin extends DevicePluginContext {
 
         // Manager同梱のため、LocalOAuthを無効化
         setUseLocalOAuth(false);
-
         mFileMgr = new FileManager(context, HostFileProvider.class.getName());
         mFileDataManager = new FileDataManager(mFileMgr);
 
@@ -138,12 +138,13 @@ public class HostDevicePlugin extends DevicePluginContext {
         initRecorders(mRecorderMgr);
         mRecorderMgr.start();
         mHostMediaPlayerManager = new HostMediaPlayerManager(this);
+        mSettings = new HostCanvasSettings(getContext());
 
         DConnectService hostService = new DConnectService(SERVICE_ID);
         hostService.setName(SERVICE_NAME);
         hostService.setOnline(true);
         hostService.addProfile(new HostBatteryProfile(mHostBatteryManager));
-        hostService.addProfile(new HostCanvasProfile());
+        hostService.addProfile(new HostCanvasProfile(mSettings));
         hostService.addProfile(new HostConnectionProfile(BluetoothAdapter.getDefaultAdapter()));
         hostService.addProfile(new HostFileProfile(mFileMgr));
         hostService.addProfile(new HostKeyEventProfile());
