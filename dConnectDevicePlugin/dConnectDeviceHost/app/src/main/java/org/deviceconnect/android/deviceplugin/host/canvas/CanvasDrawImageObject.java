@@ -36,6 +36,7 @@ public class CanvasDrawImageObject {
         FILL_MODE,
     }
 
+
     /**
      * Draw Canvas Action.
      */
@@ -67,6 +68,11 @@ public class CanvasDrawImageObject {
     private static final String EXTRA_MODE = "mode";
 
     /**
+     * intent extra key(mimeType).
+     */
+    private static final String EXTRA_MIME_TYPE = "mimeType";
+
+    /**
      * intent extra key(x).
      */
     private static final String EXTRA_X = "x";
@@ -85,6 +91,11 @@ public class CanvasDrawImageObject {
      * mode.
      */
     private Mode mMode;
+
+    /**
+     * MIME-Type.
+     */
+    private String mMimeType;
 
     /**
      * x.
@@ -111,13 +122,15 @@ public class CanvasDrawImageObject {
      *
      * @param data data
      * @param mode mode
+     * @param mimeType MIME-Type
      * @param x    x
      * @param y    y
      */
     public CanvasDrawImageObject(final String data, final Mode mode,
-                                 final double x, final double y) {
+                                 final String mimeType, final double x, final double y) {
         mData = data;
         mMode = mode;
+        mMimeType = mimeType;
         mX = x;
         mY = y;
     }
@@ -139,6 +152,12 @@ public class CanvasDrawImageObject {
     public Mode getMode() {
         return mMode;
     }
+
+    /**
+     * Gets a MIME-Type.
+     * @return MIME-Type
+     */
+    public String getMimeType() { return mMimeType; }
 
     /**
      * Gets a x position.
@@ -167,6 +186,7 @@ public class CanvasDrawImageObject {
         intent.putExtra(EXTRA_DATAKIND, DATAKIND);
         intent.putExtra(EXTRA_DATA, mData);
         intent.putExtra(EXTRA_MODE, mMode.ordinal());
+        intent.putExtra(EXTRA_MIME_TYPE, mMimeType);
         intent.putExtra(EXTRA_X, mX);
         intent.putExtra(EXTRA_Y, mY);
     }
@@ -187,6 +207,9 @@ public class CanvasDrawImageObject {
             return false;
         }
         if (!mMode.equals(o.mMode)) {
+            return false;
+        }
+        if (!mMimeType.equals(o.mMimeType)) {
             return false;
         }
         return true;
@@ -218,6 +241,7 @@ public class CanvasDrawImageObject {
         }
         obj.mX = intent.getDoubleExtra(EXTRA_X, 0.0);
         obj.mY = intent.getDoubleExtra(EXTRA_Y, 0.0);
+        obj.mMimeType = intent.getStringExtra(EXTRA_MIME_TYPE);
         return obj;
     }
 
