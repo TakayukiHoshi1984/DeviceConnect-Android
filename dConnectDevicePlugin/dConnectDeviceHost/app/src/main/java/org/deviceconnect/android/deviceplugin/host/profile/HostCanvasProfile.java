@@ -82,7 +82,7 @@ public class HostCanvasProfile extends CanvasProfile {
                 return true;
             }
             // MIME-Typeが設定されていない場合は、画像として扱う.
-            if (mimeType == null) {
+            if (mimeType == null || mimeType.length() == 0) {
                 mimeType = "image/jpeg";
             }
             // サポートしているMIME-Typeをチェック
