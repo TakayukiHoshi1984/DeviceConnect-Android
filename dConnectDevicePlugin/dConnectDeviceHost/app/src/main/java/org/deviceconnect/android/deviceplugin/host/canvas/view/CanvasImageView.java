@@ -125,6 +125,7 @@ public class CanvasImageView {
          */
         DownloadTask(final Activity activity, final CanvasDrawImageObject drawImageObject) {
             ImageView canvasView = activity.findViewById(R.id.canvasProfileView);
+            canvasView.setKeepScreenOn(true);
             mCanvasView = new WeakReference<>(canvasView);
             mActivityReference = new WeakReference<>(activity);
             mDrawImageObject = drawImageObject;

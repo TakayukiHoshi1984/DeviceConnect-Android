@@ -8,6 +8,7 @@ package org.deviceconnect.android.deviceplugin.host.canvas.view;
 
 import android.app.Activity;
 import android.view.View;
+import android.widget.MediaController;
 import android.widget.VideoView;
 
 import org.deviceconnect.android.deviceplugin.host.R;
@@ -33,6 +34,7 @@ public class CanvasVideoView {
                          final CanvasDrawImageObject drawObject) {
         mCanvasVideoView = activity.findViewById(R.id.canvasProfileVideoView);
         mDrawImageObject = drawObject;
+        mCanvasVideoView.setKeepScreenOn(true);
     }
 
     /**

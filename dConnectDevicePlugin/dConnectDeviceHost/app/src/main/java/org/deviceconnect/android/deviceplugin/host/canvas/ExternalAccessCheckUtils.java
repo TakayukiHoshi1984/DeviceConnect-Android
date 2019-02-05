@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  */
 public final class ExternalAccessCheckUtils {
     /** URLの正規表現. */
-    private static final String URL_REGEX = "^(http|https)://([\\w-]+\\.)+[\\w-]+(/[\\w-./?%&=]*)?$";
+    private static final String URL_REGEX = "^(http|https|rtsp)://[\\w\\d/%#$&?()~_.:=+-]+";
     /** コンストラクタ：未使用. */
     private ExternalAccessCheckUtils() {}
 
@@ -40,6 +40,8 @@ public final class ExternalAccessCheckUtils {
         return !uri.startsWith("file://") && !uri.startsWith("http://localhost") && !uri.startsWith("https://localhost")
                 && !uri.startsWith("http://127.0.0.1") && !uri.startsWith("https://127.0.0.1")
                 && !uri.startsWith("http://" + getIPAddress(context))
+                && !uri.startsWith("rtsp://localhost") && !uri.startsWith("rtsp://127.0.0.1")
+                && !uri.startsWith("rtsp://" + getIPAddress(context))
                 && Pattern.compile(URL_REGEX).matcher(uri).matches();
 
     }

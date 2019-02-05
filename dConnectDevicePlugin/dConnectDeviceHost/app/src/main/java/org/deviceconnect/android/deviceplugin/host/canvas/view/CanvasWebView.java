@@ -48,6 +48,7 @@ public class CanvasWebView {
                          final HostCanvasSettings settings,
                          final boolean externalAccessFlag) {
         mCanvasWebView = activity.findViewById(R.id.canvasProfileWebView);
+        mCanvasWebView.setKeepScreenOn(true);
         mActivity = activity;
         mSettings = settings;
         mDrawImageObject = drawObject;
