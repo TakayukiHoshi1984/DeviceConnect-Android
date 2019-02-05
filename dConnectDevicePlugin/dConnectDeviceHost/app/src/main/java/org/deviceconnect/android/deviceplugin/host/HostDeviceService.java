@@ -201,7 +201,12 @@ public class HostDeviceService extends DConnectMessageService {
             mCameraHandler = new Handler(thread.getLooper());
             mCameraWrapperManager = new CameraWrapperManager(this, mCameraHandler);
             recorderMgr.createCameraRecorders(mCameraWrapperManager);
-            recorderMgr.watchCameraAvailability(mCameraWrapperManager);
+
+            boolean supportsExternalCamera = checkExternalCameraHardware();
+            if (supportsExternalCamera) {
+                recorderMgr.watchCameraAvailability(mCameraWrapperManager);
+            }
+            mLogger.info("External Camera Support: " + supportsExternalCamera);
         }
         if (checkMicrophone()) {
             recorderMgr.createAudioRecorders();
@@ -414,6 +419,14 @@ public class HostDeviceService extends DConnectMessageService {
      */
     private boolean checkCameraHardware() {
         return getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
+    }
+
+    /**
+     * 外部カメラを端末がサポートしているかチェックします.
+     * @return 外部カメラをサポートしている場合はtrue、それ以外はfalse
+     */
+    private boolean checkExternalCameraHardware() {
+        return getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_EXTERNAL);
     }
 
     /**
