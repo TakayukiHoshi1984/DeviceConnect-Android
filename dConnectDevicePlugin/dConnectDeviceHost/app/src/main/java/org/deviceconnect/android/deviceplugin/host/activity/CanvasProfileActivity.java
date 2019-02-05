@@ -1,6 +1,6 @@
 /*
  HostCanvasProfile.java
- Copyright (c) 2015 NTT DOCOMO,INC.
+ Copyright (c) 2019 NTT DOCOMO,INC.
  Released under the MIT license
  http://opensource.org/licenses/mit-license.php
  */
@@ -22,7 +22,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 
 import org.deviceconnect.android.deviceplugin.host.R;
-import org.deviceconnect.android.deviceplugin.host.canvas.CanvasUtils;
+import org.deviceconnect.android.deviceplugin.host.canvas.ExternalAccessCheckUtils;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ErrorDialogFragment;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
@@ -36,14 +36,14 @@ import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.External
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.MultipleShowWarningDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
 
 /**
- * Canvas Profile Activity.
+ * Canvasプロファイルから受け取った画像・HTML・動画・MJPEGなどを表示する.
  *
  * @author NTT DOCOMO, INC.
  */
 public class CanvasProfileActivity extends Activity  {
 
     /**
-     * Defined a parameter name.
+     * 受け取ったパラメータを保持するキー値.
      */
     private static final String PARAM_INTENT = "param_intent";
 
@@ -53,19 +53,30 @@ public class CanvasProfileActivity extends Activity  {
     private static final int DELAY_MILLIS = 10000;
 
     /**
-     * Argument that draw in canvas.
+     * Canvas情報を持つIntent.
      */
     private Intent mIntent;
     /**
      * 表示用オブジェクト.
      */
     private CanvasDrawImageObject mDrawImageObject;
+    /**
+     * HTML・MJPEGを表示する.
+     * バックキーで前のページに戻らせるためにフィールド変数とする.
+     */
     private CanvasWebView mCanvasWebView;
+    /**
+     * CanvasAPIの設定値を保持する.
+     */
     private HostCanvasSettings mSettings;
+    /**
+     * 一度外部アクセスダイアログを出したかどうかのフラグ.
+     * 二度目はダイアログを出さないようにする.
+     */
     private boolean mExternalAccessFlag = false;
 
     /**
-     * Implementation of BroadcastReceiver.
+     * Canvasが表示中に処理を受け付けるBroadcastReceiver.
      */
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -76,7 +87,7 @@ public class CanvasProfileActivity extends Activity  {
                 mDrawImageObject = CanvasDrawImageObject.create(intent);
                 // 更新データが外部リソースかどうかを確認する
                 if (mSettings.isCanvasActivityAccessExternalNetworkFlag()
-                        && CanvasUtils.isExternalAccessResource(CanvasProfileActivity.this, mDrawImageObject.getData())) {
+                        && ExternalAccessCheckUtils.isExternalAccessResource(CanvasProfileActivity.this, mDrawImageObject.getData())) {
                     // 外部リソースが指定されているかを確認
                     ExternalNetworkWarningDialogFragment.createDialog(CanvasProfileActivity.this,
                                                     new ErrorDialogFragment.OnWarningDialogListener() {
@@ -184,7 +195,7 @@ public class CanvasProfileActivity extends Activity  {
                     })
                     .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
         } else if (mSettings.isCanvasActivityAccessExternalNetworkFlag()
-                && CanvasUtils.isExternalAccessResource(this, uri)) {
+                && ExternalAccessCheckUtils.isExternalAccessResource(this, uri)) {
             // 外部リソースが指定されているかを確認
             ExternalNetworkWarningDialogFragment.createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
                 @Override
@@ -262,15 +273,15 @@ public class CanvasProfileActivity extends Activity  {
         CanvasVideoView canvasVideoView = new CanvasVideoView(this, mDrawImageObject);
         String mimeType = mDrawImageObject.getMimeType();
 
-        if (mimeType.contains("video/x-mjpeg")) {
+        if (mimeType != null && mimeType.contains("video/x-mjpeg")) {
             mCanvasWebView.visibility();
             canvasVideoView.gone();
             mCanvasWebView.initWebView(mimeType);
-        } else if (mimeType.contains("video/")) {
+        } else if (mimeType != null && mimeType.contains("video/")) {
             mCanvasWebView.gone();
             canvasVideoView.visibility();
             canvasVideoView.initVideoView();
-        } else if (mimeType.contains("text/html")) {
+        } else if (mimeType != null && mimeType.contains("text/html")) {
             mCanvasWebView.visibility();
             canvasVideoView.gone();
             mCanvasWebView.initWebView(mimeType);

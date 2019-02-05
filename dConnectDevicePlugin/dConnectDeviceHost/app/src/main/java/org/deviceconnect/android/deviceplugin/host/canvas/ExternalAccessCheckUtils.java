@@ -1,3 +1,9 @@
+/*
+ ExternalAccessCheckUtils.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas;
 
 import android.content.Context;
@@ -14,11 +20,22 @@ import java.util.Enumeration;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-public final class CanvasUtils {
+/**
+ * 外部リソースにアクセスしているかを確認する.
+ * @author NTT DOCOMO, INC.
+ */
+public final class ExternalAccessCheckUtils {
+    /** URLの正規表現. */
     private static final String URL_REGEX = "^(http|https)://([\\w-]+\\.)+[\\w-]+(/[\\w-./?%&=]*)?$";
+    /** コンストラクタ：未使用. */
+    private ExternalAccessCheckUtils() {}
 
-    private CanvasUtils() {}
-
+    /**
+     * 外部リソースにアクセスしているかどうかを返す.
+     * @param context コンテキスト
+     * @param uri 判定するURI
+     * @return true:外部リソースである　false:外部リソースではない
+     */
     public static boolean isExternalAccessResource(final Context context, final String uri) {
         return !uri.startsWith("file://") && !uri.startsWith("http://localhost") && !uri.startsWith("https://localhost")
                 && !uri.startsWith("http://127.0.0.1") && !uri.startsWith("https://127.0.0.1")
@@ -27,7 +44,11 @@ public final class CanvasUtils {
 
     }
 
-
+    /**
+     * この端末のIPアドレスを取得する.
+     * @param context コンテキスト
+     * @return IPアドレス
+     */
     private static String getIPAddress(final Context context) {
         Context appContext = context.getApplicationContext();
         WifiManager wifiManager = (WifiManager) appContext.getSystemService(Context.WIFI_SERVICE);

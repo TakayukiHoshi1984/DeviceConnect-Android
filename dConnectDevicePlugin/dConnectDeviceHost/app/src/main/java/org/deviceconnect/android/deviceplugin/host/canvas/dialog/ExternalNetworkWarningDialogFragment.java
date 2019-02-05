@@ -1,3 +1,9 @@
+/*
+ ExternalNetworkWarningDialogFragment.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas.dialog;
 
 import android.app.AlertDialog;
@@ -13,12 +19,20 @@ import org.deviceconnect.android.deviceplugin.host.R;
 
 /**
  * CanvasActivityが外部リソースにアクセスする場合に警告を出すダイアログ.
+ * @author NTT DOCOMO, INC.
  */
 public class ExternalNetworkWarningDialogFragment extends ErrorDialogFragment {
+    /** External Network Warning DialogのTAG名. */
     public static final String EXTERNAL_SHOW_CANVAS_WARNING_TAG = "EXTERNAL_SHOW_CANVAS_WARNING_TAG";
-
-
+    /** Warningリスナー. */
     private static OnWarningDialogListener mListener;
+
+    /**
+     * ダイアログを作成する.
+     * @param context コンテキスト
+     * @param l リスナー
+     * @return ダイアログのインスタント
+     */
     public static ExternalNetworkWarningDialogFragment createDialog(final Context context,
                                                                 final OnWarningDialogListener l) {
         mListener = l;

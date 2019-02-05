@@ -1,3 +1,9 @@
+/*
+ CanvasImageView.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas.view;
 
 import android.app.Activity;
@@ -17,15 +23,18 @@ import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ErrorDialogFrag
 
 import java.lang.ref.WeakReference;
 
-
+/**
+ * CanvasでのImageViewの機能を操作する.
+ * @author NTT DOCOMO, INC.
+ */
 public class CanvasImageView {
     /**
-     *  Defined a dialog type:{@value}.
+     *  エラーダイアログのタイプ:{@value}.
      */
     private static final String DIALOG_TYPE_OOM = "TYPE_OOM";
 
     /**
-     *  Defined a dialog type:{@value}.
+     *  エラーダイアログのタイプ:{@value}.
      */
     private static final String DIALOG_TYPE_NOT_FOUND = "TYPE_NOT_FOUND";
     /**
@@ -49,19 +58,29 @@ public class CanvasImageView {
     }
 
     /**
-     * Download start dialog.
+     * リソースダウンロード中のProgressDialog.
      */
     private static DownloadMessageDialogFragment mDialog;
 
     /**
-     * Download flag.
+     * ダウンロード中フラグ.
      */
     private static boolean mDownloadFlag = false;
 
+    /**
+     * コンストラクタ.
+     * @param activity Activity
+     * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
+     */
     public CanvasImageView(final Activity activity, final CanvasDrawImageObject drawObject) {
         refreshImage(activity, drawObject);
     }
 
+    /**
+     * 画像を表示する.
+     * @param activity Activity
+     * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
+     */
     private void refreshImage(final Activity activity, final CanvasDrawImageObject drawObject) {
         if (drawObject == null) {
             openNotFoundDrawImage(activity);
@@ -86,20 +105,25 @@ public class CanvasImageView {
         oomDialog.show(activity.getFragmentManager(), DIALOG_TYPE_NOT_FOUND);
     }
 
+    /**
+     * リソースダウンロード用のAsyncTask.
+     */
     private static class DownloadTask extends AsyncTask<Void, ResourceResult, ResourceResult> {
-        /**
-         * Canvas view object.
-         */
+        /** 画像を表示するImageView. */
         private WeakReference<ImageView> mCanvasView;
+        /** Canvasに表示するリソース情報を持つオブジェクト. */
         private CanvasDrawImageObject mDrawImageObject;
+        /** Activity. */
         private WeakReference<Activity> mActivityReference;
-        /**
-         * Bitmap that was sent from web application.
-         */
+        /** 表示する画像データ. */
         private Bitmap mBitmap;
 
-        // only retain a weak reference to the activity
-        DownloadTask(Activity activity, CanvasDrawImageObject drawImageObject) {
+        /**
+         * コンストラクタ.
+         * @param activity Activity
+         * @param drawImageObject Canvasに表示するリソース情報を持つオブジェクト
+         */
+        DownloadTask(final Activity activity, final CanvasDrawImageObject drawImageObject) {
             ImageView canvasView = activity.findViewById(R.id.canvasProfileView);
             mCanvasView = new WeakReference<>(canvasView);
             mActivityReference = new WeakReference<>(activity);
@@ -147,11 +171,7 @@ public class CanvasImageView {
             dismissDownloadDialog();
             switch (result) {
                 case Success:
-                    try {
-                        showDrawObject();
-                    } catch (RuntimeException e) {
-                        Log.e("ABC", "canvasssssssss");
-                    }
+                    showDrawObject();
                     break;
                 case OutOfMemory:
                     openOutOfMemory();
@@ -164,7 +184,7 @@ public class CanvasImageView {
             mDownloadFlag = false;
         }
         /**
-         * ダウンロードダイアログを非表示にします.
+         * ダウンロードダイアログを非表示.
          */
         private synchronized  void dismissDownloadDialog() {
             if (mDialog != null) {
@@ -173,7 +193,7 @@ public class CanvasImageView {
             }
         }
         /**
-         * 画面を更新します.
+         * 画面を更新.
          */
         private void showDrawObject() {
             switch (mDrawImageObject.getMode()) {
@@ -206,7 +226,7 @@ public class CanvasImageView {
 
 
         /**
-         * メモリ不足エラーダイアログを表示します.
+         * メモリ不足エラーダイアログを表示.
          */
         private void openOutOfMemory() {
             ErrorDialogFragment oomDialog = ErrorDialogFragment.create(DIALOG_TYPE_OOM,
@@ -217,7 +237,7 @@ public class CanvasImageView {
         }
 
         /**
-         * ダウンロードダイアログを表示します.
+         * ダウンロードダイアログを表示.
          */
         private synchronized void showDownloadDialog() {
             if (mDialog != null) {

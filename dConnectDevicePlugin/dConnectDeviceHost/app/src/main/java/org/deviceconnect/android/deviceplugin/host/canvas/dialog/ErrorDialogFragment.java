@@ -1,3 +1,9 @@
+/*
+ ErrorDialogFragment.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas.dialog;
 
 import android.app.Activity;
@@ -10,6 +16,7 @@ import android.support.annotation.NonNull;
 
 /**
  * Canvas機能に対するエラーダイログ.
+ * @author NTT DOCOMO, INC.
  */
 public class ErrorDialogFragment extends DialogFragment {
     /**
@@ -36,10 +43,6 @@ public class ErrorDialogFragment extends DialogFragment {
      * Negativeボタンのキーを定義します.
      */
     protected static final String KEY_NEGATIVE = "no";
-    /**
-     * チェックボックスを出すかどうか.
-     */
-    protected static final String KEY_IS_CHECKED = "checked";
 
     /**
      * デフォルトのチェックボックスのメッセージ.
@@ -50,8 +53,19 @@ public class ErrorDialogFragment extends DialogFragment {
      * チェック後のチェックボックスのメッセージ.
      */
     protected static final String KEY_CHECKED_MESSAGE = "checked_message";
+
+    /**
+     * Dialogに対するリスナーを返す.
+     */
     public interface OnWarningDialogListener {
+        /**
+         * OKが押された場合.
+         */
         void onOK();
+
+        /**
+         * Cancelが押された場合.
+         */
         void onCancel();
     }
 

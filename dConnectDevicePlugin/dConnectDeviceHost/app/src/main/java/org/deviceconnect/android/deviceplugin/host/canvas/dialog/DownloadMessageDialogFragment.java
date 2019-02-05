@@ -1,3 +1,9 @@
+/*
+ DownloadMessageDialogFragment.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas.dialog;
 
 import android.app.AlertDialog;
@@ -12,6 +18,7 @@ import org.deviceconnect.android.deviceplugin.host.R;
 
 /**
  * ダウンロードダイアログ.
+ * @author NTT DOCOMO, INC.
  */
 public class DownloadMessageDialogFragment extends DialogFragment {
     @Override

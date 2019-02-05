@@ -1,3 +1,9 @@
+/*
+ MultipleShowWarningDialogFragment.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.canvas.dialog;
 
 import android.app.Activity;
@@ -16,13 +22,21 @@ import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 
 /**
- * Canvas機能に対する警告ダイログ.
+ * 連続でCanvasが起動された場合の警告ダイログ.
+ * @author NTT DOCOMO, INC.
  */
 public class MultipleShowWarningDialogFragment extends ErrorDialogFragment {
-
+    /** Multiple Show Warning Dialogのタグ名. */
     public static final String MULTIPLE_SHOW_CANVAS_WARNING_TAG = "MULTIPLE_SHOW_CANVAS_WARNING_TAG";
-
+    /** ダイアログのリスナー. */
     private static OnWarningDialogListener mListener;
+
+    /**
+     * ダイアログの作成.
+     * @param context コンテキスト
+     * @param l リスナー
+     * @return ダイアログのインスタンス
+     */
     public static MultipleShowWarningDialogFragment createDialog(final Context context,
                                                                  final OnWarningDialogListener l) {
         mListener = l;

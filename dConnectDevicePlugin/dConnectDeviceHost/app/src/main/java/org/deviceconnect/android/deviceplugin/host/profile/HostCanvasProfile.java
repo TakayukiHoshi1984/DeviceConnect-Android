@@ -45,10 +45,10 @@ public class HostCanvasProfile extends CanvasProfile {
     /** ファイルが生存できる有効時間. */
     private long mExpire = DEFAULT_EXPIRE;
 
-    /** Edit Image Thread. */
+    /** Imageを表示するサービス. */
     private ExecutorService mImageService = Executors.newSingleThreadExecutor();
 
-    /** Canvas Settings. */
+    /** Canvasの設定. */
     private HostCanvasSettings mSettings;
 
     private final DConnectApi mDrawImageApi = new PostApi() {
@@ -75,15 +75,18 @@ public class HostCanvasProfile extends CanvasProfile {
                 return true;
             }
             String mode = getMode(request);
-            final String mimeType = getMIMEType(request);
+            String mimeType = getMIMEType(request);
             final CanvasDrawImageObject.Mode enumMode = CanvasDrawImageObject.convertMode(mode);
             if (enumMode == null) {
                 MessageUtils.setInvalidRequestParameterError(response);
                 return true;
             }
+            // MIME-Typeが設定されていない場合は、画像として扱う.
+            if (mimeType == null) {
+                mimeType = "image/jpeg";
+            }
             // サポートしているMIME-Typeをチェック
-            if (mimeType != null
-                    && (!mimeType.contains("image")
+            if ((!mimeType.contains("image")
                         && !mimeType.contains("video")
                         && !mimeType.contains("text/html"))) {
                 MessageUtils.setInvalidRequestParameterError(response,
@@ -108,8 +111,9 @@ public class HostCanvasProfile extends CanvasProfile {
                 return true;
             } else {
                 // CanvasActivityの更新
+                final String type = mimeType;
                 mImageService.execute(() -> {
-                    sendImage(data, response, enumMode, mimeType, x, y);
+                    sendImage(data, response, enumMode, type, x, y);
                 });
                 return false;
             }
