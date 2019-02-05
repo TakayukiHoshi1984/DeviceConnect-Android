@@ -152,7 +152,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         mPreviewServers.add(rtspServer);
     }
 
-    CameraWrapper getCameraWrapper() {
+    public CameraWrapper getCameraWrapper() {
         return mCameraWrapper;
     }
 

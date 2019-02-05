@@ -30,6 +30,7 @@ import org.deviceconnect.android.provider.FileManager;
 import org.deviceconnect.profile.MediaStreamRecordingProfileConstants;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -76,8 +77,57 @@ public class HostDeviceRecorderManager {
         }
     };
 
-    public HostDeviceRecorderManager(final DevicePluginContext pluginContext) {
+    private final FileManager mFileManager;
+
+    public HostDeviceRecorderManager(final DevicePluginContext pluginContext,
+                                     final FileManager fileMgr) {
         mHostDevicePluginContext = pluginContext;
+        mFileManager = fileMgr;
+    }
+
+    public void watchCameraAvailability(final CameraWrapperManager cameraMgr) {
+        cameraMgr.addAvailabilityListener(new CameraWrapperManager.AvailabilityListener() {
+            @Override
+            public void onCameraAvailable(final CameraWrapper camera) {
+                if (DEBUG) {
+                    Log.d(TAG, "onCameraAvailable: " + camera.getId());
+                }
+                synchronized (mRecorders) {
+                    HostDeviceRecorder found = null;
+                    for (HostDeviceRecorder recorder : mRecorders) {
+                        if (recorder instanceof Camera2Recorder) {
+                            CameraWrapper c = ((Camera2Recorder) recorder).getCameraWrapper();
+                            if (c != null && c.getId().equals(camera.getId())) {
+                                found = recorder;
+                                break;
+                            }
+                        }
+                    }
+                    if (found == null) {
+                        mRecorders.add(new Camera2Recorder(getContext(), camera, mFileManager));
+                    }
+                }
+            }
+
+            @Override
+            public void onCameraUnavailable(final CameraWrapper camera) {
+                if (DEBUG) {
+                    Log.d(TAG, "onCameraUnavailable: " + camera.getId());
+                }
+                synchronized (mRecorders) {
+                    for (Iterator<HostDeviceRecorder> it = mRecorders.iterator(); it.hasNext(); ) {
+                        HostDeviceRecorder recorder = it.next();
+                        if (recorder instanceof Camera2Recorder) {
+                            CameraWrapper c = ((Camera2Recorder) recorder).getCameraWrapper();
+                            if (c != null && c.getId().equals(camera.getId())) {
+                                it.remove();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     public void createAudioRecorders() {
@@ -88,10 +138,10 @@ public class HostDeviceRecorderManager {
         mRecorders.add(new HostDeviceScreenCastRecorder(getContext(), fileMgr));
     }
 
-    public void createCameraRecorders(final CameraWrapperManager cameraMgr, final FileManager fileMgr) {
+    public void createCameraRecorders(final CameraWrapperManager cameraMgr) {
         List<Camera2Recorder> photoRecorders = new ArrayList<>();
         for (CameraWrapper camera : cameraMgr.getCameraList()) {
-            photoRecorders.add(new Camera2Recorder(getContext(), camera, fileMgr));
+            photoRecorders.add(new Camera2Recorder(getContext(), camera, mFileManager));
         }
         mRecorders.addAll(photoRecorders);
         if (!photoRecorders.isEmpty()) {

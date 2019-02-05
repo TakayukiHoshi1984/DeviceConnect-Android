@@ -15,10 +15,13 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
 import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.host.battery.HostBatteryManager;
+import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapper;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
@@ -118,6 +121,8 @@ public class HostDeviceService extends DConnectMessageService {
         }
     };
 
+    private Handler mCameraHandler;
+
 
     @Override
     public void onCreate() {
@@ -132,7 +137,7 @@ public class HostDeviceService extends DConnectMessageService {
         mHostBatteryManager = new HostBatteryManager(getPluginContext());
         mHostBatteryManager.getBatteryInfo();
 
-        mRecorderMgr = new HostDeviceRecorderManager(getPluginContext());
+        mRecorderMgr = new HostDeviceRecorderManager(getPluginContext(), mFileMgr);
         initRecorders(mRecorderMgr);
         mRecorderMgr.start();
 
@@ -191,8 +196,12 @@ public class HostDeviceService extends DConnectMessageService {
 
     private void initRecorders(final HostDeviceRecorderManager recorderMgr) {
         if (checkCameraHardware()) {
-            mCameraWrapperManager = new CameraWrapperManager(this);
-            recorderMgr.createCameraRecorders(mCameraWrapperManager, mFileMgr);
+            HandlerThread thread = new HandlerThread("CameraManager");
+            thread.start();
+            mCameraHandler = new Handler(thread.getLooper());
+            mCameraWrapperManager = new CameraWrapperManager(this, mCameraHandler);
+            recorderMgr.createCameraRecorders(mCameraWrapperManager);
+            recorderMgr.watchCameraAvailability(mCameraWrapperManager);
         }
         if (checkMicrophone()) {
             recorderMgr.createAudioRecorders();
@@ -209,6 +218,9 @@ public class HostDeviceService extends DConnectMessageService {
         mFileDataManager.stopTimer();
         if (mCameraWrapperManager != null) {
             mCameraWrapperManager.destroy();
+        }
+        if (mCameraHandler != null) {
+            mCameraHandler.getLooper().quit();
         }
         unregisterReceiver(mHostConnectionReceiver);
         super.onDestroy();

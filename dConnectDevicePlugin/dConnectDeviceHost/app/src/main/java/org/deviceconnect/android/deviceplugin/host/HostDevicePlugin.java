@@ -14,6 +14,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -118,6 +120,8 @@ public class HostDevicePlugin extends DevicePluginContext {
         }
     };
 
+    private Handler mCameraHandler;
+
     /**
      * コンストラクタ.
      *
@@ -134,7 +138,7 @@ public class HostDevicePlugin extends DevicePluginContext {
 
         mHostBatteryManager = new HostBatteryManager(this);
         mHostBatteryManager.getBatteryInfo();
-        mRecorderMgr = new HostDeviceRecorderManager(this);
+        mRecorderMgr = new HostDeviceRecorderManager(this, mFileMgr);
         initRecorders(mRecorderMgr);
         mRecorderMgr.start();
         mHostMediaPlayerManager = new HostMediaPlayerManager(this);
@@ -193,8 +197,12 @@ public class HostDevicePlugin extends DevicePluginContext {
 
     private void initRecorders(final HostDeviceRecorderManager recorderMgr) {
         if (checkCameraHardware()) {
-            mCameraWrapperManager = new CameraWrapperManager(getContext());
-            recorderMgr.createCameraRecorders(mCameraWrapperManager, mFileMgr);
+            HandlerThread thread = new HandlerThread("CameraManager");
+            thread.start();
+            mCameraHandler = new Handler(thread.getLooper());
+            mCameraWrapperManager = new CameraWrapperManager(getContext(), mCameraHandler);
+            recorderMgr.createCameraRecorders(mCameraWrapperManager);
+            recorderMgr.watchCameraAvailability(mCameraWrapperManager);
         }
         if (checkMicrophone()) {
             recorderMgr.createAudioRecorders();
