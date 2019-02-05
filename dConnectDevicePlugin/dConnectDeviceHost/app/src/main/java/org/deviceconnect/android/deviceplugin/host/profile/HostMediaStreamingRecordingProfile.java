@@ -8,6 +8,7 @@
 package org.deviceconnect.android.deviceplugin.host.profile;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 
@@ -813,10 +814,22 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
      * カメラライト点灯状態確認.
      */
     public void checkCameraLightState() {
-        // ライト点灯中なら消灯処理を実施.
-        if (mRecorderMgr.getCameraRecorder(null).isUseFlashLight()) {
-            mRecorderMgr.getCameraRecorder(null).turnOffFlashLight();
+        if (!checkCameraFlashHardware()) {
+            return;
         }
+        // ライト点灯中なら消灯処理を実施.
+        HostDevicePhotoRecorder recorder = mRecorderMgr.getCameraRecorder(null);
+        if (recorder != null && recorder.isUseFlashLight()) {
+            recorder.turnOffFlashLight();
+        }
+    }
+
+    /**
+     * カメラのフラッシュを端末がサポートしているかチェックします.
+     * @return カメラのフラッシュをサポートしている場合はtrue、それ以外はfalse
+     */
+    private boolean checkCameraFlashHardware() {
+        return getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
     }
 
 }
