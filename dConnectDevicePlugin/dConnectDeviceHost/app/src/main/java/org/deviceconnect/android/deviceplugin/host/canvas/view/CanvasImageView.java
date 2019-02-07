@@ -6,7 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.host.canvas.view;
 
-import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.Shader;
@@ -16,6 +16,7 @@ import android.util.Log;
 import android.widget.ImageView;
 
 import org.deviceconnect.android.deviceplugin.host.R;
+import org.deviceconnect.android.deviceplugin.host.canvas.CanvasController;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawUtils;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.DownloadMessageDialogFragment;
@@ -28,15 +29,16 @@ import java.lang.ref.WeakReference;
  * @author NTT DOCOMO, INC.
  */
 public class CanvasImageView {
+    private static final int OOM_MEMORY_SIZE = 5000000;
     /**
      *  エラーダイアログのタイプ:{@value}.
      */
-    private static final String DIALOG_TYPE_OOM = "TYPE_OOM";
+    public static final String DIALOG_TYPE_OOM = "TYPE_OOM";
 
     /**
      *  エラーダイアログのタイプ:{@value}.
      */
-    private static final String DIALOG_TYPE_NOT_FOUND = "TYPE_NOT_FOUND";
+    public static final String DIALOG_TYPE_NOT_FOUND = "TYPE_NOT_FOUND";
     /**
      * 画像リソース取得結果
      */
@@ -54,36 +56,23 @@ public class CanvasImageView {
         /**
          * リソースの取得に失敗.
          */
-        NotFoundResource
+        NotFoundResource,
+
+
     }
 
-    /**
-     * リソースダウンロード中のProgressDialog.
-     */
-    private static DownloadMessageDialogFragment mDialog;
 
     /**
      * ダウンロード中フラグ.
      */
     private static boolean mDownloadFlag = false;
-
     /**
      * コンストラクタ.
-     * @param activity Activity
      * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
      */
-    public CanvasImageView(final Activity activity, final CanvasDrawImageObject drawObject) {
-        refreshImage(activity, drawObject);
-    }
-
-    /**
-     * 画像を表示する.
-     * @param activity Activity
-     * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
-     */
-    private void refreshImage(final Activity activity, final CanvasDrawImageObject drawObject) {
+    public CanvasImageView(final Context context, final ImageView imageView, final CanvasController.Presenter presenter, final CanvasDrawImageObject drawObject) {
         if (drawObject == null) {
-            openNotFoundDrawImage(activity);
+            presenter.showNotFoundDrawImageDialog();
             return;
         }
 
@@ -91,19 +80,10 @@ public class CanvasImageView {
             return;
         }
         mDownloadFlag = true;
-        DownloadTask task = new DownloadTask(activity, drawObject);
+        DownloadTask task = new DownloadTask(context, imageView, presenter, drawObject);
         task.execute();
     }
-    /**
-     * リソースが見つからない場合のエラーダイアログを表示します.
-     */
-    private static void openNotFoundDrawImage(final Activity activity) {
-        ErrorDialogFragment oomDialog = ErrorDialogFragment.create(DIALOG_TYPE_NOT_FOUND,
-                activity.getString(R.string.host_canvas_error_title),
-                activity.getString(R.string.host_canvas_error_not_found_message),
-                activity.getString(R.string.host_ok));
-        oomDialog.show(activity.getFragmentManager(), DIALOG_TYPE_NOT_FOUND);
-    }
+
 
     /**
      * リソースダウンロード用のAsyncTask.
@@ -114,25 +94,25 @@ public class CanvasImageView {
         /** Canvasに表示するリソース情報を持つオブジェクト. */
         private CanvasDrawImageObject mDrawImageObject;
         /** Activity. */
-        private WeakReference<Activity> mActivityReference;
+        private WeakReference<Context> mContextReference;
+        private CanvasController.Presenter mPresenter;
         /** 表示する画像データ. */
         private Bitmap mBitmap;
 
         /**
          * コンストラクタ.
-         * @param activity Activity
          * @param drawImageObject Canvasに表示するリソース情報を持つオブジェクト
          */
-        DownloadTask(final Activity activity, final CanvasDrawImageObject drawImageObject) {
-            ImageView canvasView = activity.findViewById(R.id.canvasProfileView);
+        DownloadTask(final Context context, final ImageView canvasView, final CanvasController.Presenter presenter, final CanvasDrawImageObject drawImageObject) {
             canvasView.setKeepScreenOn(true);
             mCanvasView = new WeakReference<>(canvasView);
-            mActivityReference = new WeakReference<>(activity);
+            mContextReference = new WeakReference<>(context);
             mDrawImageObject = drawImageObject;
+            mPresenter = presenter;
         }
         @Override
         protected void onPreExecute() {
-            showDownloadDialog();
+            mPresenter.showDownloadDialog();
         }
 
         @Override
@@ -151,7 +131,7 @@ public class CanvasImageView {
                 if (uri.startsWith("http")) {
                     data = CanvasDrawUtils.getData(uri);
                 } else if (uri.startsWith("content")) {
-                    data = CanvasDrawUtils.getContentData(mActivityReference.get(), uri);
+                    data = CanvasDrawUtils.getContentData(mContextReference.get(), uri);
                 } else {
                     data = CanvasDrawUtils.getCacheData(uri);
                 }
@@ -164,34 +144,27 @@ public class CanvasImageView {
             } catch (Exception e) {
                 return ResourceResult.NotFoundResource;
             }
+            if ((mBitmap.getWidth() * mBitmap.getHeight()) > OOM_MEMORY_SIZE) {
+                return ResourceResult.OutOfMemory;
+            }
             return ResourceResult.Success;
         }
 
         @Override
         protected void onPostExecute(final ResourceResult result) {
-            dismissDownloadDialog();
+            mPresenter.dismissDownloadDialog();
             switch (result) {
                 case Success:
                     showDrawObject();
                     break;
                 case OutOfMemory:
-                    openOutOfMemory();
+                    mPresenter.showOutOfMemoryDialog();
                     break;
                 case NotFoundResource:
-                    openNotFoundDrawImage(mActivityReference.get());
+                    mPresenter.showNotFoundDrawImageDialog();
                     break;
             }
-
             mDownloadFlag = false;
-        }
-        /**
-         * ダウンロードダイアログを非表示.
-         */
-        private synchronized  void dismissDownloadDialog() {
-            if (mDialog != null) {
-                mDialog.dismiss();
-                mDialog = null;
-            }
         }
         /**
          * 画面を更新.
@@ -213,7 +186,7 @@ public class CanvasImageView {
                     mCanvasView.get().setTranslationY((int) mDrawImageObject.getY());
                     break;
                 case FILL_MODE:
-                    BitmapDrawable bd = new BitmapDrawable(mActivityReference.get().getResources(), mBitmap);
+                    BitmapDrawable bd = new BitmapDrawable(mContextReference.get().getResources(), mBitmap);
                     bd.setTileModeX(Shader.TileMode.REPEAT);
                     bd.setTileModeY(Shader.TileMode.REPEAT);
                     mCanvasView.get().setImageDrawable(bd);
@@ -222,30 +195,6 @@ public class CanvasImageView {
                     mCanvasView.get().setTranslationY((int) mDrawImageObject.getY());
                     break;
             }
-        }
-
-
-
-        /**
-         * メモリ不足エラーダイアログを表示.
-         */
-        private void openOutOfMemory() {
-            ErrorDialogFragment oomDialog = ErrorDialogFragment.create(DIALOG_TYPE_OOM,
-                    mActivityReference.get().getString(R.string.host_canvas_error_title),
-                    mActivityReference.get().getString(R.string.host_canvas_error_oom_message),
-                    mActivityReference.get().getString(R.string.host_ok));
-            oomDialog.show(mActivityReference.get().getFragmentManager(), DIALOG_TYPE_OOM);
-        }
-
-        /**
-         * ダウンロードダイアログを表示.
-         */
-        private synchronized void showDownloadDialog() {
-            if (mDialog != null) {
-                mDialog.dismiss();
-            }
-            mDialog = new DownloadMessageDialogFragment();
-            mDialog.show(mActivityReference.get().getFragmentManager(), "dialog");
         }
     };
 

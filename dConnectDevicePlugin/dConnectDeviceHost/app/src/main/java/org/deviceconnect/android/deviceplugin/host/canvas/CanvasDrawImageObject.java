@@ -48,6 +48,28 @@ public class CanvasDrawImageObject {
     public static final String ACTION_DELETE_CANVAS = "org.deviceconnect.android.deviceplugin.host.canvas.DELETE";
 
     /**
+     * Draw Canvas Action for External Display.
+     */
+    public static final String ACTION_EXTERNAL_DISPLAY_DRAW_CANVAS = "org.deviceconnect.android.deviceplugin.host.external.display.canvas.DRAW";
+
+    /**
+     * Delete Canvas Action for External Display.
+     */
+    public static final String ACTION_EXTERNAL_DISPLAY_DELETE_CANVAS = "org.deviceconnect.android.deviceplugin.host.external.display.canvas.DELETE";
+
+    /**
+     * Draw Canvas Action for MutiWindow.
+     */
+    public static final String ACTION_MULTI_WINDOW_DRAW_CANVAS = "org.deviceconnect.android.deviceplugin.host.multi.window.canvas.DRAW";
+
+    /**
+     * Delete Canvas Action for MutiWindow.
+     */
+    public static final String ACTION_MULTI_WINDOW_DELETE_CANVAS = "org.deviceconnect.android.deviceplugin.host.multi.window.canvas.DELETE";
+
+
+
+    /**
      * datakind.
      */
     private static final String DATAKIND = "drawImage";

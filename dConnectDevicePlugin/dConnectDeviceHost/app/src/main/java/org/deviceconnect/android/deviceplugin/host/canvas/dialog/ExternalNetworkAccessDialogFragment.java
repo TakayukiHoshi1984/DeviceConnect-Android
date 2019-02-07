@@ -1,5 +1,5 @@
 /*
- ExternalNetworkWarningDialogFragment.java
+ ExternalNetworkAccessDialogFragment.java
  Copyright (c) 2019 NTT DOCOMO,INC.
  Released under the MIT license
  http://opensource.org/licenses/mit-license.php
@@ -21,11 +21,9 @@ import org.deviceconnect.android.deviceplugin.host.R;
  * CanvasActivityが外部リソースにアクセスする場合に警告を出すダイアログ.
  * @author NTT DOCOMO, INC.
  */
-public class ExternalNetworkWarningDialogFragment extends ErrorDialogFragment {
+public class ExternalNetworkAccessDialogFragment extends ErrorDialogFragment {
     /** External Network Warning DialogのTAG名. */
     public static final String EXTERNAL_SHOW_CANVAS_WARNING_TAG = "EXTERNAL_SHOW_CANVAS_WARNING_TAG";
-    /** Warningリスナー. */
-    private static OnWarningDialogListener mListener;
 
     /**
      * ダイアログを作成する.
@@ -33,10 +31,10 @@ public class ExternalNetworkWarningDialogFragment extends ErrorDialogFragment {
      * @param l リスナー
      * @return ダイアログのインスタント
      */
-    public static ExternalNetworkWarningDialogFragment createDialog(final Context context,
-                                                                final OnWarningDialogListener l) {
+    public static ExternalNetworkAccessDialogFragment createDialog(final Context context,
+                                                                   final OnWarningDialogListener l) {
         mListener = l;
-        return ExternalNetworkWarningDialogFragment.create(EXTERNAL_SHOW_CANVAS_WARNING_TAG,
+        return ExternalNetworkAccessDialogFragment.create(EXTERNAL_SHOW_CANVAS_WARNING_TAG,
                 context.getString(R.string.host_canvas_warning_dialog_title),
                 context.getString(R.string.host_canvas_external_resource_warning_dialog_message),
                 context.getString(R.string.host_ok),
@@ -52,13 +50,13 @@ public class ExternalNetworkWarningDialogFragment extends ErrorDialogFragment {
      * @param negative negativeボタン名
      * @return AlertDialogFragmentのインスタンス
      */
-    private static ExternalNetworkWarningDialogFragment create(final String tag,
-                                                    final String title,
-                                                    final String message,
-                                                    final String positive,
-                                                    final String negative) {
+    private static ExternalNetworkAccessDialogFragment create(final String tag,
+                                                              final String title,
+                                                              final String message,
+                                                              final String positive,
+                                                              final String negative) {
         Bundle args = getArguments(tag, title, message, positive, negative);
-        ExternalNetworkWarningDialogFragment dialog = new ExternalNetworkWarningDialogFragment();
+        ExternalNetworkAccessDialogFragment dialog = new ExternalNetworkAccessDialogFragment();
         dialog.setArguments(args);
         return dialog;
     }

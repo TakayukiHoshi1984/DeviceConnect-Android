@@ -28,6 +28,7 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostBatteryProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostConnectionProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceOrientationProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostGeolocationProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
@@ -115,6 +116,8 @@ public class HostDeviceService extends DConnectMessageService {
             } else if (BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 onChangedBluetoothStatus();
+            } else if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
+                stopWebServer(intent);
             }
         }
     };
@@ -147,6 +150,7 @@ public class HostDeviceService extends DConnectMessageService {
         hostService.addProfile(new HostConnectionProfile(BluetoothAdapter.getDefaultAdapter()));
         hostService.addProfile(new HostFileProfile(mFileMgr));
         hostService.addProfile(new HostKeyEventProfile());
+        hostService.addProfile(new HostDeviceProfile());
         hostService.addProfile(new HostMediaPlayerProfile(mHostMediaPlayerManager));
         hostService.addProfile(new HostNotificationProfile());
         mPhoneProfile = new HostPhoneProfile((TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE));
@@ -186,6 +190,7 @@ public class HostDeviceService extends DConnectMessageService {
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(PreviewServerProvider.DELETE_PREVIEW_ACTION);
         registerReceiver(mHostConnectionReceiver, filter);
 
     }
@@ -219,11 +224,6 @@ public class HostDeviceService extends DConnectMessageService {
     public int onStartCommand(final Intent intent, final int flags, final int startId) {
         if (intent == null) {
             return START_STICKY;
-        }
-
-        String action = intent.getAction();
-        if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
-            return stopWebServer(intent);
         }
         return super.onStartCommand(intent, flags, startId);
     }

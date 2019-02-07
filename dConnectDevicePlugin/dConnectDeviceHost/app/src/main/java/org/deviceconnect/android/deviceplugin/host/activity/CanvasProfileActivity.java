@@ -8,125 +8,56 @@
 package org.deviceconnect.android.deviceplugin.host.activity;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.content.LocalBroadcastManager;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import android.widget.Button;
 
 import org.deviceconnect.android.deviceplugin.host.R;
-import org.deviceconnect.android.deviceplugin.host.canvas.ExternalAccessCheckUtils;
+import org.deviceconnect.android.deviceplugin.host.canvas.CanvasController;
+import org.deviceconnect.android.deviceplugin.host.canvas.dialog.DownloadMessageDialogFragment;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ErrorDialogFragment;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
-import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkWarningDialogFragment;
-import org.deviceconnect.android.deviceplugin.host.canvas.dialog.MultipleShowWarningDialogFragment;
-import org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImageView;
-import org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasVideoView;
-import org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasWebView;
+import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment;
+import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment;
 
-import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkWarningDialogFragment.EXTERNAL_SHOW_CANVAS_WARNING_TAG;
-import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.MultipleShowWarningDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
+import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
+import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment.EXTERNAL_SHOW_CANVAS_WARNING_TAG;
+import static org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImageView.DIALOG_TYPE_NOT_FOUND;
+import static org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImageView.DIALOG_TYPE_OOM;
 
 /**
  * Canvasプロファイルから受け取った画像・HTML・動画・MJPEGなどを表示する.
  *
  * @author NTT DOCOMO, INC.
  */
-public class CanvasProfileActivity extends Activity  {
+public class CanvasProfileActivity extends Activity implements CanvasController.Presenter {
 
-    /**
-     * 受け取ったパラメータを保持するキー値.
-     */
-    private static final String PARAM_INTENT = "param_intent";
 
     /**
      * Canvasが連続で起動されたかを判定する時間(ms).
      */
-    private static final int DELAY_MILLIS = 10000;
+    public static final int DELAY_MILLIS = 10000;
 
-    /**
-     * Canvas情報を持つIntent.
-     */
-    private Intent mIntent;
-    /**
-     * 表示用オブジェクト.
-     */
-    private CanvasDrawImageObject mDrawImageObject;
-    /**
-     * HTML・MJPEGを表示する.
-     * バックキーで前のページに戻らせるためにフィールド変数とする.
-     */
-    private CanvasWebView mCanvasWebView;
     /**
      * CanvasAPIの設定値を保持する.
      */
     private HostCanvasSettings mSettings;
     /**
-     * 一度外部アクセスダイアログを出したかどうかのフラグ.
-     * 二度目はダイアログを出さないようにする.
+     * Canvasの操作を行う.
      */
-    private boolean mExternalAccessFlag = false;
-
+    private CanvasController mController;
+    private WebView mCanvasWebView;
     /**
-     * Canvasが表示中に処理を受け付けるBroadcastReceiver.
+     * リソースダウンロード中のProgressDialog.
      */
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(final Context context, final Intent intent) {
-            String action = intent.getAction();
-            if (CanvasDrawImageObject.ACTION_DRAW_CANVAS.equals(action)) {
-                setDrawingArgument(intent);
-                mDrawImageObject = CanvasDrawImageObject.create(intent);
-                // 更新データが外部リソースかどうかを確認する
-                if (mSettings.isCanvasActivityAccessExternalNetworkFlag()
-                        && ExternalAccessCheckUtils.isExternalAccessResource(CanvasProfileActivity.this, mDrawImageObject.getData())) {
-                    // 外部リソースが指定されているかを確認
-                    ExternalNetworkWarningDialogFragment.createDialog(CanvasProfileActivity.this,
-                                                    new ErrorDialogFragment.OnWarningDialogListener() {
-                        @Override
-                        public void onOK() {
-                            mExternalAccessFlag = true;
-                            // 多重起動が行われたかをチェック
-                            if (mSettings.isCanvasMultipleShowFlag()) {
-                                MultipleShowWarningDialogFragment
-                                        .createDialog(CanvasProfileActivity.this, new ErrorDialogFragment.OnWarningDialogListener() {
-                                            @Override
-                                            public void onOK() {
-                                                showCanvasView();
-                                            }
-
-                                            @Override
-                                            public void onCancel() {
-
-                                            }
-                                        })
-                                        .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
-                            } else {
-                                showCanvasView();
-                            }
-                        }
-
-                        @Override
-                        public void onCancel() {
-                            finish();
-                        }
-                    }).show(getFragmentManager(), EXTERNAL_SHOW_CANVAS_WARNING_TAG);
-                } else {
-                    showCanvasView();
-                }
-            } else if (CanvasDrawImageObject.ACTION_DELETE_CANVAS.equals(action)) {
-                finish();
-            }
-        }
-    };
+    private DownloadMessageDialogFragment mDialog;
 
 
     @Override
@@ -149,114 +80,40 @@ public class CanvasProfileActivity extends Activity  {
         btn.setOnClickListener((v) -> {
             finish();
         });
-
+        mCanvasWebView = findViewById(R.id.canvasProfileWebView);
         // 受け取ったリクエストパラメータの設定
-        Intent intent = null;
-        if (savedInstanceState != null) {
-            intent = (Intent) savedInstanceState.get(PARAM_INTENT);
-        }
-        if (intent == null) {
-            intent = getIntent();
-        }
-        setDrawingArgument(intent);
-        mDrawImageObject = CanvasDrawImageObject.create(intent);
+        Intent intent  = getIntent();
+        CanvasDrawImageObject drawImageObject = CanvasDrawImageObject.create(intent);
+        mController = new CanvasController(this, mCanvasWebView, findViewById(R.id.canvasProfileView), findViewById(R.id.canvasProfileVideoView),
+                this, drawImageObject, mSettings, CanvasDrawImageObject.ACTION_DRAW_CANVAS, CanvasDrawImageObject.ACTION_DELETE_CANVAS);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Intent-Fileterの設定
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(CanvasDrawImageObject.ACTION_DRAW_CANVAS);
-        filter.addAction(CanvasDrawImageObject.ACTION_DELETE_CANVAS);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
-        // 攻撃されているかどうかの確認
-        checkForAtack();
-    }
-
-    /**
-     * 異常な方法でCanvasが起動されたか、おかしな外部サイトにアクセスしていないかをチェック.
-     */
-    private void checkForAtack() {
-        String uri = mDrawImageObject.getData();
-        if (mSettings.isCanvasMultipleShowFlag()) {
-            // 多重起動が行われたかをチェック
-            MultipleShowWarningDialogFragment
-                    .createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
-                        @Override
-                        public void onOK() {
-                            showCanvasView();
-                        }
-
-                        @Override
-                        public void onCancel() {
-
-                        }
-                    })
-                    .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
-        } else if (mSettings.isCanvasActivityAccessExternalNetworkFlag()
-                && ExternalAccessCheckUtils.isExternalAccessResource(this, uri)) {
-            // 外部リソースが指定されているかを確認
-            ExternalNetworkWarningDialogFragment.createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
-                @Override
-                public void onOK() {
-                    mExternalAccessFlag = true;
-                    // 多重起動が行われたかをチェック
-                    if (mSettings.isCanvasMultipleShowFlag()) {
-                        MultipleShowWarningDialogFragment
-                                .createDialog(CanvasProfileActivity.this, new ErrorDialogFragment.OnWarningDialogListener() {
-                                    @Override
-                                    public void onOK() {
-                                        showCanvasView();
-                                    }
-
-                                    @Override
-                                    public void onCancel() {
-
-                                    }
-                                })
-                                .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
-                    } else {
-                        showCanvasView();
-                    }
-                }
-
-                @Override
-                public void onCancel() {
-                    finish();
-                }
-            }).show(getFragmentManager(), EXTERNAL_SHOW_CANVAS_WARNING_TAG);
-        } else {
-            showCanvasView();
-        }
+        mController.registerReceiver();
+        mController.checkForAtack(false);
     }
 
     @Override
     protected void onPause() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        mController.unregisterReceiver();
         super.onPause();
     }
     @Override
     protected void onDestroy() {
-        final HostCanvasSettings settings = new HostCanvasSettings(this);
-        settings.setCanvasMultipleShowFlag(true);
+        mSettings.setCanvasMultipleShowFlag(true);
         // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
         new Handler().postDelayed(() -> {
             // 10秒後に連続起動フラグを無効にする
-            settings.setCanvasMultipleShowFlag(false);
+            mSettings.setCanvasMultipleShowFlag(false);
         }, DELAY_MILLIS);
         super.onDestroy();
     }
 
     @Override
-    protected void onSaveInstanceState(final Bundle outState) {
-        if (mIntent != null) {
-            outState.putParcelable(PARAM_INTENT, mIntent);
-        }
-    }
-    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (mCanvasWebView != null && keyCode == KeyEvent.KEYCODE_BACK && mCanvasWebView.canGoBack()) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && mCanvasWebView.canGoBack()) {
             mCanvasWebView.goBack();
             return true;
         }
@@ -264,40 +121,110 @@ public class CanvasProfileActivity extends Activity  {
         return super.onKeyDown(keyCode, event);
     }
 
-    /**
-     * 指定されたCanvas用のViewを表示する.
-     *
-     */
-    private void showCanvasView() {
-        mCanvasWebView = new CanvasWebView(this, mDrawImageObject, mSettings, mExternalAccessFlag);
-        CanvasVideoView canvasVideoView = new CanvasVideoView(this, mDrawImageObject);
-        String mimeType = mDrawImageObject.getMimeType();
+    @Override
+    public void showNotFoundDrawImageDialog() {
+        ErrorDialogFragment oomDialog = ErrorDialogFragment.create(DIALOG_TYPE_NOT_FOUND,
+                getString(R.string.host_canvas_error_title),
+                getString(R.string.host_canvas_error_not_found_message),
+                getString(R.string.host_ok),  new ErrorDialogFragment.OnWarningDialogListener() {
 
-        if (mimeType != null && mimeType.contains("video/x-mjpeg")) {
-            mCanvasWebView.visibility();
-            canvasVideoView.gone();
-            mCanvasWebView.initWebView(mimeType);
-        } else if (mimeType != null && mimeType.contains("video/")) {
-            mCanvasWebView.gone();
-            canvasVideoView.visibility();
-            canvasVideoView.initVideoView();
-        } else if (mimeType != null && mimeType.contains("text/html")) {
-            mCanvasWebView.visibility();
-            canvasVideoView.gone();
-            mCanvasWebView.initWebView(mimeType);
-        } else {
-            // 画像が来た時あるいは、mimeTypeが指定されていなかった場合
-            new CanvasImageView(this, mDrawImageObject);
+                    @Override
+                    public void onOK() {
+                        finishActivity();
+                    }
+
+                    @Override
+                    public void onCancel() {
+
+                    }
+                });
+        oomDialog.show(getFragmentManager(), DIALOG_TYPE_NOT_FOUND);
+    }
+
+    @Override
+    public void showDownloadDialog() {
+        if (mDialog != null) {
+            mDialog.dismiss();
+        }
+        mDialog = new DownloadMessageDialogFragment();
+        mDialog.show(getFragmentManager(), "dialog");
+    }
+
+    @Override
+    public void dismissDownloadDialog() {
+        if (mDialog != null) {
+            mDialog.dismiss();
+            mDialog = null;
         }
     }
-    /**
-     * Set a argument that draw in canvas.
-     *
-     * @param intent argument
-     */
-    private void setDrawingArgument(final Intent intent) {
-        if (intent != null) {
-            mIntent = intent;
-        }
+
+    @Override
+    public void showOutOfMemoryDialog() {
+        ErrorDialogFragment oomDialog = ErrorDialogFragment.create(DIALOG_TYPE_OOM,
+                getString(R.string.host_canvas_error_title),
+                getString(R.string.host_canvas_error_oom_message),
+                getString(R.string.host_ok),  new ErrorDialogFragment.OnWarningDialogListener() {
+
+                    @Override
+                    public void onOK() {
+                        finishActivity();
+                    }
+
+                    @Override
+                    public void onCancel() {
+
+                    }
+                });
+        oomDialog.show(getFragmentManager(), DIALOG_TYPE_OOM);
     }
+
+    @Override
+    public void showExternalNetworkAccessDialog(CanvasController.PresenterCallback callback) {
+        // 多重起動が行われたかをチェック
+        ExternalNetworkAccessDialogFragment
+                .createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
+                    @Override
+                    public void onOK() {
+                        if (callback != null) {
+                            callback.onOKCallback();
+                        }
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        if (callback != null) {
+                            callback.onCancelCallback();
+                        }
+                    }
+                })
+                .show(getFragmentManager(), EXTERNAL_SHOW_CANVAS_WARNING_TAG);
+    }
+
+    @Override
+    public void showContinuousAccessConfirmDilaog(CanvasController.PresenterCallback callback) {
+        // 多重起動が行われたかをチェック
+        ContinuousAccessConfirmDialogFragment
+                .createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
+                    @Override
+                    public void onOK() {
+                        if (callback != null) {
+                            callback.onOKCallback();
+                        }
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        if (callback != null) {
+                            callback.onCancelCallback();
+                        }
+                    }
+                })
+                .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
+    }
+
+    @Override
+    public void finishActivity() {
+        finish();
+    }
+
 }

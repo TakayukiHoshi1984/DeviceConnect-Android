@@ -134,5 +134,10 @@
         <name lang="en">Geolocation</name>
         <description lang="en">Get geolocation.</description>
     </profile>
-
+    <profile name="device" expireperiod="86400000">
+        <name lang="ja">ディスプレイ接続</name>
+        <description lang="ja">ディスプレイと接続する</description>
+        <name lang="en">Display Connection</name>
+        <description lang="en">Connect Display.</description>
+    </profile>
 </deviceplugin-provider>

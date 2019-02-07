@@ -1,5 +1,5 @@
 /*
- MultipleShowWarningDialogFragment.java
+ ContinuousAccessConfirmDialogFragment.java
  Copyright (c) 2019 NTT DOCOMO,INC.
  Released under the MIT license
  http://opensource.org/licenses/mit-license.php
@@ -11,7 +11,6 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.CheckBox;
@@ -25,7 +24,7 @@ import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
  * 連続でCanvasが起動された場合の警告ダイログ.
  * @author NTT DOCOMO, INC.
  */
-public class MultipleShowWarningDialogFragment extends ErrorDialogFragment {
+public class ContinuousAccessConfirmDialogFragment extends ErrorDialogFragment {
     /** Multiple Show Warning Dialogのタグ名. */
     public static final String MULTIPLE_SHOW_CANVAS_WARNING_TAG = "MULTIPLE_SHOW_CANVAS_WARNING_TAG";
     /** ダイアログのリスナー. */
@@ -37,10 +36,10 @@ public class MultipleShowWarningDialogFragment extends ErrorDialogFragment {
      * @param l リスナー
      * @return ダイアログのインスタンス
      */
-    public static MultipleShowWarningDialogFragment createDialog(final Context context,
-                                                                 final OnWarningDialogListener l) {
+    public static ContinuousAccessConfirmDialogFragment createDialog(final Context context,
+                                                                     final OnWarningDialogListener l) {
         mListener = l;
-        return MultipleShowWarningDialogFragment.create(MULTIPLE_SHOW_CANVAS_WARNING_TAG,
+        return ContinuousAccessConfirmDialogFragment.create(MULTIPLE_SHOW_CANVAS_WARNING_TAG,
                 context.getString(R.string.host_canvas_warning_dialog_title),
                 context.getString(R.string.host_canvas_multiple_warning_dialog_message),
                 context.getString(R.string.host_canvas_warning_dialog_check),
@@ -60,17 +59,17 @@ public class MultipleShowWarningDialogFragment extends ErrorDialogFragment {
      * @param negative negativeボタン名
      * @return AlertDialogFragmentのインスタンス
      */
-    private static MultipleShowWarningDialogFragment create(final String tag,
-                                        final String title,
-                                        final String message,
-                                        final String checkMessage,
-                                        final String checkedMessage,
-                                        final String positive,
-                                        final String negative) {
+    private static ContinuousAccessConfirmDialogFragment create(final String tag,
+                                                                final String title,
+                                                                final String message,
+                                                                final String checkMessage,
+                                                                final String checkedMessage,
+                                                                final String positive,
+                                                                final String negative) {
         Bundle args = getArguments(tag, title, message, positive, negative);
         args.putString(KEY_DEFAULT_CHECK_MESSAGE, checkMessage);
         args.putString(KEY_CHECKED_MESSAGE, checkedMessage);
-        MultipleShowWarningDialogFragment dialog = new MultipleShowWarningDialogFragment();
+        ContinuousAccessConfirmDialogFragment dialog = new ContinuousAccessConfirmDialogFragment();
         dialog.setArguments(args);
         return dialog;
     }

@@ -117,6 +117,10 @@
                 android:name="org.deviceconnect.android.deviceplugin.icon"
                 android:resource="@drawable/dconnect_icon"/>
         </service>
+        <activity
+            android:name="org.deviceconnect.android.deviceplugin.host.externaldisplay.CanvasDialogActivity"
+            android:theme="@style/AppTheme.Translucent"
+            />
     </application>
 
 </manifest>

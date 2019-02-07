@@ -68,6 +68,8 @@ public class ErrorDialogFragment extends DialogFragment {
          */
         void onCancel();
     }
+    /** Warningリスナー. */
+    protected static OnWarningDialogListener mListener;
 
     /**
      * ボタン無しでAlertDialogを作成します.
@@ -77,7 +79,7 @@ public class ErrorDialogFragment extends DialogFragment {
      * @return AlertDialogFragmentのインスタンス
      */
     public static ErrorDialogFragment create(final String tag, final String title, final String message) {
-        return create(tag, title, message, null, null);
+        return create(tag, title, message, null, null, null);
     }
 
     /**
@@ -88,8 +90,8 @@ public class ErrorDialogFragment extends DialogFragment {
      * @param positive positiveボタン名
      * @return AlertDialogFragmentのインスタンス
      */
-    public static ErrorDialogFragment create(final String tag, final String title, final String message, final String positive) {
-        return create(tag, title, message, positive, null);
+    public static ErrorDialogFragment create(final String tag, final String title, final String message, final String positive, final OnWarningDialogListener l) {
+        return create(tag, title, message, positive, null, l);
     }
 
     /**
@@ -102,7 +104,8 @@ public class ErrorDialogFragment extends DialogFragment {
      * @return AlertDialogFragmentのインスタンス
      */
     private static ErrorDialogFragment create(final String tag, final String title, final String message,
-                                              final String positive, final String negative) {
+                                              final String positive, final String negative, final OnWarningDialogListener listener) {
+        mListener = listener;
         Bundle args = getArguments(tag, title, message, positive, negative);
 
         ErrorDialogFragment dialog = new ErrorDialogFragment();
@@ -133,14 +136,17 @@ public class ErrorDialogFragment extends DialogFragment {
         if (getArguments().getString(KEY_POSITIVE) != null) {
 
             builder.setPositiveButton(getArguments().getString(KEY_POSITIVE), (dialog, which) -> {
-                Activity activity = getActivity();
-                if (activity != null) {
-                    activity.finish();
+                if (mListener != null) {
+                    mListener.onOK();
                 }
             });
         }
         if (getArguments().getString(KEY_NEGATIVE) != null) {
-            builder.setNegativeButton(getArguments().getString(KEY_NEGATIVE), null);
+            builder.setNegativeButton(getArguments().getString(KEY_NEGATIVE), (dialog, which) -> {
+                if (mListener != null) {
+                    mListener.onCancel();
+                }
+            });
         }
         return builder.create();
     }

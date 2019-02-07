@@ -27,12 +27,12 @@ public class CanvasVideoView {
 
     /**
      * コンストラクタ.
-     * @param activity Activity
+     * @param videoView videoView
      * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
      */
-    public CanvasVideoView(final Activity activity,
+    public CanvasVideoView(final VideoView videoView,
                          final CanvasDrawImageObject drawObject) {
-        mCanvasVideoView = activity.findViewById(R.id.canvasProfileVideoView);
+        mCanvasVideoView = videoView;
         mDrawImageObject = drawObject;
         mCanvasVideoView.setKeepScreenOn(true);
     }

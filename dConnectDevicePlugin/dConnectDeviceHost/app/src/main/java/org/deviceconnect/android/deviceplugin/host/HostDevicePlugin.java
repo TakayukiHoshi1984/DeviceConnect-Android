@@ -26,6 +26,7 @@ import org.deviceconnect.android.deviceplugin.host.profile.HostBatteryProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostConnectionProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceOrientationProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostFileProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostGeolocationProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
@@ -155,6 +156,8 @@ public class HostDevicePlugin extends DevicePluginContext {
         hostService.addProfile(new HostSettingProfile());
         hostService.addProfile(new HostTouchProfile());
         hostService.addProfile(new HostVibrationProfile());
+        hostService.addProfile(new HostDeviceProfile());
+
 
         if (checkSensorHardware()) {
             hostService.addProfile(new HostDeviceOrientationProfile());
