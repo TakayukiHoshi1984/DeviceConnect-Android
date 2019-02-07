@@ -38,6 +38,14 @@ public class ExternalDisplayCanvasProfile extends HostCanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            DConnectServiceProvider provider = ((HostDeviceService) getContext()).getServiceProvider();
+            ExternalDisplayService dService = (ExternalDisplayService)
+                    provider.getService(ExternalDisplayService.SERVICE_ID);
+            if (dService == null) {
+                MessageUtils.setIllegalServerStateError(response, "External Display Service NotFound");
+                return true;
+            }
+
             if (!mSettings.isCanvasActivityNeverShowFlag()) {
                 MessageUtils.setIllegalServerStateError(response,
                         "The function of Canvas API is turned off.\n" +
@@ -108,14 +116,16 @@ public class ExternalDisplayCanvasProfile extends HostCanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String className = getClassnameOfTopActivity();
+            DConnectServiceProvider provider = ((HostDeviceService) getContext()).getServiceProvider();
+            ExternalDisplayService dService = (ExternalDisplayService)
+                    provider.getService(ExternalDisplayService.SERVICE_ID);
+            if (dService == null) {
+                MessageUtils.setIllegalServerStateError(response, "External Display Service NotFound");
+                return true;
+            }
             Intent intent = new Intent(CanvasDrawImageObject.ACTION_EXTERNAL_DISPLAY_DELETE_CANVAS);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
             setResult(response, DConnectMessage.RESULT_OK);
-//            } else {
-//                MessageUtils.setIllegalDeviceStateError(response, "canvas not display");
-//            }
-
             return true;
         }
     };
