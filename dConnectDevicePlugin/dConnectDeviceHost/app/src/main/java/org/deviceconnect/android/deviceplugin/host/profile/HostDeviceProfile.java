@@ -1,34 +1,26 @@
 package org.deviceconnect.android.deviceplugin.host.profile;
 
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.media.MediaRouter;
-import android.util.Log;
-import android.view.Display;
-import android.view.WindowManager;
 
-import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
-import org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayPresentation;
 import org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayService;
+import org.deviceconnect.android.message.DevicePluginContext;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.android.profile.api.DeleteApi;
 import org.deviceconnect.android.profile.api.PostApi;
-import org.deviceconnect.android.service.DConnectService;
 import org.deviceconnect.android.service.DConnectServiceProvider;
 import org.deviceconnect.message.DConnectMessage;
 
-import java.util.Map;
-
 public class HostDeviceProfile extends DConnectProfile {
 
+    private DevicePluginContext mDevicePluginContext;
     /**
      * コンストラクタ.
      */
-    public HostDeviceProfile() {
+    public HostDeviceProfile(DevicePluginContext devicePluginContext) {
         addApi(mPostDevicePairing);
         addApi(mDeleteDevicePairing);
+        mDevicePluginContext = devicePluginContext;
     }
     @Override
     public String getProfileName() {
@@ -48,7 +40,7 @@ public class HostDeviceProfile extends DConnectProfile {
             ExternalDisplayService dService = (ExternalDisplayService)
                                 provider.getService(ExternalDisplayService.SERVICE_ID);
             if (dService == null) {
-                dService = new ExternalDisplayService(getContext());
+                dService = new ExternalDisplayService(getContext(), mDevicePluginContext);
                 provider.addService(dService);
             }
             dService.setOnline(dService.connect());
@@ -70,7 +62,7 @@ public class HostDeviceProfile extends DConnectProfile {
         public boolean onRequest(final Intent request, final Intent response) {
             DConnectServiceProvider provider = ((HostDeviceService) getContext()).getServiceProvider();
             ExternalDisplayService dService = (ExternalDisplayService) provider.getService(ExternalDisplayService.SERVICE_ID);
-            dService.setOnline(!dService.disconnect());
+            dService.setOnline(!dService.disconnectCanvasDisplay());
             setResult(response, DConnectMessage.RESULT_OK);
             return true;
         }

@@ -1,3 +1,9 @@
+/*
+ CanvasDialogActivity.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.externaldisplay;
 
 import android.app.Activity;
@@ -7,10 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
-import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment;
@@ -22,12 +25,13 @@ import org.deviceconnect.message.DConnectMessage;
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
 import static org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImageView.DIALOG_TYPE_NOT_FOUND;
 import static org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImageView.DIALOG_TYPE_OOM;
-import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayPresentation.ACTION_CONTINUOUS_ACCESS_CONFIRM_RECEIVER;
-import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayPresentation.ACTION_ERROR_RECEIVER;
-import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayPresentation.ACTION_EXTERNAL_NETWORK_ACCESS_RECEIVER;
+import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayCanvasPresentation.ACTION_CONTINUOUS_ACCESS_CONFIRM_RECEIVER;
+import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayCanvasPresentation.ACTION_ERROR_RECEIVER;
+import static org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayCanvasPresentation.ACTION_EXTERNAL_NETWORK_ACCESS_RECEIVER;
 
 /**
  * Activity以外からCanvasに関するダイアログを表示するためのActivity.
+ * @author NTT DOCOMO, INC.
  */
 public class CanvasDialogActivity extends Activity {
     /** Canvasのダイアログタイプのキー値. */
@@ -84,7 +88,10 @@ public class CanvasDialogActivity extends Activity {
         showDialogs(CanvasDialogType.valueOf(dialogType));
     }
 
-
+    /**
+     * タイプに合わせたダイアログを表示する.
+     * @param dialogType ダイアログタイプ
+     */
     private void showDialogs(final CanvasDialogType dialogType) {
         switch(dialogType) {
             case OutOfMemory:
@@ -183,11 +190,15 @@ public class CanvasDialogActivity extends Activity {
                         .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);
                 break;
             default:
-                finish();
+                finish();  //想定外のダイアログタイプの場合は終了する
         }
     }
 
-
+    /**
+     * レスポンスを返す.
+     * @param action レスポンスを返す場所のアクション名
+     * @param result 応答結果
+     */
     private void sendResponse(final String action, final int result) {
         Intent response = new Intent(action);
         response.putExtra(DConnectMessage.EXTRA_RESULT, result);

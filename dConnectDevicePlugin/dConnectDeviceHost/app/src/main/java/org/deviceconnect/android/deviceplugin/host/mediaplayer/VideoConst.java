@@ -75,13 +75,21 @@ public final class VideoConst {
     /** コールバックのエラーメッセージ。 */
     public static final String EXTRA_CALLBACK_ERROR_MESSAGE = "callback_error_message";
 
-    /** Video起動のAction名. */
+    /** Video起動のAction名(Hostプラグイン). */
     public static final String SEND_HOSTDP_TO_VIDEOPLAYER =
             "org.deviceconnect.android.intent.action.SEND_HOSTDP_TO_VIDEOPLAYER";
 
-    /** Video起動のAction名. */
+    /** Video起動のAction名(Hostプラグイン). */
     public static final String SEND_VIDEOPLAYER_TO_HOSTDP =
             "org.deviceconnect.android.intent.action.SEND_VIDEOPLAYER_TO_HOSTDP";
+
+    /** Video起動のAction名(外部ディスプレイ). */
+    public static final String SEND_ED_TO_VIDEOPLAYER =
+            "org.deviceconnect.android.intent.action.SEND_ED_TO_VIDEOPLAYER";
+
+    /** Video起動のAction名(外部ディスプレイ). */
+    public static final String SEND_VIDEOPLAYER_TO_ED =
+            "org.deviceconnect.android.intent.action.SEND_VIDEOPLAYER_TO_ED";
 
     /** 再生開始. */
     public static final String EXTRA_VALUE_VIDEO_PLAYER_PLAY = "play";

@@ -81,12 +81,9 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         mVideoView.setVideoURI(mUri);
         mVideoView.requestFocus();
         mVideoView.setOnCompletionListener(this);
-        mVideoView.setOnPreparedListener(new OnPreparedListener() {
-            @Override
-            public void onPrepared(final MediaPlayer mp) {
-                mVideoView.start();
-                mIsReady = true;
-            }
+        mVideoView.setOnPreparedListener((mp) -> {
+            mVideoView.start();
+            mIsReady = true;
         });
     }
 
@@ -109,7 +106,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
             if (intent.getAction().equals(VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER)) {
                 String mVideoAction = intent.getStringExtra(VideoConst.EXTRA_NAME);
                 if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PLAY)) {
-                    mVideoView.start();
+                    mVideoView.resume(); // resume()で動画の最初から再生される
                 } else if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_STOP)) {
                     if (mIsReady) {
                         mVideoView.stopPlayback();
@@ -124,8 +121,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
                 } else if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PAUSE)) {
                     mVideoView.pause();
                 } else if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_RESUME)) {
-                    mVideoView.resume();
-                    mVideoView.start();
+                    mVideoView.start(); // start()でpause()で止めたところから再生される
                 } else if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_SEEK)) {
                     int pos = intent.getIntExtra("pos", -1);
                     mVideoView.seekTo(pos);

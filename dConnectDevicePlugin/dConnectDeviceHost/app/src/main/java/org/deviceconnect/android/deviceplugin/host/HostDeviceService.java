@@ -24,6 +24,7 @@ import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.HostMediaPlayerManager;
+import org.deviceconnect.android.deviceplugin.host.mediaplayer.MediaPlayerManager;
 import org.deviceconnect.android.deviceplugin.host.profile.HostBatteryProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostConnectionProfile;
@@ -85,7 +86,7 @@ public class HostDeviceService extends DConnectMessageService {
     private FileDataManager mFileDataManager;
 
     /** メディアプレイヤー管理クラス. */
-    private HostMediaPlayerManager mHostMediaPlayerManager;
+    private MediaPlayerManager mHostMediaPlayerManager;
 
     /** カメラ管理クラス. */
     private CameraWrapperManager mCameraWrapperManager;
@@ -150,7 +151,7 @@ public class HostDeviceService extends DConnectMessageService {
         hostService.addProfile(new HostConnectionProfile(BluetoothAdapter.getDefaultAdapter()));
         hostService.addProfile(new HostFileProfile(mFileMgr));
         hostService.addProfile(new HostKeyEventProfile());
-        hostService.addProfile(new HostDeviceProfile());
+        hostService.addProfile(new HostDeviceProfile(getPluginContext()));
         hostService.addProfile(new HostMediaPlayerProfile(mHostMediaPlayerManager));
         hostService.addProfile(new HostNotificationProfile());
         mPhoneProfile = new HostPhoneProfile((TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE));

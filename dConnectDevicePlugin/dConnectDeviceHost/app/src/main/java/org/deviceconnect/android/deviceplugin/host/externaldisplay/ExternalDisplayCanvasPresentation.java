@@ -1,3 +1,9 @@
+/*
+ ExternalDisplayCanvasPresentation.java
+ Copyright (c) 2019 NTT DOCOMO,INC.
+ Released under the MIT license
+ http://opensource.org/licenses/mit-license.php
+ */
 package org.deviceconnect.android.deviceplugin.host.externaldisplay;
 
 import android.app.Presentation;
@@ -23,7 +29,11 @@ import org.deviceconnect.message.DConnectMessage;
 import static org.deviceconnect.android.deviceplugin.host.activity.CanvasProfileActivity.DELAY_MILLIS;
 import static org.deviceconnect.android.deviceplugin.host.externaldisplay.CanvasDialogActivity.ACTION_DISMISS_DOWNLAOD_DIALOG;
 
-public class ExternalDisplayPresentation extends Presentation implements CanvasController.Presenter {
+/**
+ * 外部ディスプレイ用のCanvasの処理を行う.
+ * @author NTT DOCOMO, INC.
+ */
+public class ExternalDisplayCanvasPresentation extends Presentation implements CanvasController.Presenter {
     /**
      * 外部リソースアクセスダイアログの表示命令のレスポンスを受け取るためのAction名.
      */
@@ -46,9 +56,16 @@ public class ExternalDisplayPresentation extends Presentation implements CanvasC
      * Canvasの操作を行う.
      */
     private CanvasController mController;
-    public ExternalDisplayPresentation(Context outerContext,
-                                       Display display,
-                                       CanvasDrawImageObject drawObject) {
+
+    /**
+     * コンストラクタ.
+     * @param outerContext Context
+     * @param display Display
+     * @param drawObject 描画するデータの情報を持つオビジェクト
+     */
+    public ExternalDisplayCanvasPresentation(final Context outerContext,
+                                             final Display display,
+                                             final CanvasDrawImageObject drawObject) {
         super(outerContext, display);
         mDrawImageObject = drawObject;
     }
@@ -173,11 +190,18 @@ public class ExternalDisplayPresentation extends Presentation implements CanvasC
         showDialogActivity(CanvasDialogActivity.CanvasDialogType.ContinuousAccessConfirm);
     }
 
+    /**
+     * Presentationに投影されているCanvasを更新する.
+     * @param drawImageObject 更新するデータを持つオブジェクト
+     */
     public void updateCanvasDisplay(final CanvasDrawImageObject drawImageObject) {
         mController.updateCanvas(drawImageObject);
     }
 
-
+    /**
+     * Canvasのエラーに合わせたダイアログを表示するためのActivityを起動する.
+     * @param type Canvasのエラータイプ
+     */
     private void showDialogActivity(final CanvasDialogActivity.CanvasDialogType type) {
         Intent intent = new Intent();
         intent.setClass(getContext(), CanvasDialogActivity.class);
@@ -186,6 +210,9 @@ public class ExternalDisplayPresentation extends Presentation implements CanvasC
         getContext().startActivity(intent);
     }
 
+    /**
+     * ダイアログを表示しているActivityから、Canvasを非表示にするためのタイミングを受け取るレシーバー.
+     */
     private void setDismissPresentationReceiver() {
         BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
