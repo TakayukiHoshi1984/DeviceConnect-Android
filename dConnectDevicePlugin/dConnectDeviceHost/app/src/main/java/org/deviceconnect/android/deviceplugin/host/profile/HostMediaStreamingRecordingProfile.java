@@ -44,7 +44,6 @@ import java.util.concurrent.CountDownLatch;
  *
  * @author NTT DOCOMO, INC.
  */
-@SuppressWarnings("deprecation")
 public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProfile {
 
     private final HostDeviceRecorderManager mRecorderMgr;

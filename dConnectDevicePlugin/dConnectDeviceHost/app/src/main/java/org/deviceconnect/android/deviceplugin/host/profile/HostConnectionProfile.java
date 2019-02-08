@@ -372,7 +372,7 @@ public class HostConnectionProfile extends ConnectionProfile {
 
                 Intent intent = new Intent(request);
                 intent.setClass(getContext(), BluetoothManageActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
                 getContext().startActivity(intent);
 
                 setResult(response, IntentDConnectMessage.RESULT_OK);

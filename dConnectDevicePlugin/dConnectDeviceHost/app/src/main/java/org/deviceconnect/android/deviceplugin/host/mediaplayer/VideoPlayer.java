@@ -24,6 +24,8 @@ import android.widget.MediaController;
 import android.widget.VideoView;
 
 import org.deviceconnect.android.deviceplugin.host.R;
+import org.deviceconnect.android.deviceplugin.host.recorder.audio.AudioRecorderActivity;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 
 /**
  * Video Player.
@@ -40,7 +42,8 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
 
     /** Ready flag. */
     private Boolean mIsReady = false;
-    
+    private HostTopActivityStates mState;
+
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,6 +65,8 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         // 再生するVideoのURI
         Intent mIntent = this.getIntent();
         mUri = mIntent.getData();
+        mState = new HostTopActivityStates(this);
+        mState.setTopActivityState(VideoPlayer.class.getName(), true);
     }
 
     @Override
@@ -91,10 +96,17 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
     protected void onPause() {
         super.onPause();
 
+    }
+
+    @Override
+    protected void onDestroy() {
         // ReceiverをUnregister
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
         }
+        mState.setTopActivityState(VideoPlayer.class.getName(), false);
+
+        super.onDestroy();
     }
 
     /**

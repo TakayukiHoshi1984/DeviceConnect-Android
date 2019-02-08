@@ -142,7 +142,7 @@ public class DConnectObservationService extends Service {
                         stopObservation();
                         Intent i = new Intent();
                         i.setClass(getApplicationContext(), WarningDialogActivity.class);
-                        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION
+                        i.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION
                                 | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
                         i.putExtra(PARAM_PACKAGE_NAME, appPackage);
                         i.putExtra(PARAM_PORT, port);

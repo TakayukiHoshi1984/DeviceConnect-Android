@@ -457,7 +457,7 @@ public class HostPhoneProfile extends PhoneProfile {
 
     private void call(final Uri uri) {
         Intent intent = new Intent(Intent.ACTION_CALL, uri);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
     }
 

@@ -205,7 +205,7 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
     private void showDialogActivity(final CanvasDialogActivity.CanvasDialogType type) {
         Intent intent = new Intent();
         intent.setClass(getContext(), CanvasDialogActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(CanvasDialogActivity.CANVAS_DIALOG_TYPE, type.name());
         getContext().startActivity(intent);
     }

@@ -12,6 +12,7 @@ import java.util.List;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.profile.TouchProfile;
@@ -43,10 +44,10 @@ public class TouchProfileActivity extends Activity {
     private HostDeviceApplication mApp;
 
     /** Gesture detector. */
-    GestureDetector mGestureDetector;
+    private GestureDetector mGestureDetector;
     /** Service Id. */
-    String mServiceId;
-
+    private String mServiceId;
+    private HostTopActivityStates mState;
     /**
      * Implementation of BroadcastReceiver.
      */
@@ -81,17 +82,21 @@ public class TouchProfileActivity extends Activity {
                 finish();
             }
         });
+
+        mState = new HostTopActivityStates(this);
+        mState.setTopActivityState(TouchProfileActivity.class.getName(), true);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mState.setTopActivityState(TouchProfileActivity.class.getName(), false);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
     }
 
     @Override

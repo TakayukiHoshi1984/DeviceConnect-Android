@@ -73,5 +73,9 @@
     <string name="settings_host_canvas_multiple_show" translatable="false">settings_host_canvas_multiple_show</string>
     <string name="settings_host_canvas_multiple_show_never" translatable="false">settings_host_canvas_multiple_show_never</string>
     <string name="settings_host_canvas_access_external_network" translatable="false">settings_host_canvas_access_external_network</string>
+
+    <!-- MutiWindow -->
+    <string name="mutiwindow_accessibility_setting_description">Launch the DeviceConnect API in multi-window mode.</string>
+
 </resources>
 

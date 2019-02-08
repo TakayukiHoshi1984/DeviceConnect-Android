@@ -486,7 +486,7 @@ public class DConnectService extends Service {
             public void onSuccess(final KeyStore keyStore, final Certificate cert, final Certificate rootCert) {
                 try {
                     Intent installIntent = KeyChain.createInstallIntent();
-                    installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+                    installIntent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
                     installIntent.putExtra(KeyChain.EXTRA_NAME, "Device Connect Root CA");
                     installIntent.putExtra(KeyChain.EXTRA_CERTIFICATE, rootCert.getEncoded());
                     startActivity(installIntent);

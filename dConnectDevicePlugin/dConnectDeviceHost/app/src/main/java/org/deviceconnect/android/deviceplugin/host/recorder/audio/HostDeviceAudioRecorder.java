@@ -16,10 +16,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ResultReceiver;
+import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceStreamRecorder;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
+import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -81,8 +84,8 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
 
     @Override
     public RecorderState getState() {
-        String className = getClassnameOfTopActivity();
-        if (AudioRecorderActivity.class.getName().equals(className)) {
+        HostTopActivityStates state = new HostTopActivityStates(mContext);
+        if (state.isTopActivityState(AudioRecorderActivity.class.getName())) {
             return RecorderState.RECORDING;
         } else {
             return RecorderState.INACTTIVE;
@@ -231,14 +234,6 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
     public void onDisplayRotation(final int degree) {
     }
 
-    private String getClassnameOfTopActivity() {
-        ActivityManager activityMgr = (ActivityManager) mContext.getSystemService(Service.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningTaskInfo> tasks = activityMgr.getRunningTasks(1);
-        if (tasks != null && tasks.size() > 0) {
-            return tasks.get(0).topActivity.getClassName();
-        }
-        return null;
-    }
 
     private String generateAudioFileName() {
         return "audio" + mSimpleDateFormat.format(new Date()) + AudioConst.FORMAT_TYPE;

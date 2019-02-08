@@ -17,8 +17,11 @@ import android.util.Log;
 import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
+import org.deviceconnect.android.deviceplugin.host.HostDevicePlugin;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapper;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
+import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.recorder.audio.HostDeviceAudioRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.camera.Camera2Recorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.screen.HostDeviceScreenCastRecorder;
@@ -50,12 +53,13 @@ public class HostDeviceRecorderManager {
     private Camera2Recorder mDefaultPhotoRecorder;
 
     /** コンテキスト. */
-    private final DevicePluginContext mHostDevicePluginContext;
+    private final HostDeviceService mHostDeviceService;
 
     /** インテントフィルタ. */
     private final IntentFilter mIntentFilter = new IntentFilter();
     {
         mIntentFilter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
+        mIntentFilter.addAction(VideoConst.SEND_VIDEO_TO_HOSTDP);
     }
 
     /** ブロードキャストレシーバ. */
@@ -65,19 +69,45 @@ public class HostDeviceRecorderManager {
             if (DEBUG) {
                 Log.d(TAG, "BroadcastReceiver.onReceive: action=" + intent.getAction());
             }
-            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-            int rotation = windowManager.getDefaultDisplay().getRotation();
-            for (HostDeviceRecorder recorder : mRecorders) {
-                if (DEBUG) {
-                    Log.d(TAG, "BroadcastReceiver.onReceive: recorder=" + recorder.getId());
+            if (VideoConst.SEND_VIDEO_TO_HOSTDP.equals(intent.getAction())) {
+                String target = intent.getStringExtra(VideoConst.EXTRA_RECORDER_ID);
+                HostDeviceRecorder.RecorderState state =
+                        (HostDeviceRecorder.RecorderState) intent.getSerializableExtra(VideoConst.EXTRA_VIDEO_RECORDER_STATE);
+                String serviceId = intent.getStringExtra(VideoConst.EXTRA_SERVICE_ID);
+                String fileName = intent.getStringExtra(VideoConst.EXTRA_FILE_NAME);
+                String uri = "";
+                if (fileName != null) {
+                    FileManager mgr = mHostDeviceService.getFileManager();
+                    uri = mgr.getContentUri() + "/" + fileName;
+                    fileName = "/" + fileName;
+                } else {
+                    fileName = "";
                 }
-                recorder.onDisplayRotation(rotation);
+                if (target != null && state != null) {
+                    HostDeviceStreamRecorder streamer = getStreamRecorder(target);
+                    if (state == HostDeviceRecorder.RecorderState.INACTTIVE) {
+                        streamer.clean();
+                    }
+                    sendEventForRecordingChange(serviceId, state, uri,
+                            fileName, streamer.getMimeType(), null);
+                }
+
+
+            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())){
+                WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+                int rotation = windowManager.getDefaultDisplay().getRotation();
+                for (HostDeviceRecorder recorder : mRecorders) {
+                    if (DEBUG) {
+                        Log.d(TAG, "BroadcastReceiver.onReceive: recorder=" + recorder.getId());
+                    }
+                    recorder.onDisplayRotation(rotation);
+                }
             }
         }
     };
 
-    public HostDeviceRecorderManager(final DevicePluginContext pluginContext) {
-        mHostDevicePluginContext = pluginContext;
+    public HostDeviceRecorderManager(final HostDeviceService hostService) {
+        mHostDeviceService = hostService;
     }
 
     public void createAudioRecorders() {
@@ -220,7 +250,7 @@ public class HostDeviceRecorderManager {
         for (Event evt : evts) {
             Intent intent = EventManager.createEventMessage(evt);
             intent.putExtra(MediaStreamRecordingProfile.PARAM_MEDIA, record);
-            mHostDevicePluginContext.sendEvent(intent, evt.getAccessToken());
+            mHostDeviceService.sendEvent(intent, evt.getAccessToken());
         }
     }
 
@@ -229,7 +259,7 @@ public class HostDeviceRecorderManager {
     }
 
     private Context getContext() {
-        return mHostDevicePluginContext.getContext();
+        return mHostDeviceService;
     }
 
 }

@@ -23,6 +23,7 @@ import android.os.ResultReceiver;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Video;
 import android.support.annotation.NonNull;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Window;
 
@@ -31,6 +32,7 @@ import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.provider.FileManager;
 
 import java.io.File;
@@ -62,13 +64,15 @@ public class AudioRecorderActivity extends Activity {
     private Intent mIntent;
     /** 本アクティビティを起動したレコーダーID. */
     private String mRecorderId;
+    private HostTopActivityStates mState;
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.audio_main);
-
+        mState = new HostTopActivityStates(this);
+        mState.setTopActivityState(AudioRecorderActivity.class.getName(), true);
         mIntent = getIntent();
         if (mIntent == null) {
             finish();
@@ -165,6 +169,12 @@ public class AudioRecorderActivity extends Activity {
     protected void onPause() {
         super.onPause();
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        mState.setTopActivityState(AudioRecorderActivity.class.getName(), false);
+
         // 受信を停止.
         unregisterReceiver(mReceiver);
 
@@ -180,6 +190,7 @@ public class AudioRecorderActivity extends Activity {
             resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
         }
         releaseMediaRecorder();
+        super.onDestroy();
     }
 
     /**
@@ -196,6 +207,7 @@ public class AudioRecorderActivity extends Activity {
      */
     private void releaseMediaRecorder() {
         if (mMediaRecorder != null) {
+            mMediaRecorder.stop();
             mMediaRecorder.reset();
             mMediaRecorder.release();
             mMediaRecorder = null;
@@ -206,7 +218,6 @@ public class AudioRecorderActivity extends Activity {
     @Override
     public boolean onTouchEvent(final MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            mMediaRecorder.stop();
             releaseMediaRecorder();
             finish();
         }
@@ -232,7 +243,6 @@ public class AudioRecorderActivity extends Activity {
             if (intent.getAction().equals((AudioConst.SEND_HOSTDP_TO_AUDIO))) {
                 String videoAction = intent.getStringExtra(AudioConst.EXTRA_NAME);
                 if (videoAction.equals(AudioConst.EXTRA_NAME_AUDIO_RECORD_STOP)) {
-                    mMediaRecorder.stop();
                     releaseMediaRecorder();
                     finish();
                 }

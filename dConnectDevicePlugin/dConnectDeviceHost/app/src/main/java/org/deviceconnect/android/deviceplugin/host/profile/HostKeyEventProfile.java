@@ -17,6 +17,8 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.KeyEventProfileActivity;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
+import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
@@ -68,6 +70,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * Attribute: {@value} .
      */
     public static final String ATTRIBUTE_ON_KEY_CHANGE = "onKeyChange";
+    private HostTopActivityStates mState;
     private final DConnectApi mGetOnKeyChangeApi = new GetApi() {
 
         @Override
@@ -267,7 +270,8 @@ public class HostKeyEventProfile extends KeyEventProfile {
         }
     };
 
-    public HostKeyEventProfile() {
+    public HostKeyEventProfile(HostTopActivityStates state) {
+        mState = state;
         addApi(mGetOnKeyChangeApi);
         addApi(mPutOnKeyChangeApi);
         addApi(mDeleteOnKeyChangeApi);
@@ -286,13 +290,10 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * @return Always true.
      */
     private boolean execKeyEventActivity(final String serviceId) {
-        ActivityManager mActivityManager = (ActivityManager) getContext().getSystemService(Service.ACTIVITY_SERVICE);
-        String mClassName = mActivityManager.getRunningTasks(1).get(0).topActivity.getClassName();
-
-        if (!(KeyEventProfileActivity.class.getName().equals(mClassName))) {
+        if (!mState.isTopActivityState(KeyEventProfileActivity.class.getName())) {
             Intent mIntent = new Intent();
             mIntent.setClass(getContext(), KeyEventProfileActivity.class);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
             this.getContext().startActivity(mIntent);
         }
@@ -305,8 +306,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * @return Always true.
      */
     private boolean finishKeyEventProfileActivity() {
-        String className = getClassnameOfTopActivity();
-        if (KeyEventProfileActivity.class.getName().equals(className)) {
+        if (mState.isTopActivityState(KeyEventProfileActivity.class.getName())) {
             Intent intent = new Intent(HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
@@ -333,17 +333,6 @@ public class HostKeyEventProfile extends KeyEventProfile {
             finishKeyEventProfileActivity();
         }
     }
-
-    /**
-     * Get the class name of the Activity being displayed at the top of the screen.
-     * 
-     * @return class name.
-     */
-    private String getClassnameOfTopActivity() {
-        ActivityManager activityMgr = (ActivityManager) getContext().getSystemService(Service.ACTIVITY_SERVICE);
-        return activityMgr.getRunningTasks(1).get(0).topActivity.getClassName();
-    }
-
     /**
      * Check set KeyEvent event manage flag.
      *

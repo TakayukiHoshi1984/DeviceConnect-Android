@@ -63,15 +63,14 @@ public class ExternalDisplayService extends DConnectService {
 
     /**
      * コンストラクタ.
-     *
-     * @throws NullPointerException idに<code>null</code>が指定された場合
+     * @param pluginContext PluginのContext
      */
-    public ExternalDisplayService(Context context, DevicePluginContext pluginContext) {
+    public ExternalDisplayService(DevicePluginContext pluginContext) {
         super(SERVICE_ID);
         setName(SERVICE_NAME);
         setNetworkType(NetworkType.WIFI);
         setOnline(false);
-        addProfile(new ExternalDisplayCanvasProfile(new HostCanvasSettings(context)));
+        addProfile(new ExternalDisplayCanvasProfile(new HostCanvasSettings(pluginContext.getContext())));
         addProfile(new HostMediaPlayerProfile(new ExternalDisplayMediaPlayerManager(pluginContext, this)));
 
     }

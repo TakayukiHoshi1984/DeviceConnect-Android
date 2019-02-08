@@ -1173,7 +1173,7 @@ public class LocalOAuth2Main {
             intent.putExtra(ConfirmAuthActivity.EXTRA_KEYWORD, params.getKeyword());
         }
         intent.putExtra(ConfirmAuthActivity.EXTRA_AUTO_FLAG, request.isAutoFlag());
-        intent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
 
         request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {

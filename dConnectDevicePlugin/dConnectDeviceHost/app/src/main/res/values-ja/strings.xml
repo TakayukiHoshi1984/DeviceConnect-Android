@@ -69,4 +69,8 @@
     <string name="canvas_settings_external_access_permission">アクセスの確認</string>
     <string name="canvas_settings_external_access_permission_on">確認を行う</string>
     <string name="canvas_settings_external_access_permission_off">確認を行わない</string>
+
+
+    <!-- MutiWindow -->
+    <string name="mutiwindow_accessibility_setting_description">DeviceConnectのAPIをマルチウィンドウモードで起動します。</string>
 </resources>

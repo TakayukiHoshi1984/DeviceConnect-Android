@@ -74,7 +74,7 @@ public class PermissionRequestActivity extends Activity {
         // NOTE: FLAG_ACTIVITY_SINGLE_TASK causes Activity#onActivityResult()
         // being called prematurely. FLAG_ACTIVITY_SINGLE_TOP, on the other
         // hand, does not cause that.
-        callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
+        callIntent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                 | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         context.startActivity(callIntent);
     }

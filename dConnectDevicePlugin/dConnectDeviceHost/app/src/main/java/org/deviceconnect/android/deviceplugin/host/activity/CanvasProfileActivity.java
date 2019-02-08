@@ -26,6 +26,8 @@ import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment;
+import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoPlayer;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment.EXTERNAL_SHOW_CANVAS_WARNING_TAG;
@@ -49,6 +51,7 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
      * CanvasAPIの設定値を保持する.
      */
     private HostCanvasSettings mSettings;
+    private HostTopActivityStates mState;
     /**
      * Canvasの操作を行う.
      */
@@ -86,6 +89,8 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         CanvasDrawImageObject drawImageObject = CanvasDrawImageObject.create(intent);
         mController = new CanvasController(this, mCanvasWebView, findViewById(R.id.canvasProfileView), findViewById(R.id.canvasProfileVideoView),
                 this, drawImageObject, mSettings, CanvasDrawImageObject.ACTION_DRAW_CANVAS, CanvasDrawImageObject.ACTION_DELETE_CANVAS);
+        mState = new HostTopActivityStates(this);
+        mState.setTopActivityState(CanvasProfileActivity.class.getName(), true);
     }
 
     @Override
@@ -97,11 +102,12 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
 
     @Override
     protected void onPause() {
-        mController.unregisterReceiver();
         super.onPause();
     }
     @Override
     protected void onDestroy() {
+        mState.setTopActivityState(CanvasProfileActivity.class.getName(), false);
+        mController.unregisterReceiver();
         mSettings.setCanvasMultipleShowFlag(true);
         // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
         new Handler().postDelayed(() -> {

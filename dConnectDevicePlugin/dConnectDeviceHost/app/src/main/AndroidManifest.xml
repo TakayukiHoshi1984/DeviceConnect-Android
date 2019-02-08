@@ -25,6 +25,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
 
     <uses-feature android:name="android.hardware.camera"/>
     <uses-feature android:name="android.hardware.camera.autofocus"/>
@@ -46,6 +47,7 @@
         <activity
             android:name="org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoPlayer"
             android:exported="false"
+            android:configChanges="screenLayout|orientation"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:taskAffinity=".player"
@@ -54,6 +56,7 @@
         <activity
             android:name="org.deviceconnect.android.deviceplugin.host.recorder.audio.AudioRecorderActivity"
             android:excludeFromRecents="true"
+            android:configChanges="screenLayout|orientation"
             android:launchMode="singleInstance"
             android:taskAffinity=".audio"
             android:exported="false"/>
@@ -61,7 +64,7 @@
         <activity
             android:name="org.deviceconnect.android.deviceplugin.host.activity.CanvasProfileActivity"
             android:exported="false"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="screenLayout|orientation"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:taskAffinity=".canvas"/>
@@ -70,6 +73,7 @@
             android:name="org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity"
             android:exported="false"
             android:label="@string/app_name_host"
+            android:configChanges="screenLayout|orientation"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:taskAffinity=".touch"/>
@@ -78,6 +82,7 @@
             android:name="org.deviceconnect.android.deviceplugin.host.activity.KeyEventProfileActivity"
             android:exported="false"
             android:label="@string/app_name_host"
+            android:configChanges="screenLayout|orientation"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:taskAffinity=".keyevent"/>
@@ -121,6 +126,18 @@
             android:name="org.deviceconnect.android.deviceplugin.host.externaldisplay.CanvasDialogActivity"
             android:theme="@style/AppTheme.Translucent"
             />
+        <service
+            android:name="org.deviceconnect.android.deviceplugin.host.mutiwindow.MutiWindowAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="SampleAccessibilityService" >
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibilityservice" />
+        </service>
     </application>
 
 </manifest>

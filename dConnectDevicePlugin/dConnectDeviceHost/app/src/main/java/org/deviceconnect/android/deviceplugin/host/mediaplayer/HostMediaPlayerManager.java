@@ -12,6 +12,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.net.Uri;
 
+import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
+import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 import org.deviceconnect.android.message.DevicePluginContext;
 /**
  * Android端末のメディアを管理する.
@@ -19,12 +22,14 @@ import org.deviceconnect.android.message.DevicePluginContext;
  * @author NTT DOCOMO, INC.
  */
 public class HostMediaPlayerManager extends MediaPlayerManager {
+    private HostTopActivityStates mState;
     /**
      * コンストラクタ.
      * @param pluginContext PluginのContext
      */
-    public HostMediaPlayerManager(DevicePluginContext pluginContext) {
+    public HostMediaPlayerManager(DevicePluginContext pluginContext, HostTopActivityStates state) {
         super(pluginContext);
+        mState = state;
     }
 
     @Override
@@ -39,8 +44,7 @@ public class HostMediaPlayerManager extends MediaPlayerManager {
 
     @Override
     protected boolean isShowMediaPlayer() {
-        String className = getClassnameOfTopActivity();
-        return VideoPlayer.class.getName().equals(className);
+        return mState.isTopActivityState(VideoPlayer.class.getName());
     }
 
     @Override

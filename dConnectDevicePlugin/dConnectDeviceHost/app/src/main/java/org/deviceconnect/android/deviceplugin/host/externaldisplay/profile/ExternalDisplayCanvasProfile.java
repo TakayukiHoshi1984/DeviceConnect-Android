@@ -15,6 +15,7 @@ import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayService;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
+import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.api.DConnectApi;
 import org.deviceconnect.android.profile.api.DeleteApi;
@@ -60,10 +61,8 @@ public class ExternalDisplayCanvasProfile extends HostCanvasProfile {
                                 "Please cancel on the setting screen of Host plug-in.");
                 return true;
             }
-            String className = getClassnameOfTopActivity();
             // 連続起動のダイアログが表示中かどうか
-            if (mSettings.isCanvasMultipleShowFlag()
-                    && CanvasProfileActivity.class.getName().equals(className)) {
+            if (mSettings.isCanvasMultipleShowFlag()) {
                 MessageUtils.setIllegalServerStateError(response,
                         "Canvas API may be executed continuously.");
                 return true;

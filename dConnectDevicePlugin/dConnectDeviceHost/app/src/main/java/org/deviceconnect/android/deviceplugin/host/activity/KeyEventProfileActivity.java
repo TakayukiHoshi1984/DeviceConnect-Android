@@ -11,6 +11,7 @@ import java.util.List;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.profile.KeyEventProfile;
@@ -45,9 +46,9 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     /** Application class instance. */
     private HostDeviceApplication mApp;
     /** Service Id. */
-    String mServiceId;
+    private String mServiceId;
     /** Key Mode. */
-    KeyMode mKeyMode;
+    private KeyMode mKeyMode;
 
     /** enum:Key Mode. */
     public enum KeyMode {
@@ -62,13 +63,14 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     }
 
     /** Configure (Standard Keyboard). */
-    String[] mConfigStdKey = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "Enter"};
+    private String[] mConfigStdKey = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "Enter"};
     /** Configure (Media Control). */
-    String[] mConfigMediaCtrl = {"stop", "previous", "pause", "next", "", "", "", "", "", "", "", "play"};
+    private String[] mConfigMediaCtrl = {"stop", "previous", "pause", "next", "", "", "", "", "", "", "", "play"};
     /** Configure (Directional Pad). */
-    String[] mConfigDpad = {"", "", "down", "", "left", "center", "right", "", "up", "", "", ""};
+    private String[] mConfigDpad = {"", "", "down", "", "left", "center", "right", "", "up", "", "", ""};
     /** Configure (User defined). */
-    String[] mConfigUser = {"", "", "", "", "", "", "", "", "", "", "USER_CANCEL", "USER_OK"};
+    private String[] mConfigUser = {"", "", "", "", "", "", "", "", "", "", "USER_CANCEL", "USER_OK"};
+    private HostTopActivityStates mState;
 
     /**
      * Implementation of BroadcastReceiver.
@@ -116,6 +118,8 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         // Get serviceId.
         Intent intent = getIntent();
         mServiceId = intent.getStringExtra(DConnectMessage.EXTRA_SERVICE_ID);
+        mState = new HostTopActivityStates(this);
+        mState.setTopActivityState(KeyEventProfileActivity.class.getName(), true);
     }
 
     @Override
@@ -185,13 +189,14 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
 
     @Override
     protected void onDestroy() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        mState.setTopActivityState(KeyEventProfileActivity.class.getName(), false);
         super.onDestroy();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
     }
 
     @Override

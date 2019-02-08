@@ -6,8 +6,6 @@
  */
 package org.deviceconnect.android.deviceplugin.host.profile;
 
-import android.app.ActivityManager;
-import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,6 +15,7 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
@@ -77,6 +76,8 @@ public class HostTouchProfile extends TouchProfile {
      * Attribute: {@value} .
      */
     public static final String ATTRIBUTE_ON_TOUCH_CHANGE = "onTouchChange";
+
+    private HostTopActivityStates mState;
     private final DConnectApi mGetOnTouchChangeApi = new GetApi() {
 
         @Override
@@ -542,7 +543,8 @@ public class HostTouchProfile extends TouchProfile {
         }
     };
 
-    public HostTouchProfile() {
+    public HostTouchProfile(final HostTopActivityStates state) {
+        mState = state;
         addApi(mGetOnTouchChangeApi);
         addApi(mGetOnTouchApi);
         addApi(mGetOnTouchStartApi);
@@ -573,13 +575,10 @@ public class HostTouchProfile extends TouchProfile {
      * @return Always true.
      */
     private boolean execTouchProfileActivity(final String serviceId) {
-        ActivityManager mActivityManager = (ActivityManager) getContext().getSystemService(Service.ACTIVITY_SERVICE);
-        String mClassName = mActivityManager.getRunningTasks(1).get(0).topActivity.getClassName();
-
-        if (!(TouchProfileActivity.class.getName().equals(mClassName))) {
+        if (!mState.isTopActivityState(TouchProfileActivity.class.getName())) {
             Intent mIntent = new Intent();
             mIntent.setClass(getContext(), TouchProfileActivity.class);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
             this.getContext().startActivity(mIntent);
         }
@@ -592,8 +591,7 @@ public class HostTouchProfile extends TouchProfile {
      * @return Always true.
      */
     private boolean finishTouchProfileActivity() {
-        String className = getClassnameOfTopActivity();
-        if (TouchProfileActivity.class.getName().equals(className)) {
+        if (mState.isTopActivityState(TouchProfileActivity.class.getName())) {
             Intent intent = new Intent(HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
@@ -620,17 +618,6 @@ public class HostTouchProfile extends TouchProfile {
             finishTouchProfileActivity();
         }
     }
-
-    /**
-     * Get the class name of the Activity being displayed at the top of the screen.
-     * 
-     * @return class name.
-     */
-    private String getClassnameOfTopActivity() {
-        ActivityManager activityMgr = (ActivityManager) getContext().getSystemService(Service.ACTIVITY_SERVICE);
-        return activityMgr.getRunningTasks(1).get(0).topActivity.getClassName();
-    }
-
     /**
      * Check set Touch event manage flag.
      *

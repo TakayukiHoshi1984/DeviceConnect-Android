@@ -195,7 +195,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
         if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
                 && !mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             Intent intent = new Intent(getContext(), GeolocationAlertDialogActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             Bundle bundle = new Bundle();
             bundle.putParcelable("response", response);
             intent.putExtra("Intent", bundle);

@@ -17,6 +17,8 @@ import android.util.Log;
 import org.deviceconnect.android.deviceplugin.host.activity.CanvasProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
+import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
+import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.CanvasProfile;
 import org.deviceconnect.android.profile.api.DConnectApi;
@@ -50,6 +52,7 @@ public class HostCanvasProfile extends CanvasProfile {
 
     /** Canvasの設定. */
     protected HostCanvasSettings mSettings;
+    protected HostTopActivityStates mState;
 
     private final DConnectApi mDrawImageApi = new PostApi() {
 
@@ -66,10 +69,9 @@ public class HostCanvasProfile extends CanvasProfile {
                                 "Please cancel on the setting screen of Host plug-in.");
                 return true;
             }
-            String className = getClassnameOfTopActivity();
             // 連続起動のダイアログが表示中かどうか
             if (mSettings.isCanvasMultipleShowFlag()
-                    && CanvasProfileActivity.class.getName().equals(className)) {
+                    && mState.isTopActivityState(CanvasProfileActivity.class.getName())) {
                 MessageUtils.setIllegalServerStateError(response,
                         "Canvas API may be executed continuously.");
                 return true;
@@ -129,8 +131,7 @@ public class HostCanvasProfile extends CanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String className = getClassnameOfTopActivity();
-            if (CanvasProfileActivity.class.getName().equals(className)) {
+            if (mState.isTopActivityState(CanvasProfileActivity.class.getName())) {
                 Intent intent = new Intent(CanvasDrawImageObject.ACTION_DELETE_CANVAS);
                 LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -145,10 +146,11 @@ public class HostCanvasProfile extends CanvasProfile {
     /**
      * コンストラクタ.
      */
-    public HostCanvasProfile(final HostCanvasSettings settings) {
+    public HostCanvasProfile(final HostCanvasSettings settings, final HostTopActivityStates state) {
         addApi(mDrawImageApi);
         addApi(mDeleteImageApi);
         mSettings = settings;
+        mState = state;
     }
 
     /**
@@ -183,7 +185,7 @@ public class HostCanvasProfile extends CanvasProfile {
     protected void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
         CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, mimeType, x, y);
 
-        String className = getClassnameOfTopActivity();
+        String className = HostUtils.getClassnameOfTopActivity(getContext());
         if (CanvasProfileActivity.class.getName().equals(className)) {
             Intent intent = new Intent(CanvasDrawImageObject.ACTION_DRAW_CANVAS);
             drawObj.setValueToIntent(intent);
@@ -197,16 +199,6 @@ public class HostCanvasProfile extends CanvasProfile {
         }
 
         setResult(response, DConnectMessage.RESULT_OK);
-    }
-
-    /**
-     * 画面の一番上にでているActivityのクラス名を取得.
-     *
-     * @return クラス名
-     */
-    protected String getClassnameOfTopActivity() {
-        ActivityManager activityMgr = (ActivityManager) getContext().getSystemService(Service.ACTIVITY_SERVICE);
-        return activityMgr.getRunningTasks(1).get(0).topActivity.getClassName();
     }
 
     /**
