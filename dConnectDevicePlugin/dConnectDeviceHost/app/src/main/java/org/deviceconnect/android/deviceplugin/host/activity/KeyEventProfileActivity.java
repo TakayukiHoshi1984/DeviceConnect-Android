@@ -11,7 +11,6 @@ import java.util.List;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.profile.KeyEventProfile;
@@ -23,6 +22,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.KeyEvent;
@@ -35,6 +35,7 @@ import android.widget.RadioGroup.OnCheckedChangeListener;
 
 import static org.deviceconnect.android.deviceplugin.host.HostDeviceApplication.STATE_DOWN;
 import static org.deviceconnect.android.deviceplugin.host.HostDeviceApplication.STATE_UP;
+import static org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile.ACTION_KEYEVENT;
 
 /**
  * Key Event Profile Activity.
@@ -44,7 +45,7 @@ import static org.deviceconnect.android.deviceplugin.host.HostDeviceApplication.
 public class KeyEventProfileActivity extends Activity implements OnTouchListener, OnCheckedChangeListener {
 
     /** Application class instance. */
-    private HostDeviceApplication mApp;
+    protected HostDeviceApplication mApp;
     /** Service Id. */
     private String mServiceId;
     /** Key Mode. */
@@ -70,7 +71,6 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     private String[] mConfigDpad = {"", "", "down", "", "left", "center", "right", "", "up", "", "", ""};
     /** Configure (User defined). */
     private String[] mConfigUser = {"", "", "", "", "", "", "", "", "", "", "USER_CANCEL", "USER_OK"};
-    private HostTopActivityStates mState;
 
     /**
      * Implementation of BroadcastReceiver.
@@ -79,7 +79,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         @Override
         public void onReceive(final Context context, final Intent intent) {
             String action = intent.getAction();
-            if (HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY.equals(action)) {
+            if (getActionForFinishKeyEventActivity().equals(action)) {
                 finish();
             }
         }
@@ -108,7 +108,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         findViewById(R.id.button_enter).setOnTouchListener(this);
         findViewById(R.id.button_keyevent_close).setOnTouchListener(this);
 
-        RadioGroup radioGroup = (RadioGroup) findViewById(R.id.RadioGroup);
+        RadioGroup radioGroup = findViewById(R.id.RadioGroup);
         // Set default select radio button.
         radioGroup.check(R.id.radioButton1);
         mKeyMode = KeyMode.STD_KEY;
@@ -118,8 +118,6 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         // Get serviceId.
         Intent intent = getIntent();
         mServiceId = intent.getStringExtra(DConnectMessage.EXTRA_SERVICE_ID);
-        mState = new HostTopActivityStates(this);
-        mState.setTopActivityState(KeyEventProfileActivity.class.getName(), true);
     }
 
     @Override
@@ -157,6 +155,8 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
             } else if (i == R.id.button_enter) {
                 keyevent = new KeyEvent(action, KeyEvent.KEYCODE_NUMPAD_ENTER);
             } else if (i == R.id.button_keyevent_close) {
+                mApp.removeShowActivityAndData(getActivityName());
+                mApp.putShowActivityFlag(getActivityName(), false);
                 finish();
             }
             if (keyevent != null) {
@@ -172,7 +172,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
 
     @Override
     public void onCheckedChanged(final RadioGroup group, final int checkedId) {
-        RadioButton radioButton = (RadioButton) findViewById(checkedId);
+        RadioButton radioButton = findViewById(checkedId);
 
         // Change key mode.
         int i = radioButton.getId();
@@ -189,26 +189,25 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
 
     @Override
     protected void onDestroy() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
-        mState.setTopActivityState(KeyEventProfileActivity.class.getName(), false);
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+            mApp.removeShowActivityAndData(getActivityName());
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        }
         super.onDestroy();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         IntentFilter filter = new IntentFilter();
-        filter.addAction(HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY);
+        filter.addAction(getActionForFinishKeyEventActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
     }
 
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
+        mApp.removeShowActivityAndData(getActivityName());
+        mApp.putShowActivityFlag(getActivityName(), false);
         return super.dispatchKeyEvent(event);
     }
 
@@ -273,7 +272,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
             String attr = eventdata.getAttribute();
             Intent intent = EventManager.createEventMessage(eventdata);
             intent.putExtra(KeyEventProfile.PARAM_KEYEVENT, keyevent);
-            intent.setAction(HostKeyEventProfile.ACTION_KEYEVENT);
+            intent.setAction(getActionForSendEvent());
             LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
             mApp.setKeyEventCache(attr, keyevent);
         }
@@ -283,7 +282,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
             Intent intent = EventManager.createEventMessage(eventdata);
             keyevent.putString("state", state);
             intent.putExtra(KeyEventProfile.PARAM_KEYEVENT, keyevent);
-            intent.setAction(HostKeyEventProfile.ACTION_KEYEVENT);
+            intent.setAction(getActionForSendEvent());
             LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
             mApp.setKeyEventCache(attr, keyevent);
         }
@@ -361,5 +360,22 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         }
 
         return config;
+    }
+
+
+    protected String getActivityName() {
+        return KeyEventProfileActivity.class.getName();
+    }
+
+    protected String getActionForFinishKeyEventActivity() {
+        return HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY;
+    }
+    protected String getActionForSendEvent() {
+        return ACTION_KEYEVENT;
+    }
+    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
+        if (!isInMultiWindowMode) {
+            mApp.putShowActivityFlag(getActivityName(), false);
+        }
     }
 }

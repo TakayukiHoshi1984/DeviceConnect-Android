@@ -6,8 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.host.profile;
 
-import android.app.ActivityManager;
-import android.app.Service;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,8 +16,7 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.KeyEventProfileActivity;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
-import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
+import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
@@ -59,7 +57,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
     private BroadcastReceiver mKeyEventBR = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
-            if (intent.getAction().equals(ACTION_KEYEVENT)) {
+            if (intent.getAction().equals(getActionForSendEvent())) {
                 // ManagerにEventを送信する
                 intent.setAction(IntentDConnectMessage.ACTION_EVENT);
                 sendEvent(intent, intent.getStringExtra("accessToken"));
@@ -70,7 +68,6 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * Attribute: {@value} .
      */
     public static final String ATTRIBUTE_ON_KEY_CHANGE = "onKeyChange";
-    private HostTopActivityStates mState;
     private final DConnectApi mGetOnKeyChangeApi = new GetApi() {
 
         @Override
@@ -104,7 +101,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execKeyEventActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_KEY_CHANGE);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -170,7 +167,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execKeyEventActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_DOWN);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -237,7 +234,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execKeyEventActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_UP);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -270,8 +267,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
         }
     };
 
-    public HostKeyEventProfile(HostTopActivityStates state) {
-        mState = state;
+    public HostKeyEventProfile() {
         addApi(mGetOnKeyChangeApi);
         addApi(mPutOnKeyChangeApi);
         addApi(mDeleteOnKeyChangeApi);
@@ -290,11 +286,14 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * @return Always true.
      */
     private boolean execKeyEventActivity(final String serviceId) {
-        if (!mState.isTopActivityState(KeyEventProfileActivity.class.getName())) {
+        if (getApp().getShowActivityAndData(getKeyEventActivityClass().getName()) == null) {
             Intent mIntent = new Intent();
-            mIntent.setClass(getContext(), KeyEventProfileActivity.class);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setClass(getContext(), getKeyEventActivityClass());
+//            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // TODO すでにマルチウィンドウになっている場合に、Activityがかぶらない方法を模索する
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
+            getApp().putShowActivityAndData(getKeyEventActivityClass().getName(), mIntent);
             this.getContext().startActivity(mIntent);
         }
         return true;
@@ -306,8 +305,10 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * @return Always true.
      */
     private boolean finishKeyEventProfileActivity() {
-        if (mState.isTopActivityState(KeyEventProfileActivity.class.getName())) {
-            Intent intent = new Intent(HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY);
+        if (getApp().getShowActivityAndData(getKeyEventActivityClass().getName()) != null) {
+            Intent intent = new Intent(getActionForFinishKeyEventActivity());
+            getApp().removeShowActivityAndData(getKeyEventActivityClass().getName());
+            getApp().putShowActivityFlag(getKeyEventActivityClass().getName(), false);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
         return true;
@@ -351,7 +352,19 @@ public class HostKeyEventProfile extends KeyEventProfile {
         }
     }
 
-    private HostDeviceApplication getApp() {
+    protected HostDeviceApplication getApp() {
         return (HostDeviceApplication) getContext().getApplicationContext();
+    }
+
+    protected Class<? extends Activity> getKeyEventActivityClass() {
+        return KeyEventProfileActivity.class;
+    }
+
+    protected String getActionForFinishKeyEventActivity() {
+        return HostKeyEventProfile.ACTION_FINISH_KEYEVENT_ACTIVITY;
+    }
+
+    protected String getActionForSendEvent() {
+        return ACTION_KEYEVENT;
     }
 }
