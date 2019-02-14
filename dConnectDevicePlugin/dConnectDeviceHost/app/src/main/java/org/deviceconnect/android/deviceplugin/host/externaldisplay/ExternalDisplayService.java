@@ -89,7 +89,7 @@ public class ExternalDisplayService extends DConnectService {
         }
 
         mMainHandler.post(() -> {
-            mCanvasPresentation = new ExternalDisplayCanvasPresentation(getContext(), mPresentationDisplay, drawImageObject);
+            mCanvasPresentation = new ExternalDisplayCanvasPresentation(getContext(), mPresentationDisplay, this, drawImageObject);
             mCanvasPresentation.setOnDismissListener(mOnDismissListener);
             try {
                 mCanvasPresentation.show();

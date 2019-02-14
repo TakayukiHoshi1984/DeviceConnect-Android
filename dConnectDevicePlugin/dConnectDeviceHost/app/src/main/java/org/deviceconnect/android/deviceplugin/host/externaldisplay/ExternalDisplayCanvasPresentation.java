@@ -14,7 +14,6 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.Window;
@@ -56,7 +55,7 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
      * Canvasの操作を行う.
      */
     private CanvasController mController;
-
+    private ExternalDisplayService mEDService;
     /**
      * コンストラクタ.
      * @param outerContext Context
@@ -65,9 +64,11 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
      */
     public ExternalDisplayCanvasPresentation(final Context outerContext,
                                              final Display display,
+                                             final ExternalDisplayService service,
                                              final CanvasDrawImageObject drawObject) {
         super(outerContext, display);
         mDrawImageObject = drawObject;
+        mEDService = service;
     }
 
     @Override
@@ -104,13 +105,11 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
     @Override
     protected void onStop() {
         mController.unregisterReceiver();
-        mSettings.setCanvasMultipleShowFlag(true);
+        mSettings.setCanvasContinuousAccessForPresentation(true);
         // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
         new Handler().postDelayed(() -> {
             // 10秒後に連続起動フラグを無効にする
-            Log.d("ABC", "onStop");
-
-            mSettings.setCanvasMultipleShowFlag(false);
+            mSettings.setCanvasContinuousAccessForPresentation(false);
         }, DELAY_MILLIS);
         super.onStop();
 
@@ -118,7 +117,7 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
 
     @Override
     public void finishActivity() {
-        dismiss();
+        mEDService.disconnectCanvasDisplay();
     }
 
     @Override
@@ -190,6 +189,10 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
         showDialogActivity(CanvasDialogActivity.CanvasDialogType.ContinuousAccessConfirm);
     }
 
+    @Override
+    public boolean isCanvasContinuousAccess() {
+        return mSettings.isCanvasContinuousAccessForPresentation();
+    }
     /**
      * Presentationに投影されているCanvasを更新する.
      * @param drawImageObject 更新するデータを持つオブジェクト
