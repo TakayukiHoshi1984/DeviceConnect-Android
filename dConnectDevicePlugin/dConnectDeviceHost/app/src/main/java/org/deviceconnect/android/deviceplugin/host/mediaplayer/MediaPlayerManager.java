@@ -6,6 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.host.mediaplayer;
 
+import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -22,7 +23,9 @@ import android.provider.MediaStore;
 import android.webkit.MimeTypeMap;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.HostDevicePlugin;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.DevicePluginContext;
@@ -178,7 +181,9 @@ public abstract class MediaPlayerManager {
     protected Context getContext() {
         return mHostDevicePluginContext.getContext();
     }
-
+    protected HostDeviceApplication getApplication() {
+        return (HostDeviceApplication) ((HostDeviceService) mHostDevicePluginContext.getContext()).getApplication();
+    }
     /**
      * レスポンスを送る.
      * @param intent レスポンス

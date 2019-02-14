@@ -91,6 +91,14 @@ public final class VideoConst {
     public static final String SEND_VIDEOPLAYER_TO_ED =
             "org.deviceconnect.android.intent.action.SEND_VIDEOPLAYER_TO_ED";
 
+    /** Video起動のAction名(マルチウィンドウ). */
+    public static final String SEND_MW_TO_VIDEOPLAYER =
+            "org.deviceconnect.android.intent.action.SEND_MW_TO_VIDEOPLAYER";
+
+    /** Video起動のAction名(マルチウィンドウ). */
+    public static final String SEND_VIDEOPLAYER_TO_MW =
+            "org.deviceconnect.android.intent.action.SEND_VIDEOPLAYER_TO_MW";
+
     /** 再生開始. */
     public static final String EXTRA_VALUE_VIDEO_PLAYER_PLAY = "play";
 

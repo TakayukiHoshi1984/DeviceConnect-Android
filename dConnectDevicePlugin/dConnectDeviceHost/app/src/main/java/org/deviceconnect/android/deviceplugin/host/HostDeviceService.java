@@ -47,7 +47,6 @@ import org.deviceconnect.android.deviceplugin.host.recorder.HostDevicePhotoRecor
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorderManager;
 import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.DConnectMessageService;
@@ -100,7 +99,6 @@ public class HostDeviceService extends DConnectMessageService {
      */
     private HostPhoneProfile mPhoneProfile;
     private HostCanvasSettings mSettings;
-    private HostTopActivityStates mState;
     /**
      * ブロードキャストレシーバー.
      */
@@ -143,8 +141,7 @@ public class HostDeviceService extends DConnectMessageService {
         initRecorders(mRecorderMgr);
         mRecorderMgr.start();
         mSettings = new HostCanvasSettings(this);
-        mState = new HostTopActivityStates(this);
-        mHostMediaPlayerManager = new HostMediaPlayerManager(getPluginContext(), mState);
+        mHostMediaPlayerManager = new HostMediaPlayerManager(getPluginContext());
 
         DConnectService hostService = new DConnectService(SERVICE_ID);
         hostService.setName(SERVICE_NAME);
@@ -153,14 +150,14 @@ public class HostDeviceService extends DConnectMessageService {
         hostService.addProfile(new HostCanvasProfile(mSettings));
         hostService.addProfile(new HostConnectionProfile(BluetoothAdapter.getDefaultAdapter()));
         hostService.addProfile(new HostFileProfile(mFileMgr));
-        hostService.addProfile(new HostKeyEventProfile(mState));
+        hostService.addProfile(new HostKeyEventProfile());
         hostService.addProfile(new HostDeviceProfile(getPluginContext()));
         hostService.addProfile(new HostMediaPlayerProfile(mHostMediaPlayerManager));
         hostService.addProfile(new HostNotificationProfile());
         mPhoneProfile = new HostPhoneProfile((TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE));
         hostService.addProfile(mPhoneProfile);
         hostService.addProfile(new HostSettingProfile());
-        hostService.addProfile(new HostTouchProfile(mState));
+        hostService.addProfile(new HostTouchProfile());
         hostService.addProfile(new HostVibrationProfile());
 
         if (checkSensorHardware()) {

@@ -14,7 +14,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -23,10 +22,8 @@ import android.view.WindowManager;
 import android.widget.MediaController;
 import android.widget.VideoView;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
-import org.deviceconnect.android.deviceplugin.host.recorder.audio.AudioRecorderActivity;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
-
 /**
  * Video Player.
  * 
@@ -42,7 +39,6 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
 
     /** Ready flag. */
     private Boolean mIsReady = false;
-    private HostTopActivityStates mState;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
@@ -65,8 +61,8 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         // 再生するVideoのURI
         Intent mIntent = this.getIntent();
         mUri = mIntent.getData();
-        mState = new HostTopActivityStates(this);
-        mState.setTopActivityState(VideoPlayer.class.getName(), true);
+        ((HostDeviceApplication) getApplication()).putShowActivityAndData(getActivityClass().getName(), mIntent);
+
     }
 
     @Override
@@ -74,7 +70,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         super.onResume();
         // ReceiverをRegister
         IntentFilter mIntentFilter = new IntentFilter();
-        mIntentFilter.addAction(VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER);
+        mIntentFilter.addAction(getActionForTargetToPlayer());
         registerReceiver(mReceiver, mIntentFilter);
 
         MediaController mMediaController = new MediaController(this);
@@ -93,18 +89,12 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-
-    }
-
-    @Override
     protected void onDestroy() {
         // ReceiverをUnregister
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
         }
-        mState.setTopActivityState(VideoPlayer.class.getName(), false);
+        ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityClass().getName());
 
         super.onDestroy();
     }
@@ -115,7 +105,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
-            if (intent.getAction().equals(VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER)) {
+            if (intent.getAction().equals(getActionForTargetToPlayer())) {
                 String mVideoAction = intent.getStringExtra(VideoConst.EXTRA_NAME);
                 if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PLAY)) {
                     mVideoView.resume(); // resume()で動画の最初から再生される
@@ -126,7 +116,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
                     unregisterReceiver(mReceiver);
                     mReceiver = null;
                     mIsReady = false;
-                    Intent mIntent = new Intent(VideoConst.SEND_VIDEOPLAYER_TO_HOSTDP);
+                    Intent mIntent = new Intent(getActionForPlayerToTarget());
                     mIntent.putExtra(VideoConst.EXTRA_NAME, VideoConst.EXTRA_VALUE_VIDEO_PLAYER_STOP);
                     sendBroadcast(mIntent);
                     finish();
@@ -138,7 +128,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
                     int pos = intent.getIntExtra("pos", -1);
                     mVideoView.seekTo(pos);
                 } else if (mVideoAction.equals(VideoConst.EXTRA_VALUE_VIDEO_PLAYER_GET_POS)) {
-                    Intent mIntent = new Intent(VideoConst.SEND_VIDEOPLAYER_TO_HOSTDP);
+                    Intent mIntent = new Intent(getActionForPlayerToTarget());
                     mIntent.putExtra(VideoConst.EXTRA_NAME, VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PLAY_POS);
                     mIntent.putExtra("pos", mVideoView.getCurrentPosition());
                     sendBroadcast(mIntent);
@@ -150,9 +140,21 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
     @Override
     public void onCompletion(final MediaPlayer mp) {
         mIsReady = false;
-        Intent mIntent = new Intent(VideoConst.SEND_VIDEOPLAYER_TO_HOSTDP);
+        Intent mIntent = new Intent(getActionForPlayerToTarget());
         mIntent.putExtra(VideoConst.EXTRA_NAME, VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PLAY_COMPLETION);
         sendBroadcast(mIntent);
         finish();
+    }
+
+    protected Class<? extends Activity> getActivityClass() {
+        return VideoPlayer.class;
+    }
+
+    protected String getActionForTargetToPlayer() {
+        return VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER;
+    }
+
+    protected String getActionForPlayerToTarget() {
+        return VideoConst.SEND_VIDEOPLAYER_TO_HOSTDP;
     }
 }

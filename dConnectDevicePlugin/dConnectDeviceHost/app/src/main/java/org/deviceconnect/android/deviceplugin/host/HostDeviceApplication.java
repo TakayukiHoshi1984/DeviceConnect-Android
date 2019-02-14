@@ -7,12 +7,15 @@
 package org.deviceconnect.android.deviceplugin.host;
 
 import android.app.Application;
+import android.content.Intent;
 import android.os.Bundle;
 
 import org.deviceconnect.android.logger.AndroidHandler;
 import org.deviceconnect.android.profile.KeyEventProfile;
 import org.deviceconnect.android.profile.TouchProfile;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -185,7 +188,11 @@ public class HostDeviceApplication extends Application {
     public static final String STATE_UP = "up";
     /** KeyEvent State cancel. */
     public static final String STATE_DOWN = "down";
-    /**
+    /** Activity's Intent Cache. */
+    private Map<String, Intent> mIntentCaches = new HashMap<>();
+    /** Show Activitty Flag. */
+    private Map<String, Boolean> mShowActivityFlags = new HashMap<>();
+     /**
      * Get KeyEvent cache data.
      * 
      * @param attr Attribute.
@@ -251,5 +258,67 @@ public class HostDeviceApplication extends Application {
             logger.setLevel(Level.OFF);
         }
 
+    }
+
+    /**
+     * 画面に表示されているActivityが表示されているかどうか.
+     * @param activitName Activity名
+     * @param flag true:表示されている　false:表示されていない
+     */
+    public void putShowActivityFlag(final String activitName, final boolean flag) {
+        mShowActivityFlags.put(activitName.replaceAll(".", "_"), flag);
+    }
+
+    /**
+     * 画面に指定されたActivityが表示されているかどうか.
+     * @param activityName Activity名
+     * @return true:表示されている false:表示されていない
+     */
+    public boolean getShowActivityFlag(String activityName) {
+        Boolean flag = mShowActivityFlags.get(activityName.replaceAll(".", "_"));
+        if (flag != null) {
+            return flag;
+        }
+        return false;
+    }
+
+    /**
+     * 表示されているActivityへ送ったIntentのキャッシュを設定する.
+     * @param activityName Activity名
+     * @param data Intent
+     */
+    public void putShowActivityAndData(final String activityName, final Intent data) {
+        mIntentCaches.put(activityName.replaceAll(".", "_"), data);
+    }
+
+    /**
+     * 表示されているActivityが持つIntentのキャッシュを取得する.
+     * @param activityName Activity名
+     * @return Intent
+     */
+    public Intent getShowActivityAndData(final String activityName) {
+        return mIntentCaches.get(activityName.replaceAll(".", "_"));
+    }
+
+    /**
+     * Activityが持つIntentのキャッシュを削除する.
+     * @param activityName Activity名
+     */
+    public void removeShowActivityAndData(final String activityName) {
+        mIntentCaches.remove(activityName.replaceAll(".", "_"));
+    }
+
+    public boolean isShowDoubleActivity(final String activityName) {
+        String name = activityName.replaceAll(".", "_");
+        for (String key : mIntentCaches.keySet()) {
+            if (name.equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int activitySize() {
+        return mIntentCaches.size();
     }
 }

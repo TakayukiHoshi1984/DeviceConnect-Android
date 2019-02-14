@@ -54,10 +54,10 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     private static final String TAG = "HOST";
 
     /** ミリ秒 - 秒オーダー変換用. */
-    protected static final int UNIT_SEC = 1000;
+    private static final int UNIT_SEC = 1000;
 
     /** Sort flag. */
-    protected enum SortOrder {
+    private enum SortOrder {
         /** Title (asc). */
         TITLE_ASC,
         /** Title (desc). */
@@ -91,7 +91,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * AudioのContentProviderのキー一覧を定義する.
      */
-    protected static final String[] AUDIO_TABLE_KEYS = { MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.ARTIST,
+    private static final String[] AUDIO_TABLE_KEYS = { MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.COMPOSER, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media._ID, MediaStore.Audio.Media.MIME_TYPE, MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DISPLAY_NAME };
@@ -99,13 +99,13 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * VideoのContentProviderのキー一覧を定義する.
      */
-    protected static final String[] VIDEO_TABLE_KEYS = { MediaStore.Video.Media.ALBUM, MediaStore.Video.Media.ARTIST,
+    private static final String[] VIDEO_TABLE_KEYS = { MediaStore.Video.Media.ALBUM, MediaStore.Video.Media.ARTIST,
             MediaStore.Video.Media.LANGUAGE, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION,
             MediaStore.Video.Media._ID, MediaStore.Video.Media.MIME_TYPE, MediaStore.Video.Media.DATE_ADDED,
             MediaStore.Video.Media.DISPLAY_NAME };
 
     /** Mute Status. */
-    protected static Boolean sIsMute = false;
+    private static Boolean sIsMute = false;
 
     private MediaPlayerManager mHostMediaPlayerManager;
 
@@ -491,7 +491,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
         addApi(mDeleteOnStatusChangeApi);
     }
 
-    protected void onGetMediaInternal(final Intent request, final Intent response, final String serviceId,
+    private void onGetMediaInternal(final Intent request, final Intent response, final String serviceId,
             final String mediaId) {
         // Query table parameter.
         String[] param = null;
@@ -581,7 +581,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param mediaId media ID.
      * @return uri.
      */
-    protected Uri getMediaUri(final Uri typeUri, final String mediaId) {
+    private Uri getMediaUri(final Uri typeUri, final String mediaId) {
         if (!(isMediaId(mediaId))) {
             long newMediaId = mediaIdFromPath(getContext(), mediaId);
             if (newMediaId != -1) {
@@ -601,7 +601,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param cursor データが格納されているCursor
      * @param response response.
      */
-    protected void loadMediaData(final Uri uriType, final Cursor cursor, final Intent response) {
+    private void loadMediaData(final Uri uriType, final Cursor cursor, final Intent response) {
         String mId;
         String mType;
         String mTitle;
@@ -659,7 +659,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param mUri URI
      * @return name display name.
      */
-    protected String getDisplayNameFromUri(final Uri mUri) {
+    private String getDisplayNameFromUri(final Uri mUri) {
         Cursor c = null;
         try {
             ContentResolver mContentResolver = getContext().getApplicationContext().getContentResolver();
@@ -690,7 +690,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param offset Offset
      * @param limit Limit
      */
-    protected boolean getMediaList(final Intent response, final String query, final String mimeType,
+    private boolean getMediaList(final Intent response, final String query, final String mimeType,
             final String[] orders, final Integer offset, final Integer limit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PermissionUtility.requestPermissions(getContext(), new Handler(Looper.getMainLooper()),
@@ -715,7 +715,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
         return true;
     }
 
-    protected void getMediaListInternal(final Intent response, final String query, final String mimeType,
+    private void getMediaListInternal(final Intent response, final String query, final String mimeType,
             final String[] orders, final Integer offset, final Integer limit) {
         try {
             SortOrder mSort = SortOrder.TITLE_ASC;
@@ -851,7 +851,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param list List
      * @return counter Music data count.
      */
-    protected int getMusicList(final Cursor cursorMusic, final ArrayList<MediaList> list) {
+    private int getMusicList(final Cursor cursorMusic, final ArrayList<MediaList> list) {
         int counter = 0;
         do {
             String mId = cursorMusic.getString(cursorMusic.getColumnIndex(MediaStore.Audio.Media._ID));
@@ -875,7 +875,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param list List
      * @return counter Video data count.
      */
-    protected int getVideoList(final Cursor cursorVideo, final ArrayList<MediaList> list) {
+    private int getVideoList(final Cursor cursorVideo, final ArrayList<MediaList> list) {
         int counter = 0;
         do {
             String mLang = cursorVideo.getString(cursorVideo.getColumnIndex(MediaStore.Video.Media.LANGUAGE));
@@ -902,7 +902,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param sortflag Sort flag.
      * @return counter Video data count.
      */
-    protected int getMediaDataList(final ArrayList<MediaList> orglist, final List<Bundle> medialist, final Integer offset,
+    private int getMediaDataList(final ArrayList<MediaList> orglist, final List<Bundle> medialist, final Integer offset,
             final Integer limit, final SortOrder sortflag) {
 
         switch (sortflag) {
@@ -1015,7 +1015,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param value チェックしたいID
      * @return 数値の場合はtrue、そうでない場合はfalse
      */
-    protected boolean checkInteger(final String value) {
+    private boolean checkInteger(final String value) {
         try {
             Integer.parseInt(value);
             return true;
@@ -1031,7 +1031,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param path パス
      * @return MediaID
      */
-    protected static long mediaIdFromPath(final Context context, final String path) {
+    private static long mediaIdFromPath(final Context context, final String path) {
         long id = 0;
         String[] mParam = { BaseColumns._ID };
         String[] mArgs = new String[] { path };
@@ -1113,7 +1113,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Media list class.
      */
-    protected class MediaList {
+    private class MediaList {
         /** ID. */
         private String mId;
         /** Mime Type. */
@@ -1303,7 +1303,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Duration sorting comparator.
      */
-    protected class MediaListDurationComparator implements Comparator<MediaList> {
+    private class MediaListDurationComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1323,7 +1323,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Title sorting comparator.
      */
-    protected class MediaListTitleComparator implements Comparator<MediaList> {
+    private class MediaListTitleComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1334,7 +1334,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Artist sorting comparator.
      */
-    protected class MediaListArtistComparator implements Comparator<MediaList> {
+    private class MediaListArtistComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1345,7 +1345,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Composer sorting comparator.
      */
-    protected class MediaListComposerComparator implements Comparator<MediaList> {
+    private class MediaListComposerComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1356,7 +1356,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Language sorting comparator.
      */
-    protected class MediaListLanguageComparator implements Comparator<MediaList> {
+    private class MediaListLanguageComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1367,7 +1367,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * ID sorting comparator.
      */
-    protected class MediaListIdComparator implements Comparator<MediaList> {
+    private class MediaListIdComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1378,7 +1378,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
     /**
      * Type sorting comparator.
      */
-    protected class MediaListTypeComparator implements Comparator<MediaList> {
+    private class MediaListTypeComparator implements Comparator<MediaList> {
 
         @Override
         public int compare(final MediaList lhs, final MediaList rhs) {
@@ -1393,7 +1393,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param data2 Data2.
      * @return result.
      */
-    protected int compareData(final String data1, final String data2) {
+    private int compareData(final String data1, final String data2) {
         if (data1 == null && data2 == null) {
             return 0;
         } else if (data1 != null && data2 == null) {
@@ -1418,7 +1418,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param order2 asc / desc.
      * @return SortOrder flag.
      */
-    protected SortOrder getSortOrder(final String order1, final String order2) {
+    private SortOrder getSortOrder(final String order1, final String order2) {
         if (order1.compareToIgnoreCase("id") == 0 && order2.compareToIgnoreCase("desc") == 0) {
             return SortOrder.ID_DESC;
         } else if (order1.compareToIgnoreCase("id") == 0 && order2.compareToIgnoreCase("asc") == 0) {
@@ -1455,7 +1455,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
      * @param mediaId media ID
      * @return true:OK, false:NG
      */
-    protected boolean isMediaId(final String mediaId) {
+    private boolean isMediaId(final String mediaId) {
         try {
             Long.valueOf(mediaId);
             return true;

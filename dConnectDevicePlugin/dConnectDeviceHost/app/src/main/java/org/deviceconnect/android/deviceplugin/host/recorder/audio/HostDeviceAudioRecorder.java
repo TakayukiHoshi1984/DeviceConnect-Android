@@ -18,11 +18,11 @@ import android.os.Looper;
 import android.os.ResultReceiver;
 import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceStreamRecorder;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
-import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -84,8 +84,9 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
 
     @Override
     public RecorderState getState() {
-        HostTopActivityStates state = new HostTopActivityStates(mContext);
-        if (state.isTopActivityState(AudioRecorderActivity.class.getName())) {
+        HostDeviceService service = (HostDeviceService) mContext;
+        HostDeviceApplication app = (HostDeviceApplication) service.getApplicationContext();
+        if (app != null && app.getShowActivityAndData(AudioRecorderActivity.class.getName()) != null) {
             return RecorderState.RECORDING;
         } else {
             return RecorderState.INACTTIVE;
