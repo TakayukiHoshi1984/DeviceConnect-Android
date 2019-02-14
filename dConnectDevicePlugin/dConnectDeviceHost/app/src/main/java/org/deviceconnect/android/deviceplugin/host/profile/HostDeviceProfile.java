@@ -2,11 +2,15 @@ package org.deviceconnect.android.deviceplugin.host.profile;
 
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayService;
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.MultiWindowService;
+import org.deviceconnect.android.deviceplugin.host.recorder.util.CapabilityUtil;
 import org.deviceconnect.android.message.DevicePluginContext;
+import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.android.profile.api.DeleteApi;
 import org.deviceconnect.android.profile.api.PostApi;
@@ -47,12 +51,27 @@ public class HostDeviceProfile extends DConnectProfile {
             dService.setOnline(dService.connect());
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                MultiWindowService mwService = (MultiWindowService) provider.getService(MultiWindowService.SERVICE_ID);
-                if (mwService == null) {
-                    mwService = new MultiWindowService(mDevicePluginContext);
-                    provider.addService(mwService);
-                }
-                mwService.setOnline(true);
+                CapabilityUtil.checkMutiWindowCapability(getContext(), new Handler(Looper.getMainLooper()), new CapabilityUtil.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        MultiWindowService mwService = (MultiWindowService) provider.getService(MultiWindowService.SERVICE_ID);
+                        if (mwService == null) {
+                            mwService = new MultiWindowService(mDevicePluginContext);
+                            provider.addService(mwService);
+                        }
+                        mwService.setOnline(true);
+                        setResult(response, DConnectMessage.RESULT_OK);
+                        sendResponse(response);
+                    }
+
+                    @Override
+                    public void onFail() {
+                        MessageUtils.setIllegalServerStateError(response,
+                                "AvailabilityService permission not granted.");
+                        sendResponse(response);
+                    }
+                });
+                return false;
             }
             setResult(response, DConnectMessage.RESULT_OK);
             return true;

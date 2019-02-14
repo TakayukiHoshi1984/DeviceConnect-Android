@@ -28,11 +28,11 @@ import android.view.MotionEvent;
 import android.view.Window;
 
 import org.deviceconnect.android.activity.PermissionUtility;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.provider.FileManager;
 
 import java.io.File;
@@ -64,20 +64,19 @@ public class AudioRecorderActivity extends Activity {
     private Intent mIntent;
     /** 本アクティビティを起動したレコーダーID. */
     private String mRecorderId;
-    private HostTopActivityStates mState;
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.audio_main);
-        mState = new HostTopActivityStates(this);
-        mState.setTopActivityState(AudioRecorderActivity.class.getName(), true);
         mIntent = getIntent();
         if (mIntent == null) {
             finish();
             return;
         }
+        HostDeviceApplication app = (HostDeviceApplication) getApplication();
+        app.putShowActivityAndData(AudioRecorderActivity.class.getName(), mIntent);
         mCallback = mIntent.getParcelableExtra(AudioConst.EXTRA_CALLBACK);
         if (mCallback == null) {
             finish();
@@ -173,7 +172,8 @@ public class AudioRecorderActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        mState.setTopActivityState(AudioRecorderActivity.class.getName(), false);
+        HostDeviceApplication app = (HostDeviceApplication) getApplication();
+        app.removeShowActivityAndData(AudioRecorderActivity.class.getName());
 
         // 受信を停止.
         unregisterReceiver(mReceiver);

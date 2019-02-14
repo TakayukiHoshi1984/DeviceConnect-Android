@@ -126,10 +126,42 @@
             android:name="org.deviceconnect.android.deviceplugin.host.externaldisplay.CanvasDialogActivity"
             android:theme="@style/AppTheme.Translucent"
             />
+        <activity android:name=".mutiwindow.activity.MultiWindowCanvasProfileActivity"
+            android:exported="false"
+            android:label="@string/app_name_host"
+            android:excludeFromRecents="true"
+            android:configChanges="screenLayout|orientation"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".mutiwindow.canvas"/>
+        <activity
+            android:name=".mutiwindow.activity.MultiWindowTouchProfileActivity"
+            android:exported="false"
+            android:label="@string/app_name_host"
+            android:configChanges="screenLayout|orientation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".multiwindow.touch"/>
+
+        <activity
+            android:name=".mutiwindow.activity.MultiWindowKeyEventProfileActivity"
+            android:exported="false"
+            android:label="@string/app_name_host"
+            android:configChanges="screenLayout|orientation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".multiwindow.keyevent"/>
+
+        <activity
+            android:name=".mutiwindow.activity.MultiWindowVideoPlayer"
+            android:exported="false"
+            android:configChanges="screenLayout|orientation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".multiwindow.player"/>
         <service
             android:name="org.deviceconnect.android.deviceplugin.host.mutiwindow.MutiWindowAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:label="SampleAccessibilityService" >
+            android:label="@string/accessibility_service_name" >
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>

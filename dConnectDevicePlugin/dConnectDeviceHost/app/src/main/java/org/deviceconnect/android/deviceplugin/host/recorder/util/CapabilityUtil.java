@@ -7,6 +7,7 @@
 package org.deviceconnect.android.deviceplugin.host.recorder.util;
 
 import android.Manifest;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -17,9 +18,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.ResultReceiver;
 import android.provider.Settings;
+import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
+import android.widget.Toast;
 
 import org.deviceconnect.android.activity.IntentHandlerActivity;
 import org.deviceconnect.android.activity.PermissionUtility;
+import org.deviceconnect.android.deviceplugin.host.R;
+
+import java.util.List;
 
 public final class CapabilityUtil {
     private CapabilityUtil() {
@@ -114,6 +122,65 @@ public final class CapabilityUtil {
                 });
     }
 
+    public static void checkMutiWindowCapability(final Context context, final Handler handler, final Callback callback) {
+        final ResultReceiver overlayDrawingCapabilityCallback = new ResultReceiver(handler) {
+            @Override
+            protected void onReceiveResult(int resultCode, Bundle resultData) {
+                try {
+                    if (resultCode == Activity.RESULT_OK) {
+                        callback.onSuccess();
+                    } else {
+                        callback.onFail();
+                    }
+                } catch (Throwable throwable) {
+                    callback.onFail();
+                }
+            }
+        };
+        CapabilityUtil.checkAvailabilityServiceCapability(context, handler, overlayDrawingCapabilityCallback);
+    }
+    /**
+     * AvailabilityServiceのパーミッションを確認します.
+     *
+     * @param context コンテキスト
+     * @param handler ハンドラー
+     * @param resultReceiver 確認を受けるレシーバ
+     */
+    private static void checkAvailabilityServiceCapability(final Context context, final Handler handler, final ResultReceiver resultReceiver) {
+        if (isAccessibilityEnabled(context)) {
+            resultReceiver.send(Activity.RESULT_OK, null);
+        } else {
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            handler.post(() -> {
+                Toast.makeText(context, R.string.mutiwindow_accessibility_setting_message, Toast.LENGTH_LONG).show();
+            });
+            IntentHandlerActivity.startActivityForResult(context, intent, new ResultReceiver(handler) {
+                @Override
+                protected void onReceiveResult(int resultCode, Bundle resultData) {
+                    if (isAccessibilityEnabled(context)) {
+                        resultReceiver.send(Activity.RESULT_OK, null);
+                    } else {
+                        resultReceiver.send(Activity.RESULT_CANCELED, null);
+                    }
+                }
+            });
+        }
+    }
+
+    private static boolean isAccessibilityEnabled(Context context) {
+        AccessibilityManager am = (AccessibilityManager) context
+                .getSystemService(Context.ACCESSIBILITY_SERVICE);
+
+        List<AccessibilityServiceInfo> runningServices = am
+                .getEnabledAccessibilityServiceList(AccessibilityEvent.TYPES_ALL_MASK);
+        for (AccessibilityServiceInfo service : runningServices) {
+            if (service.getId().contains("org.deviceconnect.android.manager/org.deviceconnect.android.deviceplugin.host.mutiwindow.MutiWindowAccessibilityService")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
     /**
      * Overlayの表示結果を通知するコールバック.
      */
