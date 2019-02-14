@@ -60,7 +60,7 @@
     <string name="canvas_settings_title">Canvas Settings [3/3]</string>
     <string name="canvas_settings_multiple_show_title">Stop canvas start</string>
     <string name="canvas_settings_multiple_show_body">As Canvas stops running Canvas as a preventive measure when it is likely to be started continuously.</string>
-    <string name="canvas_settings_multiple_show_permission">Canvas startup stop</string>
+    <string name="canvas_settings_multiple_show_permission">Canvas startusettings_host_canvas_multiple_show_for_muti_windowp stop</string>
     <string name="canvas_settings_multiple_show_permission_on">Start-up</string>
     <string name="canvas_settings_multiple_show_permission_off">Stop</string>
 
@@ -73,9 +73,13 @@
     <string name="settings_host_canvas_multiple_show" translatable="false">settings_host_canvas_multiple_show</string>
     <string name="settings_host_canvas_multiple_show_never" translatable="false">settings_host_canvas_multiple_show_never</string>
     <string name="settings_host_canvas_access_external_network" translatable="false">settings_host_canvas_access_external_network</string>
+    <string name="settings_host_canvas_multiple_show_for_muti_window" translatable="false">settings_host_canvas_multiple_show_for_muti_window</string>
+    <string name="settings_host_canvas_multiple_show_for_presentation" translatable="false">settings_host_canvas_multiple_show_for_presentation</string>
 
     <!-- MutiWindow -->
+    <string name="accessibility_service_name">DeviceConnectMultiWindow</string>
     <string name="mutiwindow_accessibility_setting_description">Launch the DeviceConnect API in multi-window mode.</string>
+    <string name="mutiwindow_accessibility_setting_message">To use multi window function with DeviceConnect, please enable DeviceConnectMutiWindow.</string>
 
 </resources>
 

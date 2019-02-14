@@ -7,8 +7,10 @@
 package org.deviceconnect.android.deviceplugin.host.canvas;
 
 import android.content.Intent;
+import android.util.Log;
 
 import org.deviceconnect.profile.CanvasProfileConstants;
+
 
 /**
  * Canvas Draw Image Object.
@@ -103,6 +105,7 @@ public class CanvasDrawImageObject {
      * intent extra key(y).
      */
     private static final String EXTRA_Y = "y";
+    public static final String PARAM_AVAILABILITY_FLAG = "PARAM_AVAILABILITY_FLAG";
 
     /**
      * data.
@@ -129,6 +132,7 @@ public class CanvasDrawImageObject {
      */
     private double mY;
 
+    private boolean mIsAvailabilityService;
     /**
      * Constructor.
      */
@@ -149,12 +153,13 @@ public class CanvasDrawImageObject {
      * @param y    y
      */
     public CanvasDrawImageObject(final String data, final Mode mode,
-                                 final String mimeType, final double x, final double y) {
+                                 final String mimeType, final double x, final double y, final boolean isAvailabilityService) {
         mData = data;
         mMode = mode;
         mMimeType = mimeType;
         mX = x;
         mY = y;
+        mIsAvailabilityService = isAvailabilityService;
     }
 
     /**
@@ -199,6 +204,10 @@ public class CanvasDrawImageObject {
         return mY;
     }
 
+    public boolean isIsAvailabilityService() {
+        return mIsAvailabilityService;
+    }
+
     /**
      * Sets a CanvasDrawImageObject's data to intent.
      *
@@ -211,6 +220,7 @@ public class CanvasDrawImageObject {
         intent.putExtra(EXTRA_MIME_TYPE, mMimeType);
         intent.putExtra(EXTRA_X, mX);
         intent.putExtra(EXTRA_Y, mY);
+        intent.putExtra(PARAM_AVAILABILITY_FLAG, mIsAvailabilityService);
     }
 
     @Override
@@ -263,6 +273,8 @@ public class CanvasDrawImageObject {
         }
         obj.mX = intent.getDoubleExtra(EXTRA_X, 0.0);
         obj.mY = intent.getDoubleExtra(EXTRA_Y, 0.0);
+        obj.mIsAvailabilityService = intent.getBooleanExtra(PARAM_AVAILABILITY_FLAG, false);
+
         obj.mMimeType = intent.getStringExtra(EXTRA_MIME_TYPE);
         return obj;
     }

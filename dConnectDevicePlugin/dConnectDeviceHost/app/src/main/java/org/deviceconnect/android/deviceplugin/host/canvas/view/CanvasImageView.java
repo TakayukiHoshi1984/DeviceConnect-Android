@@ -63,10 +63,6 @@ public class CanvasImageView {
 
 
     /**
-     * ダウンロード中フラグ.
-     */
-    private static boolean mDownloadFlag = false;
-    /**
      * コンストラクタ.
      * @param drawObject Canvasに表示するリソース情報を持つオブジェクト
      */
@@ -76,10 +72,6 @@ public class CanvasImageView {
             return;
         }
 
-        if (mDownloadFlag) {
-            return;
-        }
-        mDownloadFlag = true;
         DownloadTask task = new DownloadTask(context, imageView, presenter, drawObject);
         task.execute();
     }
@@ -144,9 +136,9 @@ public class CanvasImageView {
             } catch (Exception e) {
                 return ResourceResult.NotFoundResource;
             }
-            if ((mBitmap.getWidth() * mBitmap.getHeight()) > OOM_MEMORY_SIZE) {
-                return ResourceResult.OutOfMemory;
-            }
+//            if ((mBitmap.getWidth() * mBitmap.getHeight()) > OOM_MEMORY_SIZE) {
+//                return ResourceResult.OutOfMemory;
+//            }
             return ResourceResult.Success;
         }
 
@@ -164,7 +156,6 @@ public class CanvasImageView {
                     mPresenter.showNotFoundDrawImageDialog();
                     break;
             }
-            mDownloadFlag = false;
         }
         /**
          * 画面を更新.

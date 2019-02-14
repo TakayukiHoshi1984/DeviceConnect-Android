@@ -8,11 +8,8 @@ package org.deviceconnect.android.deviceplugin.host.canvas;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Environment;
 
 import org.deviceconnect.android.deviceplugin.host.R;
-
-import java.io.File;
 
 /**
  * HostプラグインのCanvasに関する設定を保持するクラス.
@@ -55,8 +52,8 @@ public final class HostCanvasSettings {
      *
      * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
      */
-    public boolean isCanvasMultipleShowFlag() {
-        return mPreferences.getBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show), isDefaultCanvasMultipleShowFlag());
+    public boolean isCanvasContinuousAccessForHost() {
+        return mPreferences.getBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show), isDefaultCanvasContinuousAccessForHost());
     }
 
     /**
@@ -64,7 +61,7 @@ public final class HostCanvasSettings {
      *
      * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
      */
-    public boolean isDefaultCanvasMultipleShowFlag() {
+    public boolean isDefaultCanvasContinuousAccessForHost() {
         return false;
     }
 
@@ -73,7 +70,7 @@ public final class HostCanvasSettings {
      *
      * @param flag 起動フラグ
      */
-    public void setCanvasMultipleShowFlag(final boolean flag) {
+    public void setCanvasContinuousAccessForHost(final boolean flag) {
         SharedPreferences.Editor editor = mPreferences.edit();
         editor.putBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show), flag);
         editor.apply();
@@ -136,10 +133,69 @@ public final class HostCanvasSettings {
         editor.putBoolean(mContext.getString(R.string.settings_host_canvas_access_external_network), flag);
         editor.apply();
     }
+
+
+    /**
+     * CanvasActivityの多重起動フラグを取得する.
+     *
+     * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
+     */
+    public boolean isCanvasContinuousAccessForMultiWindow() {
+        return mPreferences.getBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show_for_muti_window), isDefaultCanvasContinuousAccessForMultiWindow());
+    }
+
+    /**
+     * デフォルトのCanvasActivityの多重起動フラグを取得する.
+     *
+     * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
+     */
+    public boolean isDefaultCanvasContinuousAccessForMultiWindow() {
+        return false;
+    }
+
+    /**
+     * CanvasActivityの多重起動フラグを設定する.
+     *
+     * @param flag 起動フラグ
+     */
+    public void setCanvasContinuousAccessForMultiWindow(final boolean flag) {
+        SharedPreferences.Editor editor = mPreferences.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show_for_muti_window), flag);
+        editor.apply();
+    }
+
+    /**
+     * CanvasActivityの多重起動フラグを取得する.
+     *
+     * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
+     */
+    public boolean isCanvasContinuousAccessForPresentation() {
+        return mPreferences.getBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show_for_presentation), isDefaultCanvasContinuousAccessForPresentation());
+    }
+
+    /**
+     * デフォルトのCanvasActivityの多重起動フラグを取得する.
+     *
+     * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
+     */
+    public boolean isDefaultCanvasContinuousAccessForPresentation() {
+        return false;
+    }
+
+    /**
+     * CanvasActivityの多重起動フラグを設定する.
+     *
+     * @param flag 起動フラグ
+     */
+    public void setCanvasContinuousAccessForPresentation(final boolean flag) {
+        SharedPreferences.Editor editor = mPreferences.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show_for_presentation), flag);
+        editor.apply();
+    }
     @Override
     public String toString() {
         return "{\n" +
-                "multipleShow:" + isCanvasMultipleShowFlag() + "\n" +
+                "multipleShow:" + isCanvasContinuousAccessForHost() + "\n" +
                 "neverShow:" + isCanvasActivityNeverShowFlag() + "\n" +
                 "externalResourceAccess:" + isCanvasActivityAccessExternalNetworkFlag() + "\n" +
                 "}";

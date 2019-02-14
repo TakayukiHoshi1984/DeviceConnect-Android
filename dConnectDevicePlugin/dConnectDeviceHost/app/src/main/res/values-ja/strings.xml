@@ -72,5 +72,7 @@
 
 
     <!-- MutiWindow -->
+    <string name="accessibility_service_name">DeviceConnectMultiWindow</string>
     <string name="mutiwindow_accessibility_setting_description">DeviceConnectのAPIをマルチウィンドウモードで起動します。</string>
+    <string name="mutiwindow_accessibility_setting_message">DeviceConnectでマルチウィンドウ機能を使用する場合は、DeviceConnectMutiWindowを有効にしてください。</string>
 </resources>

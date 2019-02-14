@@ -9,6 +9,7 @@ package org.deviceconnect.android.deviceplugin.host.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.KeyEvent;
@@ -18,6 +19,7 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 import android.widget.Button;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasController;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.DownloadMessageDialogFragment;
@@ -26,8 +28,6 @@ import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment;
-import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoPlayer;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ContinuousAccessConfirmDialogFragment.MULTIPLE_SHOW_CANVAS_WARNING_TAG;
 import static org.deviceconnect.android.deviceplugin.host.canvas.dialog.ExternalNetworkAccessDialogFragment.EXTERNAL_SHOW_CANVAS_WARNING_TAG;
@@ -50,24 +50,31 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     /**
      * CanvasAPIの設定値を保持する.
      */
-    private HostCanvasSettings mSettings;
-    private HostTopActivityStates mState;
+    protected HostCanvasSettings mSettings;
     /**
      * Canvasの操作を行う.
      */
     private CanvasController mController;
+
+    /** WebView. */
     private WebView mCanvasWebView;
     /**
      * リソースダウンロード中のProgressDialog.
      */
     private DownloadMessageDialogFragment mDialog;
 
+    protected CanvasDrawImageObject mDrawImageObject;
+    /** Application class instance. */
+    protected HostDeviceApplication mApp;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_canvas_profile);
+        // Get Application class instance.
+        mApp = (HostDeviceApplication) this.getApplication();
+
         // ステータスバーを消す
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         View decorView = getWindow().getDecorView();
@@ -81,23 +88,24 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         // 閉じるボタンの初期化
         Button btn = findViewById(R.id.buttonClose);
         btn.setOnClickListener((v) -> {
+            mApp.removeShowActivityAndData(getActivityName());
+            mApp.putShowActivityFlag(getActivityName(), false);
             finish();
         });
-        mCanvasWebView = findViewById(R.id.canvasProfileWebView);
-        // 受け取ったリクエストパラメータの設定
+        mCanvasWebView = getCanvasWebView();
         Intent intent  = getIntent();
-        CanvasDrawImageObject drawImageObject = CanvasDrawImageObject.create(intent);
-        mController = new CanvasController(this, mCanvasWebView, findViewById(R.id.canvasProfileView), findViewById(R.id.canvasProfileVideoView),
-                this, drawImageObject, mSettings, CanvasDrawImageObject.ACTION_DRAW_CANVAS, CanvasDrawImageObject.ACTION_DELETE_CANVAS);
-        mState = new HostTopActivityStates(this);
-        mState.setTopActivityState(CanvasProfileActivity.class.getName(), true);
+        // 受け取ったリクエストパラメータの設定
+        mDrawImageObject = CanvasDrawImageObject.create(intent);
+        mController = getCanvasController();
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         mController.registerReceiver();
-        mController.checkForAtack(false);
+        boolean flag = ((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName());
+        mController.checkForAtack(flag);
     }
 
     @Override
@@ -106,14 +114,17 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     }
     @Override
     protected void onDestroy() {
-        mState.setTopActivityState(CanvasProfileActivity.class.getName(), false);
-        mController.unregisterReceiver();
-        mSettings.setCanvasMultipleShowFlag(true);
-        // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
-        new Handler().postDelayed(() -> {
-            // 10秒後に連続起動フラグを無効にする
-            mSettings.setCanvasMultipleShowFlag(false);
-        }, DELAY_MILLIS);
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+            ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityName());
+            mController.unregisterReceiver();
+            enableCanvasContinuousAccessFlag();
+            // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
+            new Handler().postDelayed(() -> {
+                // 10秒後に連続起動フラグを無効にする
+                disableCanvasContinuousAccessFlag();
+            }, DELAY_MILLIS);
+
+        }
         super.onDestroy();
     }
 
@@ -123,7 +134,8 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
             mCanvasWebView.goBack();
             return true;
         }
-
+        mApp.removeShowActivityAndData(getActivityName());
+        mApp.putShowActivityFlag(getActivityName(), false);
         return super.onKeyDown(keyCode, event);
     }
 
@@ -153,13 +165,17 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
             mDialog.dismiss();
         }
         mDialog = new DownloadMessageDialogFragment();
-        mDialog.show(getFragmentManager(), "dialog");
+        try {
+            mDialog.show(getFragmentManager(), "dialog");
+        } catch (IllegalStateException e) {}
     }
 
     @Override
     public void dismissDownloadDialog() {
         if (mDialog != null) {
-            mDialog.dismiss();
+            try {
+                mDialog.dismiss();
+            } catch (IllegalStateException e) {}
             mDialog = null;
         }
     }
@@ -186,7 +202,6 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
 
     @Override
     public void showExternalNetworkAccessDialog(CanvasController.PresenterCallback callback) {
-        // 多重起動が行われたかをチェック
         ExternalNetworkAccessDialogFragment
                 .createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
                     @Override
@@ -229,8 +244,43 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     }
 
     @Override
+    public boolean isCanvasContinuousAccess() {
+        return mSettings.isCanvasContinuousAccessForHost();
+    }
+
+    @Override
     public void finishActivity() {
         finish();
     }
 
+    protected CanvasController getCanvasController() {
+        return new CanvasController(this, getCanvasWebView(), findViewById(R.id.canvasProfileView), findViewById(R.id.canvasProfileVideoView),
+                this, mDrawImageObject, mSettings, CanvasDrawImageObject.ACTION_DRAW_CANVAS, CanvasDrawImageObject.ACTION_DELETE_CANVAS);
+    }
+
+
+
+    protected void enableCanvasContinuousAccessFlag() {
+        mSettings.setCanvasContinuousAccessForHost(true);
+    }
+
+    protected void disableCanvasContinuousAccessFlag() {
+        mSettings.setCanvasContinuousAccessForHost(false);
+    }
+
+    protected WebView getCanvasWebView() {
+        return findViewById(R.id.canvasProfileWebView);
+    }
+
+    protected String getActivityName() {
+        return CanvasProfileActivity.class.getName();
+    }
+
+    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
+        if (!isInMultiWindowMode) {
+            HostDeviceApplication app = (HostDeviceApplication) getApplication();
+            app.putShowActivityFlag(getActivityName(), false);
+        }
+    }
 }

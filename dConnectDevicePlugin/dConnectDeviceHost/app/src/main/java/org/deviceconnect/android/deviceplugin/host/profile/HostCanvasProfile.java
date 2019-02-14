@@ -7,18 +7,17 @@
 
 package org.deviceconnect.android.deviceplugin.host.profile;
 
-import android.app.ActivityManager;
-import android.app.Service;
+import android.app.Activity;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.activity.CanvasProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
-import org.deviceconnect.android.deviceplugin.host.util.HostUtils;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.CanvasProfile;
 import org.deviceconnect.android.profile.api.DConnectApi;
@@ -52,9 +51,8 @@ public class HostCanvasProfile extends CanvasProfile {
 
     /** Canvasの設定. */
     protected HostCanvasSettings mSettings;
-    protected HostTopActivityStates mState;
 
-    private final DConnectApi mDrawImageApi = new PostApi() {
+    protected final DConnectApi mDrawImageApi = new PostApi() {
 
         @Override
         public String getAttribute() {
@@ -63,15 +61,14 @@ public class HostCanvasProfile extends CanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            if (!mSettings.isCanvasActivityNeverShowFlag()) {
+            if (!isActivityNeverShow()) {
                 MessageUtils.setIllegalServerStateError(response,
                         "The function of Canvas API is turned off.\n" +
                                 "Please cancel on the setting screen of Host plug-in.");
                 return true;
             }
             // 連続起動のダイアログが表示中かどうか
-            if (mSettings.isCanvasMultipleShowFlag()
-                    && mState.isTopActivityState(CanvasProfileActivity.class.getName())) {
+            if (isCanvasMultipleShowFlag()) {
                 MessageUtils.setIllegalServerStateError(response,
                         "Canvas API may be executed continuously.");
                 return true;
@@ -122,7 +119,7 @@ public class HostCanvasProfile extends CanvasProfile {
         }
     };
 
-    private final DConnectApi mDeleteImageApi = new DeleteApi() {
+    protected final DConnectApi mDeleteImageApi = new DeleteApi() {
 
         @Override
         public String getAttribute() {
@@ -131,9 +128,11 @@ public class HostCanvasProfile extends CanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            if (mState.isTopActivityState(CanvasProfileActivity.class.getName())) {
-                Intent intent = new Intent(CanvasDrawImageObject.ACTION_DELETE_CANVAS);
+            if (getApp().getShowActivityAndData(getTopOfActivity().getName()) != null) {
+                Intent intent = new Intent(getDeleteCanvasActionName());
                 LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
+                getApp().removeShowActivityAndData(getTopOfActivity().getName());
+                getApp().putShowActivityFlag(getTopOfActivity().getName(), false);
                 setResult(response, DConnectMessage.RESULT_OK);
             } else {
                 MessageUtils.setIllegalDeviceStateError(response, "canvas not display");
@@ -145,12 +144,12 @@ public class HostCanvasProfile extends CanvasProfile {
 
     /**
      * コンストラクタ.
+     * @param settings Canvasに関する設定値を持つクラス
      */
-    public HostCanvasProfile(final HostCanvasSettings settings, final HostTopActivityStates state) {
+    public HostCanvasProfile(final HostCanvasSettings settings) {
         addApi(mDrawImageApi);
         addApi(mDeleteImageApi);
         mSettings = settings;
-        mState = state;
     }
 
     /**
@@ -162,7 +161,7 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param x position
      * @param y position
      */
-    protected void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
+    private void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
         try {
             drawImage(response, writeForImage(data, mimeType), enumMode, mimeType, x, y);
         } catch (OutOfMemoryError e) {
@@ -183,18 +182,21 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param y position
      */
     protected void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, String mimeType, double x, double y) {
-        CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, mimeType, x, y);
+        CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, mimeType, x, y, false);
+        HostDeviceService service = ((HostDeviceService) getContext());
 
-        String className = HostUtils.getClassnameOfTopActivity(getContext());
-        if (CanvasProfileActivity.class.getName().equals(className)) {
-            Intent intent = new Intent(CanvasDrawImageObject.ACTION_DRAW_CANVAS);
+        if (getApp().getShowActivityAndData(getTopOfActivity().getName()) != null) {
+            Intent intent = new Intent(getDrawCanvasActionName());
             drawObj.setValueToIntent(intent);
+            ((HostDeviceApplication) service.getApplication()).putShowActivityAndData(getTopOfActivity().getName(), intent);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         } else {
             Intent intent = new Intent();
-            intent.setClass(getContext(), CanvasProfileActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.setClass(getContext(), getTopOfActivity());
+//            intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);  // TODO 反対側のウィンドウに表示できるようにする
             drawObj.setValueToIntent(intent);
+            ((HostDeviceApplication) service.getApplication()).putShowActivityAndData(getTopOfActivity().getName(), intent);
             getContext().startActivity(intent);
         }
 
@@ -217,7 +219,7 @@ public class HostCanvasProfile extends CanvasProfile {
         if (mimeType.equals("text/html")) {  //htmlファイルの時は拡張子を変える
             suffix = ".html";
         }
-        File dstFile = File.createTempFile(CANVAS_PREFIX + System.currentTimeMillis(), suffix, file);
+        File dstFile = File.createTempFile(getTempFileName() + System.currentTimeMillis(), suffix, file);
         try {
             out = new FileOutputStream(dstFile);
             out.write(data);
@@ -239,16 +241,45 @@ public class HostCanvasProfile extends CanvasProfile {
      *
      * @param file 削除するファイル
      */
-    protected void checkAndRemove(@NonNull final File file) {
+    private void checkAndRemove(@NonNull final File file) {
         if (file.isDirectory()) {
             for (File childFile : file.listFiles()) {
                 checkAndRemove(childFile);
             }
-        } else if (file.isFile() && file.getName().startsWith(CANVAS_PREFIX)) {
+        } else if (file.isFile() && file.getName().startsWith(getTempFileName())) {
             long modified = file.lastModified();
             if (System.currentTimeMillis() - modified > mExpire) {
                 file.delete();
             }
         }
     }
+    protected HostDeviceApplication getApp() {
+        return (HostDeviceApplication) getContext().getApplicationContext();
+    }
+    protected boolean isCanvasMultipleShowFlag() {
+        return mSettings.isCanvasContinuousAccessForHost()
+                && ((HostDeviceApplication) ((HostDeviceService) getContext()).getApplication())
+                            .getShowActivityAndData(getTopOfActivity().getName()) != null;
+    }
+
+    protected String getTempFileName() {
+        return CANVAS_PREFIX;
+    }
+
+    protected boolean isActivityNeverShow() {
+        return mSettings.isCanvasActivityNeverShowFlag();
+    }
+
+    protected Class<? extends Activity> getTopOfActivity() {
+        return CanvasProfileActivity.class;
+    }
+
+    protected String getDrawCanvasActionName() {
+        return CanvasDrawImageObject.ACTION_DRAW_CANVAS;
+    }
+
+    protected String getDeleteCanvasActionName() {
+        return CanvasDrawImageObject.ACTION_DELETE_CANVAS;
+    }
+
 }

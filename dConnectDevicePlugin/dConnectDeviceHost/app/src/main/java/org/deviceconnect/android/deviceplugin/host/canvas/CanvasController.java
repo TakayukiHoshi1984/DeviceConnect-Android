@@ -1,6 +1,5 @@
 package org.deviceconnect.android.deviceplugin.host.canvas;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -32,6 +31,7 @@ public class CanvasController {
         void showOutOfMemoryDialog();
         void showExternalNetworkAccessDialog(final PresenterCallback callback);
         void showContinuousAccessConfirmDilaog(final PresenterCallback callback);
+        boolean isCanvasContinuousAccess();
     }
 
     /**
@@ -108,7 +108,7 @@ public class CanvasController {
      */
     public void checkForAtack(final boolean isContinuous) {
         String uri = mDrawImageObject.getData();
-        if (!isContinuous && mSettings.isCanvasMultipleShowFlag()) {
+        if (!isContinuous && mPresenter.isCanvasContinuousAccess()) {
             mPresenter.showContinuousAccessConfirmDilaog(new PresenterCallback() {
                 @Override
                 public void onOKCallback() {
@@ -127,7 +127,7 @@ public class CanvasController {
                 public void onOKCallback() {
                     mExternalAccessFlag = true;
                     // 多重起動が行われたかをチェック
-                    if (mSettings.isCanvasMultipleShowFlag()) {
+                    if (mPresenter.isCanvasContinuousAccess()) {
                         mPresenter.showContinuousAccessConfirmDilaog(new PresenterCallback() {
                             @Override
                             public void onOKCallback() {
