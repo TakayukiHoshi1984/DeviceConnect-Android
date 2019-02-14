@@ -6,6 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.host.profile;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,8 +15,8 @@ import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
+import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
@@ -65,7 +66,7 @@ public class HostTouchProfile extends TouchProfile {
     private BroadcastReceiver mTouchEventBR = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
-            if (intent.getAction().equals(ACTION_TOUCH)) {
+            if (intent.getAction().equals(getActionForSendEvent())) {
                 // ManagerにEventを送信する
                 intent.setAction(IntentDConnectMessage.ACTION_EVENT);
                 sendEvent(intent, intent.getStringExtra("accessToken"));
@@ -77,7 +78,6 @@ public class HostTouchProfile extends TouchProfile {
      */
     public static final String ATTRIBUTE_ON_TOUCH_CHANGE = "onTouchChange";
 
-    private HostTopActivityStates mState;
     private final DConnectApi mGetOnTouchChangeApi = new GetApi() {
 
         @Override
@@ -230,7 +230,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
 
                 setTouchEventFlag(FLAG_ON_TOUCH_CHANGE);
@@ -255,7 +255,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -280,7 +280,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_START);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -305,7 +305,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_END);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -330,7 +330,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_DOUBLE_TAP);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -355,7 +355,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_MOVE);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -380,7 +380,7 @@ public class HostTouchProfile extends TouchProfile {
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
                 execTouchProfileActivity(serviceId);
-                IntentFilter filter = new IntentFilter(ACTION_TOUCH);
+                IntentFilter filter = new IntentFilter(getActionForSendEvent());
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_CANCEL);
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -543,8 +543,7 @@ public class HostTouchProfile extends TouchProfile {
         }
     };
 
-    public HostTouchProfile(final HostTopActivityStates state) {
-        mState = state;
+    public HostTouchProfile() {
         addApi(mGetOnTouchChangeApi);
         addApi(mGetOnTouchApi);
         addApi(mGetOnTouchStartApi);
@@ -575,11 +574,13 @@ public class HostTouchProfile extends TouchProfile {
      * @return Always true.
      */
     private boolean execTouchProfileActivity(final String serviceId) {
-        if (!mState.isTopActivityState(TouchProfileActivity.class.getName())) {
+        if (getApp().getShowActivityAndData(getTouchActivityClass().getName()) == null) {
             Intent mIntent = new Intent();
-            mIntent.setClass(getContext(), TouchProfileActivity.class);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setClass(getContext(), getTouchActivityClass());
+//            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
+            getApp().putShowActivityAndData(getTouchActivityClass().getName(), mIntent);
             this.getContext().startActivity(mIntent);
         }
         return true;
@@ -591,8 +592,10 @@ public class HostTouchProfile extends TouchProfile {
      * @return Always true.
      */
     private boolean finishTouchProfileActivity() {
-        if (mState.isTopActivityState(TouchProfileActivity.class.getName())) {
-            Intent intent = new Intent(HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY);
+        if (getApp().getShowActivityAndData(getTouchActivityClass().getName()) != null) {
+            Intent intent = new Intent(getActionForFinishTouchActivity());
+            getApp().removeShowActivityAndData(getTouchActivityClass().getName());
+            getApp().putShowActivityFlag(getTouchActivityClass().getName(), false);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
         return true;
@@ -658,7 +661,18 @@ public class HostTouchProfile extends TouchProfile {
         return getApp().getKeyEventCache(attr);
     }
 
-    public HostDeviceApplication getApp() {
+    protected HostDeviceApplication getApp() {
         return (HostDeviceApplication) getContext().getApplicationContext();
+    }
+
+    protected Class<? extends Activity> getTouchActivityClass() {
+        return TouchProfileActivity.class;
+    }
+
+    protected String getActionForFinishTouchActivity() {
+        return HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY;
+    }
+    protected String getActionForSendEvent() {
+        return ACTION_TOUCH;
     }
 }

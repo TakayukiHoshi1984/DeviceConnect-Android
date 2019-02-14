@@ -12,7 +12,6 @@ import java.util.List;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
-import org.deviceconnect.android.deviceplugin.host.util.HostTopActivityStates;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.profile.TouchProfile;
@@ -23,14 +22,17 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.View;
 import android.widget.Button;
 
+import static org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile.ACTION_KEYEVENT;
+import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile.ACTION_TOUCH;
 import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile.ATTRIBUTE_ON_TOUCH_CHANGE;
 
 /**
@@ -41,13 +43,12 @@ import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfi
 public class TouchProfileActivity extends Activity {
 
     /** Application class instance. */
-    private HostDeviceApplication mApp;
+    protected HostDeviceApplication mApp;
 
     /** Gesture detector. */
     private GestureDetector mGestureDetector;
     /** Service Id. */
     private String mServiceId;
-    private HostTopActivityStates mState;
     /**
      * Implementation of BroadcastReceiver.
      */
@@ -55,7 +56,7 @@ public class TouchProfileActivity extends Activity {
         @Override
         public void onReceive(final Context context, final Intent intent) {
             String action = intent.getAction();
-            if (HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY.equals(action)) {
+            if (getActionForFinishTouchActivity().equals(action)) {
                 finish();
             }
         }
@@ -75,36 +76,36 @@ public class TouchProfileActivity extends Activity {
         // Create GestureDetector instance.
         mGestureDetector = new GestureDetector(this, mSimpleOnGestureListener);
         // onclicklistener register.
-        Button button = (Button) findViewById(R.id.button_touch_close);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(final View v) {
-                finish();
-            }
+        Button button = findViewById(R.id.button_touch_close);
+        button.setOnClickListener((v) -> {
+            mApp.removeShowActivityAndData(getActivityName());
+            mApp.putShowActivityFlag(getActivityName(), false);
+            finish();
         });
 
-        mState = new HostTopActivityStates(this);
-        mState.setTopActivityState(TouchProfileActivity.class.getName(), true);
     }
 
     @Override
     protected void onDestroy() {
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+            mApp.removeShowActivityAndData(getActivityName());
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        }
         super.onDestroy();
-        mState.setTopActivityState(TouchProfileActivity.class.getName(), false);
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         IntentFilter filter = new IntentFilter();
-        filter.addAction(HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY);
+        filter.addAction(getActionForFinishTouchActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
+    }
+    @Override
+    public boolean dispatchKeyEvent(final KeyEvent event) {
+        mApp.removeShowActivityAndData(getActivityName());
+        mApp.putShowActivityFlag(getActivityName(), false);
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
@@ -196,7 +197,7 @@ public class TouchProfileActivity extends Activity {
             String attr = eventdata.getAttribute();
             Intent intent = EventManager.createEventMessage(eventdata);
             intent.putExtra(TouchProfile.PARAM_TOUCH, touches);
-            intent.setAction(HostTouchProfile.ACTION_TOUCH);
+            intent.setAction(getActionForSendEvent());
             LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
             mApp.setTouchCache(attr, touches);
         }
@@ -206,10 +207,28 @@ public class TouchProfileActivity extends Activity {
             touches.putString("state", state);
             Intent intent = EventManager.createEventMessage(eventdata);
             intent.putExtra(TouchProfile.PARAM_TOUCH, touches);
-            intent.setAction(HostTouchProfile.ACTION_TOUCH);
+            intent.setAction(getActionForSendEvent());
             LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
             mApp.setTouchCache(attr, touches);
         }
-
     }
+
+
+    protected String getActivityName() {
+        return TouchProfileActivity.class.getName();
+    }
+
+    protected String getActionForFinishTouchActivity() {
+        return HostTouchProfile.ACTION_FINISH_TOUCH_ACTIVITY;
+    }
+    protected String getActionForSendEvent() {
+        return ACTION_TOUCH;
+    }
+    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
+        if (!isInMultiWindowMode) {
+            mApp.putShowActivityFlag(getActivityName(), false);
+        }
+    }
+
 }
