@@ -194,7 +194,7 @@ public class HostCanvasProfile extends CanvasProfile {
             Intent intent = new Intent();
             intent.setClass(getContext(), getTopOfActivity());
 //            intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);  // TODO 反対側のウィンドウに表示できるようにする
+            intent.setFlags(getActivityFlag());  // TODO 反対側のウィンドウに表示できるようにする
             drawObj.setValueToIntent(intent);
             ((HostDeviceApplication) service.getApplication()).putShowActivityAndData(getTopOfActivity().getName(), intent);
             getContext().startActivity(intent);
@@ -282,4 +282,7 @@ public class HostCanvasProfile extends CanvasProfile {
         return CanvasDrawImageObject.ACTION_DELETE_CANVAS;
     }
 
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_NEW_TASK;
+    }
 }

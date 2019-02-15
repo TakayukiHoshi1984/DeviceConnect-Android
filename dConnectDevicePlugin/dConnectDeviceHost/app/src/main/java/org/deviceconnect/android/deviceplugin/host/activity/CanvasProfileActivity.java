@@ -161,11 +161,11 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
 
     @Override
     public void showDownloadDialog() {
-        if (mDialog != null) {
-            mDialog.dismiss();
-        }
-        mDialog = new DownloadMessageDialogFragment();
         try {
+            if (mDialog != null) {
+                mDialog.dismiss();
+            }
+            mDialog = new DownloadMessageDialogFragment();
             mDialog.show(getFragmentManager(), "dialog");
         } catch (IllegalStateException e) {}
     }

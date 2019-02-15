@@ -578,7 +578,7 @@ public class HostTouchProfile extends TouchProfile {
             Intent mIntent = new Intent();
             mIntent.setClass(getContext(), getTouchActivityClass());
 //            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(getActivityFlag());
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
             getApp().putShowActivityAndData(getTouchActivityClass().getName(), mIntent);
             this.getContext().startActivity(mIntent);
@@ -674,5 +674,8 @@ public class HostTouchProfile extends TouchProfile {
     }
     protected String getActionForSendEvent() {
         return ACTION_TOUCH;
+    }
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_NEW_TASK;
     }
 }

@@ -1,6 +1,7 @@
 package org.deviceconnect.android.deviceplugin.host.mutiwindow.profile;
 
 import android.app.Activity;
+import android.content.Intent;
 
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.activity.MultiWindowTouchProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile;
@@ -24,5 +25,8 @@ public class MultiWindowTouchProfile extends HostTouchProfile {
     }
     protected String getActionForSendEvent() {
         return ACTION_MV_TOUCH;
+    }
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
     }
 }

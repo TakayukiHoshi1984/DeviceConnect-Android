@@ -1,6 +1,8 @@
 package org.deviceconnect.android.deviceplugin.host.mutiwindow.profile;
 
 import android.app.Activity;
+import android.content.Intent;
+
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
@@ -45,5 +47,8 @@ public class MultiWindowCanvasProfile extends HostCanvasProfile {
 
     protected String getDeleteCanvasActionName() {
         return CanvasDrawImageObject.ACTION_MULTI_WINDOW_DELETE_CANVAS;
+    }
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
     }
 }

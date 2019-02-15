@@ -290,7 +290,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
             Intent mIntent = new Intent();
             mIntent.setClass(getContext(), getKeyEventActivityClass());
 //            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent.setFlags(getActivityFlag());
             // TODO すでにマルチウィンドウになっている場合に、Activityがかぶらない方法を模索する
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
             getApp().putShowActivityAndData(getKeyEventActivityClass().getName(), mIntent);
@@ -366,5 +366,8 @@ public class HostKeyEventProfile extends KeyEventProfile {
 
     protected String getActionForSendEvent() {
         return ACTION_KEYEVENT;
+    }
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_NEW_TASK;
     }
 }

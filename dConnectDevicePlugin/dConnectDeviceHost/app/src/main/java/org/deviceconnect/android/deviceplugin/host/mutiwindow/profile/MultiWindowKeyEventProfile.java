@@ -1,6 +1,7 @@
 package org.deviceconnect.android.deviceplugin.host.mutiwindow.profile;
 
 import android.app.Activity;
+import android.content.Intent;
 
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.activity.MultiWindowKeyEventProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
@@ -25,5 +26,8 @@ public class MultiWindowKeyEventProfile extends HostKeyEventProfile {
     }
     protected String getActionForSendEvent() {
         return ACTION_MV_KEYEVENT;
+    }
+    protected int getActivityFlag() {
+        return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
     }
 }
