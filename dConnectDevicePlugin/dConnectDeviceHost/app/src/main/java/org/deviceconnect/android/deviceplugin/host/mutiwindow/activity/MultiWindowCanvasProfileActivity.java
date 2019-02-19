@@ -14,27 +14,6 @@ import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 
 public class MultiWindowCanvasProfileActivity extends CanvasProfileActivity {
 
-    @Override
-    protected void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-    }
-
-    @Override
-    protected  void onResume() {
-        super.onResume();
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
-    }
-    @Override
-    protected void onPause() {
-        super.onPause();
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
-    }
-    @Override
-    public boolean dispatchKeyEvent(final KeyEvent event) {
-        return super.dispatchKeyEvent(event);
-    }
-
     protected CanvasController getCanvasController() {
         return new CanvasController(this, getCanvasWebView(), findViewById(R.id.canvasProfileView), findViewById(R.id.canvasProfileVideoView),
                 this, mDrawImageObject, mSettings, CanvasDrawImageObject.ACTION_MULTI_WINDOW_DRAW_CANVAS,
@@ -59,13 +38,5 @@ public class MultiWindowCanvasProfileActivity extends CanvasProfileActivity {
     @Override
     public boolean isCanvasContinuousAccess() {
         return mSettings.isCanvasContinuousAccessForMultiWindow();
-    }
-
-    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
-        if (!isInMultiWindowMode) {
-            HostDeviceApplication app = (HostDeviceApplication) getApplication();
-            app.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
-        }
     }
 }

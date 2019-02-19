@@ -51,7 +51,7 @@ public class HostCanvasProfile extends CanvasProfile {
     /** Canvasの設定. */
     protected HostCanvasSettings mSettings;
 
-    protected final DConnectApi mDrawImageApi = new PostApi() {
+    private final DConnectApi mDrawImageApi = new PostApi() {
 
         @Override
         public String getAttribute() {
@@ -118,7 +118,7 @@ public class HostCanvasProfile extends CanvasProfile {
         }
     };
 
-    protected final DConnectApi mDeleteImageApi = new DeleteApi() {
+    private final DConnectApi mDeleteImageApi = new DeleteApi() {
 
         @Override
         public String getAttribute() {
@@ -192,8 +192,7 @@ public class HostCanvasProfile extends CanvasProfile {
         } else {
             Intent intent = new Intent();
             intent.setClass(getContext(), getTopOfActivity());
-//            intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.setFlags(getActivityFlag());  // TODO 反対側のウィンドウに表示できるようにする
+            intent.setFlags(getActivityFlag());
             drawObj.setValueToIntent(intent);
             ((HostDeviceApplication) service.getApplication()).putShowActivityAndData(getTopOfActivity().getName(), intent);
             getContext().startActivity(intent);

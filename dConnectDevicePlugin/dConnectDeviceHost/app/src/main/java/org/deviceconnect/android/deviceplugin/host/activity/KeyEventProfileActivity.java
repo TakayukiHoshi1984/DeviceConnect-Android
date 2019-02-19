@@ -8,7 +8,6 @@ package org.deviceconnect.android.deviceplugin.host.activity;
 
 import java.util.List;
 
-import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile;
 import org.deviceconnect.android.event.Event;
@@ -17,12 +16,10 @@ import org.deviceconnect.android.profile.KeyEventProfile;
 import org.deviceconnect.message.DConnectMessage;
 import org.deviceconnect.profile.KeyEventProfileConstants;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.KeyEvent;
@@ -42,10 +39,8 @@ import static org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventPr
  * 
  * @author NTT DOCOMO, INC.
  */
-public class KeyEventProfileActivity extends Activity implements OnTouchListener, OnCheckedChangeListener {
+public class KeyEventProfileActivity extends HostActivity implements OnTouchListener, OnCheckedChangeListener {
 
-    /** Application class instance. */
-    protected HostDeviceApplication mApp;
     /** Service Id. */
     private String mServiceId;
     /** Key Mode. */
@@ -89,9 +84,6 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.keyevent_main);
-
-        // Get Application class instance.
-        mApp = (HostDeviceApplication) this.getApplication();
 
         // Set button touchlistener. (Ten Key Emulated)
         findViewById(R.id.button_0).setOnTouchListener(this);
@@ -189,8 +181,8 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
 
     @Override
     protected void onDestroy() {
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
+        mApp.putActivityResumePauseFlag(getActivityName(), false);
+        if (!mApp.getShowActivityFlagFromAvailabilityService(getActivityName())) {
             mApp.removeShowActivityAndData(getActivityName());
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         }
@@ -203,7 +195,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionForFinishKeyEventActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
+        mApp.putActivityResumePauseFlag(getActivityName(), true);
     }
     @Override
     protected void onPause() {
@@ -377,10 +369,5 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     }
     protected String getActionForSendEvent() {
         return ACTION_KEYEVENT;
-    }
-    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
-        if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
-        }
     }
 }

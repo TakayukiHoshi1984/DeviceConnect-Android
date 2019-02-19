@@ -1,38 +1,9 @@
 package org.deviceconnect.android.deviceplugin.host.mutiwindow.activity;
 
-import android.app.Activity;
-import android.content.res.Configuration;
-import android.os.Bundle;
-import android.view.KeyEvent;
-
-import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoPlayer;
 
 public class MultiWindowVideoPlayer extends VideoPlayer {
-
-    @Override
-    public void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-    @Override
-    public void onResume() {
-        super.onResume();
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), true);
-    }
-    @Override
-    protected void onPause() {
-        super.onPause();
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), false);
-    }
-    @Override
-    public boolean dispatchKeyEvent(final KeyEvent event) {
-        return super.dispatchKeyEvent(event);
-    }
-    protected Class<? extends Activity> getActivityClass() {
-        return MultiWindowVideoPlayer.class;
-    }
-
     protected String getActionForTargetToPlayer() {
         return VideoConst.SEND_MW_TO_VIDEOPLAYER;
     }
@@ -40,10 +11,8 @@ public class MultiWindowVideoPlayer extends VideoPlayer {
     protected String getActionForPlayerToTarget() {
         return VideoConst.SEND_VIDEOPLAYER_TO_MW;
     }
-    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
-        if (!isInMultiWindowMode) {
-            ((HostDeviceApplication) getApplication()).putShowActivityFlagFromAvailabilityService(getActivityClass().getName(), false);
-        }
+    @Override
+    protected String getActivityName() {
+        return MultiWindowVideoPlayer.class.getName();
     }
 }

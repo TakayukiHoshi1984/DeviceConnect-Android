@@ -7,7 +7,6 @@
 
 package org.deviceconnect.android.deviceplugin.host.mediaplayer;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -25,12 +24,14 @@ import android.widget.VideoView;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
+import org.deviceconnect.android.deviceplugin.host.activity.HostActivity;
+
 /**
  * Video Player.
  * 
  * @author NTT DOCOMO, INC.
  */
-public class VideoPlayer extends Activity implements OnCompletionListener {
+public class VideoPlayer extends HostActivity implements OnCompletionListener {
 
     /** VideoView. */
     private VideoView mVideoView;
@@ -44,10 +45,6 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // タイトルを非表示
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-
         setContentView(R.layout.video_player);
 
         // ステータスバーを消す
@@ -62,7 +59,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         // 再生するVideoのURI
         Intent mIntent = this.getIntent();
         mUri = mIntent.getData();
-        ((HostDeviceApplication) getApplication()).putShowActivityAndData(getActivityClass().getName(), mIntent);
+        mApp.putShowActivityAndData(getActivityName(), mIntent);
 
     }
 
@@ -87,7 +84,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
             mVideoView.start();
             mIsReady = true;
         });
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), true);
+        mApp.putActivityResumePauseFlag(getActivityName(), true);
     }
     @Override
     protected void onPause() {
@@ -100,8 +97,8 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
         }
-        ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityClass().getName());
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), false);
+        mApp.removeShowActivityAndData(getActivityName());
+        mApp.putActivityResumePauseFlag(getActivityName(), false);
 
         super.onDestroy();
     }
@@ -153,9 +150,6 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         finish();
     }
 
-    protected Class<? extends Activity> getActivityClass() {
-        return VideoPlayer.class;
-    }
 
     protected String getActionForTargetToPlayer() {
         return VideoConst.SEND_HOSTDP_TO_VIDEOPLAYER;
@@ -169,7 +163,12 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
         if (!isInMultiWindowMode) {
             HostDeviceApplication app = (HostDeviceApplication) getApplication();
-            app.putShowActivityFlagFromAvailabilityService(getActivityClass().getName(), false);
+            app.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
+    }
+
+    @Override
+    protected String getActivityName() {
+        return VideoPlayer.class.getName();
     }
 }

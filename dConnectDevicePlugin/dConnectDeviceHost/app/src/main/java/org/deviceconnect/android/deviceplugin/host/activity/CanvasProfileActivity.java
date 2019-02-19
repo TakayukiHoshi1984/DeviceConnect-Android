@@ -7,19 +7,15 @@
 
 package org.deviceconnect.android.deviceplugin.host.activity;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import android.widget.Button;
 
-import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.canvas.CanvasController;
 import org.deviceconnect.android.deviceplugin.host.canvas.dialog.DownloadMessageDialogFragment;
@@ -39,7 +35,7 @@ import static org.deviceconnect.android.deviceplugin.host.canvas.view.CanvasImag
  *
  * @author NTT DOCOMO, INC.
  */
-public class CanvasProfileActivity extends Activity implements CanvasController.Presenter {
+public class CanvasProfileActivity extends HostActivity implements CanvasController.Presenter {
 
 
     /**
@@ -64,16 +60,11 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     private DownloadMessageDialogFragment mDialog;
 
     protected CanvasDrawImageObject mDrawImageObject;
-    /** Application class instance. */
-    protected HostDeviceApplication mApp;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_canvas_profile);
-        // Get Application class instance.
-        mApp = (HostDeviceApplication) this.getApplication();
 
         // ステータスバーを消す
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -97,28 +88,22 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         // 受け取ったリクエストパラメータの設定
         mDrawImageObject = CanvasDrawImageObject.create(intent);
         mController = getCanvasController();
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
+        mApp.putActivityResumePauseFlag(getActivityName(), true);
         mController.registerReceiver();
         // AvailabilityServiceから起動されたかどうか
-        boolean flag = ((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName());
+        boolean flag = mApp.getShowActivityFlagFromAvailabilityService(getActivityName());
         mController.checkForAtack(flag);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
     }
     @Override
     protected void onDestroy() {
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
-            ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityName());
+        mApp.putActivityResumePauseFlag(getActivityName(), false);
+        if (!mApp.getShowActivityFlagFromAvailabilityService(getActivityName())) {
+            mApp.removeShowActivityAndData(getActivityName());
             mController.unregisterReceiver();
             enableCanvasContinuousAccessFlag();
             // Canvasが閉じられて10秒間以内に再び起動されたら、悪意のあるスクリプトが実行されたかを確認する。
@@ -126,7 +111,6 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
                 // 10秒後に連続起動フラグを無効にする
                 disableCanvasContinuousAccessFlag();
             }, DELAY_MILLIS);
-
         }
         super.onDestroy();
     }
@@ -279,11 +263,4 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         return CanvasProfileActivity.class.getName();
     }
 
-    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
-        if (!isInMultiWindowMode) {
-            HostDeviceApplication app = (HostDeviceApplication) getApplication();
-            app.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
-        }
-    }
 }

@@ -39,10 +39,7 @@ import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfi
  * 
  * @author NTT DOCOMO, INC.
  */
-public class TouchProfileActivity extends Activity {
-
-    /** Application class instance. */
-    protected HostDeviceApplication mApp;
+public class TouchProfileActivity extends HostActivity {
 
     /** Gesture detector. */
     private GestureDetector mGestureDetector;
@@ -66,9 +63,6 @@ public class TouchProfileActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.touch_main);
         
-        // Get Application class instance.
-        mApp = (HostDeviceApplication) this.getApplication();
-
         // Get serviceId.
         Intent intent = getIntent();
         mServiceId = intent.getStringExtra(DConnectMessage.EXTRA_SERVICE_ID);
@@ -86,8 +80,8 @@ public class TouchProfileActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
+        mApp.putActivityResumePauseFlag(getActivityName(), false);
+        if (!mApp.getShowActivityFlagFromAvailabilityService(getActivityName())) {
             mApp.removeShowActivityAndData(getActivityName());
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         }
@@ -100,11 +94,7 @@ public class TouchProfileActivity extends Activity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionForFinishTouchActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
-        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
-    }
-    @Override
-    protected void onPause() {
-        super.onPause();
+        mApp.putActivityResumePauseFlag(getActivityName(), true);
     }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
@@ -228,12 +218,6 @@ public class TouchProfileActivity extends Activity {
     }
     protected String getActionForSendEvent() {
         return ACTION_TOUCH;
-    }
-    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
-        if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
-        }
     }
 
 }

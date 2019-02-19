@@ -47,7 +47,6 @@ public class MultiWindowMediaPlayerManager extends MediaPlayerManager {
         } else {
             mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         }
-        mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         getApplication().putShowActivityAndData(MultiWindowVideoPlayer.class.getName(), mIntent);
         getContext().startActivity(mIntent);
         sendOnStatusChangeEvent("play");

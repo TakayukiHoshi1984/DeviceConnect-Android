@@ -129,7 +129,7 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {
-        mState = MultiWindowState.Init;
+//        mState = MultiWindowState.Init;
     }
     @Override
     public void onCreate() {
