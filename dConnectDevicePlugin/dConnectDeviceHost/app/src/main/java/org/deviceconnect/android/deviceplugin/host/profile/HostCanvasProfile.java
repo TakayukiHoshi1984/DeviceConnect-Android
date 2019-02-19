@@ -11,7 +11,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
@@ -132,7 +131,7 @@ public class HostCanvasProfile extends CanvasProfile {
                 Intent intent = new Intent(getDeleteCanvasActionName());
                 LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
                 getApp().removeShowActivityAndData(getTopOfActivity().getName());
-                getApp().putShowActivityFlag(getTopOfActivity().getName(), false);
+                getApp().putShowActivityFlagFromAvailabilityService(getTopOfActivity().getName(), false);
                 setResult(response, DConnectMessage.RESULT_OK);
             } else {
                 MessageUtils.setIllegalDeviceStateError(response, "canvas not display");

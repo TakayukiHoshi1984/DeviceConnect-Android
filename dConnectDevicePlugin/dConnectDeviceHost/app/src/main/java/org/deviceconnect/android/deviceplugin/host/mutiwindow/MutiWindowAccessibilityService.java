@@ -2,10 +2,12 @@ package org.deviceconnect.android.deviceplugin.host.mutiwindow;
 
 import android.accessibilityservice.AccessibilityService;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
@@ -28,7 +30,7 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
     /** Debug Tag. */
     private static final String TAG = MutiWindowAccessibilityService.class.getSimpleName();
 
-    private static final List<Class<? extends Activity>> SUPPORTED_DEFAULT_ACTIVITY_CLASSES
+    public static final List<Class<? extends Activity>> SUPPORTED_DEFAULT_ACTIVITY_CLASSES
             = Collections.unmodifiableList(new ArrayList<Class<? extends Activity>>(){
                 {
                     add(CanvasProfileActivity.class);
@@ -38,7 +40,7 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
                 }
             });
 
-    private static final List<Class<? extends Activity>> SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES
+    public static final List<Class<? extends Activity>> SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES
             = Collections.unmodifiableList(new ArrayList<Class<? extends Activity>>(){
         {
             add(MultiWindowCanvasProfileActivity.class);
@@ -68,7 +70,8 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
                     Log.d(TAG, "eventType:" + event.getEventType());
                     Log.d(TAG, "packagename:" + event.getPackageName());
                     Log.d(TAG, "======>");
-
+                    WindowManager manager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+                    // TODO 画面サイズで判断できないか？
                 }
                 String className = event.getClassName().toString();
                 if (mState == MultiWindowState.Init && isTopActivityForFirst(className)) {
@@ -88,14 +91,14 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
                         new Handler(handlerThreadFirst.getLooper()).post(() -> {
                             hostActivityData.setClassName("org.deviceconnect.android.manager", mDefaultActivityClass);
                             hostActivityData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            app.putShowActivityFlag(mDefaultActivityClass, true);
+                            app.putShowActivityFlagFromAvailabilityService(mDefaultActivityClass, true);
                             startActivity(hostActivityData);
                             app.putShowActivityAndData(mDefaultActivityClass, hostActivityData);
                             performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
                             new Handler(handlerThreadSecond.getLooper()).postDelayed(() -> {
                                 multiActivityData.setClassName("org.deviceconnect.android.manager", className);
                                 multiActivityData.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                app.putShowActivityFlag(className, true);
+                                app.putShowActivityFlagFromAvailabilityService(className, true);
                                 startActivity(multiActivityData);
                                 app.putShowActivityAndData(className, multiActivityData);
                                 mState = MultiWindowState.Init;
@@ -131,8 +134,8 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
             Class<? extends Activity> activity = SUPPORTED_DEFAULT_ACTIVITY_CLASSES.get(i);
             Class<? extends Activity> multiWindow = SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES.get(i);
             if (className.equals(activity.getName())
-                    && (!app.getShowActivityFlag(activity.getName())
-                    || !app.getShowActivityFlag(multiWindow.getName()))) {
+                    && (!app.getShowActivityFlagFromAvailabilityService(activity.getName())
+                    || !app.getShowActivityFlagFromAvailabilityService(multiWindow.getName()))) {
                 return true;
             }
         }

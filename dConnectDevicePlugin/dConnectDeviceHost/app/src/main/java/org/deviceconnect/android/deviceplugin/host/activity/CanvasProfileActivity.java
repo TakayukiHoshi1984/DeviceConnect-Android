@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -89,7 +90,7 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         Button btn = findViewById(R.id.buttonClose);
         btn.setOnClickListener((v) -> {
             mApp.removeShowActivityAndData(getActivityName());
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
             finish();
         });
         mCanvasWebView = getCanvasWebView();
@@ -103,8 +104,10 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     @Override
     protected void onResume() {
         super.onResume();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
         mController.registerReceiver();
-        boolean flag = ((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName());
+        // AvailabilityServiceから起動されたかどうか
+        boolean flag = ((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName());
         mController.checkForAtack(flag);
     }
 
@@ -114,7 +117,8 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
     }
     @Override
     protected void onDestroy() {
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
             ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityName());
             mController.unregisterReceiver();
             enableCanvasContinuousAccessFlag();
@@ -135,7 +139,7 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
             return true;
         }
         mApp.removeShowActivityAndData(getActivityName());
-        mApp.putShowActivityFlag(getActivityName(), false);
+        mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         return super.onKeyDown(keyCode, event);
     }
 
@@ -280,7 +284,7 @@ public class CanvasProfileActivity extends Activity implements CanvasController.
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
         if (!isInMultiWindowMode) {
             HostDeviceApplication app = (HostDeviceApplication) getApplication();
-            app.putShowActivityFlag(getActivityName(), false);
+            app.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 }

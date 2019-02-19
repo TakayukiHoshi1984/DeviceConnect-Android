@@ -49,6 +49,10 @@ public class MultiWindowCanvasProfile extends HostCanvasProfile {
         return CanvasDrawImageObject.ACTION_MULTI_WINDOW_DELETE_CANVAS;
     }
     protected int getActivityFlag() {
-        return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
+        if (getApp().isActiveDefaultActivity()) {
+            return Intent.FLAG_ACTIVITY_NEW_TASK;
+        } else {
+            return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
+        }
     }
 }

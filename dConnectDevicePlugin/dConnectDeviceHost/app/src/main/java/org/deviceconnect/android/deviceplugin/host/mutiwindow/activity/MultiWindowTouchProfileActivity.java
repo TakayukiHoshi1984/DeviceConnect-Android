@@ -4,6 +4,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.KeyEvent;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.profile.MultiWindowTouchProfile;
 
@@ -17,6 +18,12 @@ public class MultiWindowTouchProfileActivity extends TouchProfileActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
     }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
@@ -35,7 +42,7 @@ public class MultiWindowTouchProfileActivity extends TouchProfileActivity {
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
         if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 }

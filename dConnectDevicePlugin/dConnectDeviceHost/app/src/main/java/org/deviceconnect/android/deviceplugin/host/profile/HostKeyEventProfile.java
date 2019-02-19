@@ -16,7 +16,6 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.KeyEventProfileActivity;
-import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.MessageUtils;
@@ -308,7 +307,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
         if (getApp().getShowActivityAndData(getKeyEventActivityClass().getName()) != null) {
             Intent intent = new Intent(getActionForFinishKeyEventActivity());
             getApp().removeShowActivityAndData(getKeyEventActivityClass().getName());
-            getApp().putShowActivityFlag(getKeyEventActivityClass().getName(), false);
+            getApp().putShowActivityFlagFromAvailabilityService(getKeyEventActivityClass().getName(), false);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
         return true;

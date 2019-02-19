@@ -6,6 +6,7 @@
  */
 package org.deviceconnect.android.deviceplugin.host;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
 import android.os.Bundle;
@@ -20,6 +21,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import static org.deviceconnect.android.deviceplugin.host.mutiwindow.MutiWindowAccessibilityService.SUPPORTED_DEFAULT_ACTIVITY_CLASSES;
+import static org.deviceconnect.android.deviceplugin.host.mutiwindow.MutiWindowAccessibilityService.SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES;
 import static org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile.ATTRIBUTE_ON_KEY_CHANGE;
 import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile.ATTRIBUTE_ON_TOUCH_CHANGE;
 
@@ -190,8 +193,9 @@ public class HostDeviceApplication extends Application {
     public static final String STATE_DOWN = "down";
     /** Activity's Intent Cache. */
     private Map<String, Intent> mIntentCaches = new HashMap<>();
-    /** Show Activitty Flag. */
-    private Map<String, Boolean> mShowActivityFlags = new HashMap<>();
+    /** Show Activitty Flag From Availability Service. */
+    private Map<String, Boolean> mShowActivityFlagsFromAvailabilityService = new HashMap<>();
+    private Map<String, Boolean> mActivityResumePauseFlag = new HashMap<>();
      /**
      * Get KeyEvent cache data.
      * 
@@ -265,8 +269,8 @@ public class HostDeviceApplication extends Application {
      * @param activitName Activity名
      * @param flag true:表示されている　false:表示されていない
      */
-    public void putShowActivityFlag(final String activitName, final boolean flag) {
-        mShowActivityFlags.put(activitName.replaceAll(".", "_"), flag);
+    public void putShowActivityFlagFromAvailabilityService(final String activitName, final boolean flag) {
+        mShowActivityFlagsFromAvailabilityService.put(activitName.replaceAll(".", "_"), flag);
     }
 
     /**
@@ -274,14 +278,54 @@ public class HostDeviceApplication extends Application {
      * @param activityName Activity名
      * @return true:表示されている false:表示されていない
      */
-    public boolean getShowActivityFlag(String activityName) {
-        Boolean flag = mShowActivityFlags.get(activityName.replaceAll(".", "_"));
+    public boolean getShowActivityFlagFromAvailabilityService(String activityName) {
+        Boolean flag = mShowActivityFlagsFromAvailabilityService.get(activityName.replaceAll(".", "_"));
+        if (flag != null) {
+            return flag;
+        }
+        return false;
+    }
+    /**
+     *
+     * @param activitName Activity名
+     * @param flag true:Resume　false:onPause
+     */
+    public void putActivityResumePauseFlag(final String activitName, final boolean flag) {
+        mActivityResumePauseFlag.put(activitName.replaceAll(".", "_"), flag);
+    }
+
+    /**
+     *
+     * @param activityName Activity名
+     * @return true:Resume false:Pause
+     */
+    public boolean getActivityResumePauseFlag(String activityName) {
+        Boolean flag = mActivityResumePauseFlag.get(activityName.replaceAll(".", "_"));
         if (flag != null) {
             return flag;
         }
         return false;
     }
 
+    public boolean isActiveActivity(String mwActivityName) {
+        for (int i = 0; i < SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES.size(); i++) {
+            Class<? extends Activity> mv = SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES.get(i);
+            if (mv.getName().equals(mwActivityName)) {
+                Class<? extends Activity> defaultActivity = SUPPORTED_DEFAULT_ACTIVITY_CLASSES.get(i);
+                return getActivityResumePauseFlag(defaultActivity.getName());
+            }
+        }
+        return false;
+    }
+
+    public boolean isActiveDefaultActivity() {
+        for (Class<? extends Activity> defaultActivity : SUPPORTED_DEFAULT_ACTIVITY_CLASSES) {
+            if (getActivityResumePauseFlag(defaultActivity.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
     /**
      * 表示されているActivityへ送ったIntentのキャッシュを設定する.
      * @param activityName Activity名

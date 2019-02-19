@@ -31,7 +31,6 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.widget.Button;
 
-import static org.deviceconnect.android.deviceplugin.host.profile.HostKeyEventProfile.ACTION_KEYEVENT;
 import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile.ACTION_TOUCH;
 import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfile.ATTRIBUTE_ON_TOUCH_CHANGE;
 
@@ -79,7 +78,7 @@ public class TouchProfileActivity extends Activity {
         Button button = findViewById(R.id.button_touch_close);
         button.setOnClickListener((v) -> {
             mApp.removeShowActivityAndData(getActivityName());
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
             finish();
         });
 
@@ -87,7 +86,8 @@ public class TouchProfileActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
             mApp.removeShowActivityAndData(getActivityName());
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         }
@@ -100,11 +100,16 @@ public class TouchProfileActivity extends Activity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionForFinishTouchActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
     }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
         mApp.removeShowActivityAndData(getActivityName());
-        mApp.putShowActivityFlag(getActivityName(), false);
+        mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         return super.dispatchKeyEvent(event);
     }
 
@@ -227,7 +232,7 @@ public class TouchProfileActivity extends Activity {
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
         if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 

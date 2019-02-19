@@ -86,6 +86,11 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
             mVideoView.start();
             mIsReady = true;
         });
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), true);
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
     }
 
     @Override
@@ -95,6 +100,7 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
             unregisterReceiver(mReceiver);
         }
         ((HostDeviceApplication) getApplication()).removeShowActivityAndData(getActivityClass().getName());
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityClass().getName(), false);
 
         super.onDestroy();
     }

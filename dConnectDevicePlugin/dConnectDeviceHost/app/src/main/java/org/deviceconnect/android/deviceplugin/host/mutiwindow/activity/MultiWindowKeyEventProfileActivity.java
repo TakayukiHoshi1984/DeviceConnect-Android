@@ -2,9 +2,9 @@ package org.deviceconnect.android.deviceplugin.host.mutiwindow.activity;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.KeyEvent;
 
+import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.deviceplugin.host.activity.KeyEventProfileActivity;
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.profile.MultiWindowKeyEventProfile;
 
@@ -18,8 +18,13 @@ public class MultiWindowKeyEventProfileActivity extends KeyEventProfileActivity 
     @Override
     protected void onResume() {
         super.onResume();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
     }
-
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
+    }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
         return super.dispatchKeyEvent(event);
@@ -36,7 +41,7 @@ public class MultiWindowKeyEventProfileActivity extends KeyEventProfileActivity 
     }
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
         if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 }

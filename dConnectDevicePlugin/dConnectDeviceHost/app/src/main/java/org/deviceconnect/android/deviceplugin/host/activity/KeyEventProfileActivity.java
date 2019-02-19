@@ -156,7 +156,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
                 keyevent = new KeyEvent(action, KeyEvent.KEYCODE_NUMPAD_ENTER);
             } else if (i == R.id.button_keyevent_close) {
                 mApp.removeShowActivityAndData(getActivityName());
-                mApp.putShowActivityFlag(getActivityName(), false);
+                mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
                 finish();
             }
             if (keyevent != null) {
@@ -189,7 +189,8 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
 
     @Override
     protected void onDestroy() {
-        if (!((HostDeviceApplication) getApplication()).getShowActivityFlag(getActivityName())) {
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
+        if (!((HostDeviceApplication) getApplication()).getShowActivityFlagFromAvailabilityService(getActivityName())) {
             mApp.removeShowActivityAndData(getActivityName());
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         }
@@ -202,12 +203,16 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionForFinishKeyEventActivity());
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, filter);
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
     }
-
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
         mApp.removeShowActivityAndData(getActivityName());
-        mApp.putShowActivityFlag(getActivityName(), false);
+        mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         return super.dispatchKeyEvent(event);
     }
 
@@ -375,7 +380,7 @@ public class KeyEventProfileActivity extends Activity implements OnTouchListener
     }
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
         if (!isInMultiWindowMode) {
-            mApp.putShowActivityFlag(getActivityName(), false);
+            mApp.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 }

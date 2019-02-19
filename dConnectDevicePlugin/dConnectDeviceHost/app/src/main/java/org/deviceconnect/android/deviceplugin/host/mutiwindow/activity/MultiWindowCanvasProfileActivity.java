@@ -23,8 +23,13 @@ public class MultiWindowCanvasProfileActivity extends CanvasProfileActivity {
     @Override
     protected  void onResume() {
         super.onResume();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), true);
     }
-
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ((HostDeviceApplication) getApplication()).putActivityResumePauseFlag(getActivityName(), false);
+    }
     @Override
     public boolean dispatchKeyEvent(final KeyEvent event) {
         return super.dispatchKeyEvent(event);
@@ -60,7 +65,7 @@ public class MultiWindowCanvasProfileActivity extends CanvasProfileActivity {
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
         if (!isInMultiWindowMode) {
             HostDeviceApplication app = (HostDeviceApplication) getApplication();
-            app.putShowActivityFlag(getActivityName(), false);
+            app.putShowActivityFlagFromAvailabilityService(getActivityName(), false);
         }
     }
 }

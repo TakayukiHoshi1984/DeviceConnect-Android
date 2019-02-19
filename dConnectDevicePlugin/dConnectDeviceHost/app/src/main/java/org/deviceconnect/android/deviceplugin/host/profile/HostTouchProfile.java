@@ -15,7 +15,6 @@ import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
-import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.deviceplugin.host.activity.TouchProfileActivity;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
@@ -595,7 +594,7 @@ public class HostTouchProfile extends TouchProfile {
         if (getApp().getShowActivityAndData(getTouchActivityClass().getName()) != null) {
             Intent intent = new Intent(getActionForFinishTouchActivity());
             getApp().removeShowActivityAndData(getTouchActivityClass().getName());
-            getApp().putShowActivityFlag(getTouchActivityClass().getName(), false);
+            getApp().putShowActivityFlagFromAvailabilityService(getTouchActivityClass().getName(), false);
             LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
         }
         return true;

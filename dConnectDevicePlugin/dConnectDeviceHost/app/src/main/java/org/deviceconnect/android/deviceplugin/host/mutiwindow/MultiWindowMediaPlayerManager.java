@@ -42,6 +42,11 @@ public class MultiWindowMediaPlayerManager extends MediaPlayerManager {
         Uri data = Uri.parse(mMyCurrentFilePath);
         mIntent.setDataAndType(data, mMyCurrentFileMIMEType);
         mIntent.putExtra(VideoConst.EXTRA_NAME, VideoConst.EXTRA_VALUE_VIDEO_PLAYER_PLAY);
+        if (getApplication().isActiveDefaultActivity()) {
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        } else {
+            mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
         mIntent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         getApplication().putShowActivityAndData(MultiWindowVideoPlayer.class.getName(), mIntent);
         getContext().startActivity(mIntent);

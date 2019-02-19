@@ -27,6 +27,10 @@ public class MultiWindowTouchProfile extends HostTouchProfile {
         return ACTION_MV_TOUCH;
     }
     protected int getActivityFlag() {
-        return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
+        if (getApp().isActiveDefaultActivity()) {
+            return Intent.FLAG_ACTIVITY_NEW_TASK;
+        } else {
+            return Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK;
+        }
     }
 }
