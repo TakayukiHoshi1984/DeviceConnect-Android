@@ -1,6 +1,7 @@
 package org.deviceconnect.android.deviceplugin.host.mutiwindow.activity;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.KeyEvent;
 
@@ -38,5 +39,11 @@ public class MultiWindowVideoPlayer extends VideoPlayer {
 
     protected String getActionForPlayerToTarget() {
         return VideoConst.SEND_VIDEOPLAYER_TO_MW;
+    }
+    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
+        if (!isInMultiWindowMode) {
+            ((HostDeviceApplication) getApplication()).putShowActivityFlagFromAvailabilityService(getActivityClass().getName(), false);
+        }
     }
 }

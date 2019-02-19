@@ -12,6 +12,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.net.Uri;
@@ -162,5 +163,13 @@ public class VideoPlayer extends Activity implements OnCompletionListener {
 
     protected String getActionForPlayerToTarget() {
         return VideoConst.SEND_VIDEOPLAYER_TO_HOSTDP;
+    }
+
+    public void onMultiWindowModeChanged(boolean isInMultiWindowMode, Configuration newConfig) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig);
+        if (!isInMultiWindowMode) {
+            HostDeviceApplication app = (HostDeviceApplication) getApplication();
+            app.putShowActivityFlagFromAvailabilityService(getActivityClass().getName(), false);
+        }
     }
 }

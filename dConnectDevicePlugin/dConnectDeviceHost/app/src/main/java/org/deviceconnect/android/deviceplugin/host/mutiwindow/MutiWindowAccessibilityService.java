@@ -57,6 +57,7 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
     }
     private MultiWindowState mState = MultiWindowState.Init;
     private String mDefaultActivityClass = null;
+    private String mMultiWindowActivityClass = null;
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         switch (event.getEventType()) {
@@ -70,49 +71,60 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
                     Log.d(TAG, "eventType:" + event.getEventType());
                     Log.d(TAG, "packagename:" + event.getPackageName());
                     Log.d(TAG, "======>");
-                    WindowManager manager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-                    // TODO 画面サイズで判断できないか？
                 }
                 String className = event.getClassName().toString();
-                if (mState == MultiWindowState.Init && isTopActivityForFirst(className)) {
+                if (mState == MultiWindowState.Init && mDefaultActivityClass == null && isTopActivityForFirst(className)) {
                     mState = MultiWindowState.OpenDefaultActivity;
+                    mMultiWindowActivityClass = null;
                     mDefaultActivityClass = className;
-                }
-
-                if (mState == MultiWindowState.OpenDefaultActivity && isTopActvityForSecond(className)) {
-                    Intent hostActivityData = app.getShowActivityAndData(mDefaultActivityClass);
-                    Intent multiActivityData = app.getShowActivityAndData(className);
-                    if (hostActivityData != null && multiActivityData != null) {
-                        mState = MultiWindowState.OpenMultiWindowActivity;
-                        HandlerThread handlerThreadFirst = new HandlerThread("OpenActivityFirst");
-                        handlerThreadFirst.start();
-                        HandlerThread handlerThreadSecond = new HandlerThread("OpenActivitySecond");
-                        handlerThreadSecond.start();
-                        new Handler(handlerThreadFirst.getLooper()).post(() -> {
-                            hostActivityData.setClassName("org.deviceconnect.android.manager", mDefaultActivityClass);
-                            hostActivityData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            app.putShowActivityFlagFromAvailabilityService(mDefaultActivityClass, true);
-                            startActivity(hostActivityData);
-                            app.putShowActivityAndData(mDefaultActivityClass, hostActivityData);
-                            performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
-                            new Handler(handlerThreadSecond.getLooper()).postDelayed(() -> {
-                                multiActivityData.setClassName("org.deviceconnect.android.manager", className);
-                                multiActivityData.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                app.putShowActivityFlagFromAvailabilityService(className, true);
-                                startActivity(multiActivityData);
-                                app.putShowActivityAndData(className, multiActivityData);
-                                mState = MultiWindowState.Init;
-                            }, 800);
-                        });
-
-
+                } else if (mState == MultiWindowState.Init && mMultiWindowActivityClass == null &&  isTopActvityForSecond(className)) {
+                    mState = MultiWindowState.OpenMultiWindowActivity;
+                    mMultiWindowActivityClass = className;
+                    mDefaultActivityClass = null;
+                } else {
+                    if (mState == MultiWindowState.OpenDefaultActivity && mDefaultActivityClass != null && isTopActvityForSecond(className)) {
+                        Intent hostActivityData = app.getShowActivityAndData(mDefaultActivityClass);
+                        Intent multiActivityData = app.getShowActivityAndData(className);
+                        if (hostActivityData != null && multiActivityData != null) {
+                            mState = MultiWindowState.OpenMultiWindowActivity;
+                            startActivities(app, mDefaultActivityClass, className, hostActivityData, multiActivityData);
+                        }
+                    } else if (mState == MultiWindowState.OpenMultiWindowActivity && mMultiWindowActivityClass != null && isTopActivityForFirst(className)) {
+                        Intent hostActivityData = app.getShowActivityAndData(className);
+                        Intent multiActivityData = app.getShowActivityAndData(mMultiWindowActivityClass);
+                        if (hostActivityData != null && multiActivityData != null) {
+                            mState = MultiWindowState.OpenDefaultActivity;
+                            startActivities(app, className, mMultiWindowActivityClass, hostActivityData, multiActivityData);
+                        }
                     }
                 }
-//        else if (mState == MultiWindowState.Init && isTopActvityForSecond(className)){
-//            performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
-//        }
                 break;
         }
+    }
+
+    private void startActivities(HostDeviceApplication app, String defaultClassName, String multiWindowClassName, Intent hostActivityData, Intent multiActivityData) {
+        HandlerThread handlerThreadFirst = new HandlerThread("OpenActivityFirst");
+        handlerThreadFirst.start();
+        HandlerThread handlerThreadSecond = new HandlerThread("OpenActivitySecond");
+        handlerThreadSecond.start();
+        new Handler(handlerThreadFirst.getLooper()).post(() -> {
+            hostActivityData.setClassName("org.deviceconnect.android.manager", defaultClassName);
+            hostActivityData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            app.putShowActivityFlagFromAvailabilityService(defaultClassName, true);
+            startActivity(hostActivityData);
+            app.putShowActivityAndData(defaultClassName, hostActivityData);
+            performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
+            new Handler(handlerThreadSecond.getLooper()).postDelayed(() -> {
+                multiActivityData.setClassName("org.deviceconnect.android.manager", multiWindowClassName);
+                multiActivityData.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+                app.putShowActivityFlagFromAvailabilityService(multiWindowClassName, true);
+                startActivity(multiActivityData);
+                app.putShowActivityAndData(multiWindowClassName, multiActivityData);
+                mState = MultiWindowState.Init;
+                mDefaultActivityClass = null;
+                mMultiWindowActivityClass = null;
+            }, 800);
+        });
     }
 
     @Override
@@ -143,8 +155,13 @@ public class MutiWindowAccessibilityService extends AccessibilityService {
     }
 
     private boolean isTopActvityForSecond(final String className) {
-        for (Class<? extends Activity> multiWindow : SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES) {
-            if (className.equals(multiWindow.getName())) {
+        HostDeviceApplication app = (HostDeviceApplication) getApplication();
+        for (int i = 0; i < SUPPORTED_DEFAULT_ACTIVITY_CLASSES.size(); i++) {
+            Class<? extends Activity> activity = SUPPORTED_DEFAULT_ACTIVITY_CLASSES.get(i);
+            Class<? extends Activity> multiWindow = SUPPORTED_MULTIWINDOW_ACTIVITY_CLASSES.get(i);
+            if (className.equals(multiWindow.getName())
+                    && (!app.getShowActivityFlagFromAvailabilityService(activity.getName())
+                    || !app.getShowActivityFlagFromAvailabilityService(multiWindow.getName()))) {
                 return true;
             }
         }
