@@ -10,6 +10,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 
 import org.deviceconnect.android.logger.AndroidHandler;
 import org.deviceconnect.android.profile.KeyEventProfile;
@@ -192,10 +193,10 @@ public class HostDeviceApplication extends Application {
     /** KeyEvent State cancel. */
     public static final String STATE_DOWN = "down";
     /** Activity's Intent Cache. */
-    private Map<String, Intent> mIntentCaches = new HashMap<>();
+    static Map<String, Intent> mIntentCaches = new HashMap<>();
     /** Show Activitty Flag From Availability Service. */
-    private Map<String, Boolean> mShowActivityFlagsFromAvailabilityService = new HashMap<>();
-    private Map<String, Boolean> mActivityResumePauseFlag = new HashMap<>();
+    static Map<String, Boolean> mShowActivityFlagsFromAvailabilityService = new HashMap<>();
+    static Map<String, Boolean> mActivityResumePauseFlag = new HashMap<>();
      /**
      * Get KeyEvent cache data.
      * 
@@ -270,7 +271,7 @@ public class HostDeviceApplication extends Application {
      * @param flag true:表示されている　false:表示されていない
      */
     public void putShowActivityFlagFromAvailabilityService(final String activitName, final boolean flag) {
-        mShowActivityFlagsFromAvailabilityService.put(activitName.replaceAll(".", "_"), flag);
+        mShowActivityFlagsFromAvailabilityService.put(activitName, flag);
     }
 
     /**
@@ -279,7 +280,7 @@ public class HostDeviceApplication extends Application {
      * @return true:表示されている false:表示されていない
      */
     public boolean getShowActivityFlagFromAvailabilityService(String activityName) {
-        Boolean flag = mShowActivityFlagsFromAvailabilityService.get(activityName.replaceAll(".", "_"));
+        Boolean flag = mShowActivityFlagsFromAvailabilityService.get(activityName);
         if (flag != null) {
             return flag;
         }
@@ -291,7 +292,7 @@ public class HostDeviceApplication extends Application {
      * @param flag true:Resume　false:onPause
      */
     public void putActivityResumePauseFlag(final String activitName, final boolean flag) {
-        mActivityResumePauseFlag.put(activitName.replaceAll(".", "_"), flag);
+        mActivityResumePauseFlag.put(activitName, flag);
     }
 
     /**
@@ -300,7 +301,7 @@ public class HostDeviceApplication extends Application {
      * @return true:Resume false:Pause
      */
     public boolean getActivityResumePauseFlag(String activityName) {
-        Boolean flag = mActivityResumePauseFlag.get(activityName.replaceAll(".", "_"));
+        Boolean flag = mActivityResumePauseFlag.get(activityName);
         if (flag != null) {
             return flag;
         }
@@ -332,7 +333,7 @@ public class HostDeviceApplication extends Application {
      * @param data Intent
      */
     public void putShowActivityAndData(final String activityName, final Intent data) {
-        mIntentCaches.put(activityName.replaceAll(".", "_"), data);
+        mIntentCaches.put(activityName, data);
     }
 
     /**
@@ -341,7 +342,7 @@ public class HostDeviceApplication extends Application {
      * @return Intent
      */
     public Intent getShowActivityAndData(final String activityName) {
-        return mIntentCaches.get(activityName.replaceAll(".", "_"));
+        return mIntentCaches.get(activityName);
     }
 
     /**
@@ -349,7 +350,7 @@ public class HostDeviceApplication extends Application {
      * @param activityName Activity名
      */
     public void removeShowActivityAndData(final String activityName) {
-        mIntentCaches.remove(activityName.replaceAll(".", "_"));
+        mIntentCaches.remove(activityName);
     }
 
     public boolean isShowDoubleActivity(final String activityName) {

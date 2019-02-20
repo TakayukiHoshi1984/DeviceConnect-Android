@@ -5,7 +5,6 @@ import android.net.Uri;
 
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.MediaPlayerManager;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
-import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoPlayer;
 import org.deviceconnect.android.deviceplugin.host.mutiwindow.activity.MultiWindowVideoPlayer;
 import org.deviceconnect.android.message.DevicePluginContext;
 
