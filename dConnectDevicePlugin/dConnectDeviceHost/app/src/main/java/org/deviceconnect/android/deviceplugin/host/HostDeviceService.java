@@ -11,20 +11,25 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.TelephonyManager;
 import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.battery.HostBatteryManager;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
+import org.deviceconnect.android.deviceplugin.host.externaldisplay.ExternalDisplayService;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.HostMediaPlayerManager;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.MediaPlayerManager;
+import org.deviceconnect.android.deviceplugin.host.mutiwindow.MultiWindowService;
 import org.deviceconnect.android.deviceplugin.host.profile.HostBatteryProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostConnectionProfile;
@@ -47,6 +52,7 @@ import org.deviceconnect.android.deviceplugin.host.recorder.HostDevicePhotoRecor
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorderManager;
 import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider;
+import org.deviceconnect.android.deviceplugin.host.recorder.util.CapabilityUtil;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventManager;
 import org.deviceconnect.android.message.DConnectMessageService;
@@ -58,6 +64,9 @@ import org.deviceconnect.android.service.DConnectService;
 
 import java.util.List;
 import java.util.logging.Logger;
+
+import static org.deviceconnect.android.deviceplugin.host.HostDeviceService.DConnectServiceState.Offline;
+import static org.deviceconnect.android.deviceplugin.host.HostDeviceService.DConnectServiceState.Online;
 
 /**
  * Host Device Service.
@@ -75,7 +84,11 @@ public class HostDeviceService extends DConnectMessageService {
 
     /** ロガー. */
     private final Logger mLogger = Logger.getLogger("host.dplugin");
-
+    public enum DConnectServiceState {
+        NonExist,
+        Online,
+        Offline
+    };
     /** ファイル管理クラス. */
     private FileManager mFileMgr;
 
@@ -99,6 +112,10 @@ public class HostDeviceService extends DConnectMessageService {
      */
     private HostPhoneProfile mPhoneProfile;
     private HostCanvasSettings mSettings;
+    /**
+     * 情報を共有するプリファレンス.
+     */
+    private SharedPreferences mPreferences;
     /**
      * ブロードキャストレシーバー.
      */
@@ -127,7 +144,6 @@ public class HostDeviceService extends DConnectMessageService {
     @Override
     public void onCreate() {
         super.onCreate();
-
         // Manager同梱のため、LocalOAuthを無効化
         setUseLocalOAuth(false);
 
@@ -193,6 +209,38 @@ public class HostDeviceService extends DConnectMessageService {
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         filter.addAction(PreviewServerProvider.DELETE_PREVIEW_ACTION);
         registerReceiver(mHostConnectionReceiver, filter);
+        // Hostプラグイン以外のデバイスの設定値を読み込む
+        loadDeviceSettings();
+        // 外部ディスプレイを認識していた場合は、そのサービスを追加する
+        if (isOnlineForExternalDisplay() != DConnectServiceState.NonExist.ordinal()) {
+            ExternalDisplayService dService = new ExternalDisplayService(getPluginContext());
+            boolean state = isOnlineForExternalDisplay() == Online.ordinal();
+            setOnlineForExternalDisplay(state ? Online : Offline);
+            dService.setOnline(state);
+            getServiceProvider().addService(dService);
+        }
+        // マルチウィンドウを認識していた場合は、そのサービスを追加する
+        if (isOnlineForMultiWindow() != DConnectServiceState.NonExist.ordinal()) {
+            // ユーザ補助がOFFになっている場合もあるため、権限を確認する。
+            CapabilityUtil.checkMutiWindowCapability(this, new Handler(Looper.getMainLooper()), new CapabilityUtil.Callback() {
+                @Override
+                public void onSuccess() {
+                    MultiWindowService mwService = new MultiWindowService(getPluginContext());
+                    boolean state = isOnlineForMultiWindow() == Online.ordinal();
+                    setOnlineForMultiWindow(state ? Online : Offline);
+                    mwService.setOnline(state);
+                    getServiceProvider().addService(mwService);
+                }
+
+                @Override
+                public void onFail() {
+                    MultiWindowService mwService = new MultiWindowService(getPluginContext());
+                    boolean state = isOnlineForMultiWindow() == Online.ordinal();
+                    setOnlineForMultiWindow(state ? Online : Offline);
+                    mwService.setOnline(state);
+                }
+            });
+        }
 
     }
 
@@ -451,4 +499,47 @@ public class HostDeviceService extends DConnectMessageService {
     protected String getCertificateAlias() {
         return "org.deviceconnect.android.deviceplugin.host";
     }
+
+    /**
+     * Hostプラグインがサポートしている他のデバイスの設定ファイルを読み込む.
+     */
+    private void loadDeviceSettings() {
+        mPreferences = getSharedPreferences("org_deviceconnect_android_deviceplugin_host_etc_device_state_preferences",
+                Context.MODE_PRIVATE);
+    }
+
+    /**
+     * 外部ディスプレイデバイスがオンライン状態であったかを返す.
+     * @param isOnline NonExist:有効にしていない Online:オンライン状態だった Offline:オフライン状態だった
+     */
+    public void setOnlineForExternalDisplay(final DConnectServiceState isOnline) {
+        SharedPreferences.Editor editor = mPreferences.edit();
+        editor.putInt(getString(R.string.settings_host_external_display), isOnline.ordinal());
+        editor.apply();
+    }
+
+    /**
+     * 外部ディスプレイデバイスがオンライン状態であったかを返す.
+     * @return NonExist:有効にしていない Online:オンライン状態だった Offline:オフライン状態だった
+     */
+    public int isOnlineForExternalDisplay() {
+        return mPreferences.getInt(getString(R.string.settings_host_external_display), DConnectServiceState.NonExist.ordinal());
+    }
+    /**
+     * マルチウィンドウがオンライン状態であったかを返す.
+     * @param isOnline NonExist:有効にしていない Online:オンライン状態だった Offline:オフライン状態だった
+     */
+    public void setOnlineForMultiWindow(final DConnectServiceState isOnline) {
+        SharedPreferences.Editor editor = mPreferences.edit();
+        editor.putInt(getString(R.string.settings_host_multi_display), isOnline.ordinal());
+        editor.apply();
+    }
+    /**
+     * マルチウィンドウがオンライン状態であったかを返す.
+     * @return NonExist:有効にしていない Online:オンライン状態だった Offline:オフライン状態だった
+     */
+    public int isOnlineForMultiWindow() {
+        return mPreferences.getInt(getString(R.string.settings_host_multi_display), DConnectServiceState.NonExist.ordinal());
+    }
+
 }

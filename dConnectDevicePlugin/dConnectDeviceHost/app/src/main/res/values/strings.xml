@@ -75,6 +75,8 @@
     <string name="settings_host_canvas_access_external_network" translatable="false">settings_host_canvas_access_external_network</string>
     <string name="settings_host_canvas_multiple_show_for_muti_window" translatable="false">settings_host_canvas_multiple_show_for_muti_window</string>
     <string name="settings_host_canvas_multiple_show_for_presentation" translatable="false">settings_host_canvas_multiple_show_for_presentation</string>
+    <string name="settings_host_external_display" translatable="false">settings_host_external_display</string>
+    <string name="settings_host_multi_display" translatable="false">settings_host_multi_display</string>
 
     <!-- MutiWindow -->
     <string name="accessibility_service_name">DeviceConnectMultiWindow</string>

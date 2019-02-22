@@ -17,6 +17,9 @@ import org.deviceconnect.android.profile.api.PostApi;
 import org.deviceconnect.android.service.DConnectServiceProvider;
 import org.deviceconnect.message.DConnectMessage;
 
+import static org.deviceconnect.android.deviceplugin.host.HostDeviceService.DConnectServiceState.Offline;
+import static org.deviceconnect.android.deviceplugin.host.HostDeviceService.DConnectServiceState.Online;
+
 public class HostDeviceProfile extends DConnectProfile {
 
     private DevicePluginContext mDevicePluginContext;
@@ -48,9 +51,12 @@ public class HostDeviceProfile extends DConnectProfile {
                 dService = new ExternalDisplayService(mDevicePluginContext);
                 provider.addService(dService);
             }
-            dService.setOnline(dService.connect());
+            boolean state = dService.connect();
+            dService.setOnline(state);
+            getHostDeviceService().setOnlineForExternalDisplay(dService.connect() ? Online : Offline);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // ユーザ補助機能が許可されているかを確認する.されていない場合は設定画面を開く.
                 CapabilityUtil.checkMutiWindowCapability(getContext(), new Handler(Looper.getMainLooper()), new CapabilityUtil.Callback() {
                     @Override
                     public void onSuccess() {
@@ -60,6 +66,7 @@ public class HostDeviceProfile extends DConnectProfile {
                             provider.addService(mwService);
                         }
                         mwService.setOnline(true);
+                        getHostDeviceService().setOnlineForMultiWindow(Online);
                         setResult(response, DConnectMessage.RESULT_OK);
                         sendResponse(response);
                     }
@@ -90,15 +97,21 @@ public class HostDeviceProfile extends DConnectProfile {
         public boolean onRequest(final Intent request, final Intent response) {
             DConnectServiceProvider provider = ((HostDeviceService) getContext()).getServiceProvider();
             ExternalDisplayService dService = (ExternalDisplayService) provider.getService(ExternalDisplayService.SERVICE_ID);
-            dService.setOnline(!dService.disconnectCanvasDisplay());
+            boolean state = !dService.disconnectCanvasDisplay();
+            dService.setOnline(state);
+            getHostDeviceService().setOnlineForExternalDisplay(state ? Offline : Online);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 MultiWindowService mwService = (MultiWindowService) provider.getService(MultiWindowService.SERVICE_ID);
                 mwService.setOnline(false);
+                getHostDeviceService().setOnlineForMultiWindow(Offline);
             }
             setResult(response, DConnectMessage.RESULT_OK);
             return true;
         }
     };
 
-
+    // HostDeviceServiceを取得する.
+    private HostDeviceService getHostDeviceService() {
+        return (HostDeviceService) getContext();
+    }
 }

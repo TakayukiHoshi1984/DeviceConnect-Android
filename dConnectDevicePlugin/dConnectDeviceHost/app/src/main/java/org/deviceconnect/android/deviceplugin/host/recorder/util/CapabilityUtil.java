@@ -167,6 +167,11 @@ public final class CapabilityUtil {
         }
     }
 
+    /**
+     * このプラグインに関して、ユーザ補助が許可されているかどうかを返す.
+     * @param context コンテキスト
+     * @return true:許可されている false:許可されていない
+     */
     private static boolean isAccessibilityEnabled(Context context) {
         AccessibilityManager am = (AccessibilityManager) context
                 .getSystemService(Context.ACCESSIBILITY_SERVICE);
