@@ -106,9 +106,9 @@ public class CanvasController {
     /**
      * 異常な方法でCanvasが起動されたか、おかしな外部サイトにアクセスしていないかをチェック.
      */
-    public void checkForAtack(final boolean isContinuous) {
+    public void checkForAtack(final boolean nonMultiWindow) {
         String uri = mDrawImageObject.getData();
-        if (!isContinuous && mPresenter.isCanvasContinuousAccess()) {
+        if (!nonMultiWindow && mPresenter.isCanvasContinuousAccess()) {
             mPresenter.showContinuousAccessConfirmDilaog(new PresenterCallback() {
                 @Override
                 public void onOKCallback() {
@@ -120,7 +120,7 @@ public class CanvasController {
 
                 }
             });
-        } else if (mSettings.isCanvasActivityAccessExternalNetworkFlag()
+        } else if (!nonMultiWindow && mSettings.isCanvasActivityAccessExternalNetworkFlag()
                 && ExternalAccessCheckUtils.isExternalAccessResource(mContext, uri)) {
             mPresenter.showExternalNetworkAccessDialog(new PresenterCallback() {
                 @Override

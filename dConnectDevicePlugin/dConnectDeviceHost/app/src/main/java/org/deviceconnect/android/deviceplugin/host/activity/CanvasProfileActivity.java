@@ -210,6 +210,7 @@ public class CanvasProfileActivity extends HostActivity implements CanvasControl
 
     @Override
     public void showContinuousAccessConfirmDilaog(CanvasController.PresenterCallback callback) {
+        enableCanvasContinuousAccessFlag();
         // 多重起動が行われたかをチェック
         ContinuousAccessConfirmDialogFragment
                 .createDialog(this, new ErrorDialogFragment.OnWarningDialogListener() {
@@ -218,6 +219,7 @@ public class CanvasProfileActivity extends HostActivity implements CanvasControl
                         if (callback != null) {
                             callback.onOKCallback();
                         }
+                        disableCanvasContinuousAccessFlag();
                     }
 
                     @Override
@@ -225,6 +227,7 @@ public class CanvasProfileActivity extends HostActivity implements CanvasControl
                         if (callback != null) {
                             callback.onCancelCallback();
                         }
+                        disableCanvasContinuousAccessFlag();
                     }
                 })
                 .show(getFragmentManager(), MULTIPLE_SHOW_CANVAS_WARNING_TAG);

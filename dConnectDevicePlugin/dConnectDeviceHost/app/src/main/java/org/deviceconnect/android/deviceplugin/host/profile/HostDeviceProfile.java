@@ -53,7 +53,7 @@ public class HostDeviceProfile extends DConnectProfile {
             }
             boolean state = dService.connect();
             dService.setOnline(state);
-            getHostDeviceService().setOnlineForExternalDisplay(dService.connect() ? Online : Offline);
+            getHostDeviceService().setOnlineForExternalDisplay(state ? Online : Offline);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 // ユーザ補助機能が許可されているかを確認する.されていない場合は設定画面を開く.

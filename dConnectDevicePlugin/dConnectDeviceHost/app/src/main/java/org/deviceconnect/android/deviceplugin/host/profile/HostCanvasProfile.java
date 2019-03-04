@@ -257,7 +257,7 @@ public class HostCanvasProfile extends CanvasProfile {
     protected boolean isCanvasMultipleShowFlag() {
         return mSettings.isCanvasContinuousAccessForHost()
                 && ((HostDeviceApplication) ((HostDeviceService) getContext()).getApplication())
-                            .getShowActivityAndData(getTopOfActivity().getName()) != null;
+                            .getActivityResumePauseFlag(getTopOfActivity().getName());
     }
 
     protected String getTempFileName() {

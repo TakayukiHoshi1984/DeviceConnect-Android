@@ -52,7 +52,7 @@ public final class HostCanvasSettings {
      *
      * @return 多重起動されている恐れがある場合はtrue、それ以外はfalse
      */
-    public boolean isCanvasContinuousAccessForHost() {
+    public synchronized boolean isCanvasContinuousAccessForHost() {
         return mPreferences.getBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show), isDefaultCanvasContinuousAccessForHost());
     }
 
@@ -70,7 +70,7 @@ public final class HostCanvasSettings {
      *
      * @param flag 起動フラグ
      */
-    public void setCanvasContinuousAccessForHost(final boolean flag) {
+    public synchronized void setCanvasContinuousAccessForHost(final boolean flag) {
         SharedPreferences.Editor editor = mPreferences.edit();
         editor.putBoolean(mContext.getString(R.string.settings_host_canvas_multiple_show), flag);
         editor.apply();
