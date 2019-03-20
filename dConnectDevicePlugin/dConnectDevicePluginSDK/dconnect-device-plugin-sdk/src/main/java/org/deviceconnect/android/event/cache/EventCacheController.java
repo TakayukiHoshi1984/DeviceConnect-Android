@@ -66,7 +66,9 @@ public interface EventCacheController {
     
     /**
      * キャッシュから条件にあうイベントデータの一覧を取得する.
-     * 
+     * <p>
+     * サービスID に null が指定された場合には、全てのイベントから一致するパスを取得する。
+     * </p>
      * @param serviceId サービスID
      * @param profile プロファイル名
      * @param inter インターフェース名
@@ -75,7 +77,13 @@ public interface EventCacheController {
      */
     List<Event> getEvents(String serviceId, String profile, String inter, String attribute);
 
-    List<Event> getEvents(String sessionKey);
+    /**
+     * キャッシュからオリジンにあうイベントデータの一覧を取得する.
+     *
+     * @param origin オリジン
+     * @return イベントデータの一覧。無い場合は空のリストを返す。
+     */
+    List<Event> getEvents(String origin);
 
     /**
      * キャッシュデータをフラッシュする.

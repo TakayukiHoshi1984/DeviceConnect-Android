@@ -14,6 +14,8 @@ import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.cache.Utils;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Clientテーブル用DAOクラス.
@@ -182,6 +184,18 @@ final class ClientDao implements ClientSchema {
      */
     static Client[] getByAPIAndServiceId(final SQLiteDatabase db, final Event event) {
 
+        String profile = event.getProfile();
+        String inter = (event.getInterface() == null) ? "" : event.getInterface();
+        String attr = (event.getAttribute() == null) ? "" : event.getAttribute();
+        String serviceId = event.getServiceId();
+        List<String> params = new ArrayList<>();
+        params.add(profile);
+        params.add(inter);
+        params.add(attr);
+        if (serviceId != null) {
+            params.add(serviceId);
+        }
+
         Client[] result = null;
         StringBuilder sb = new StringBuilder();
         String join = " INNER JOIN ";
@@ -250,23 +264,22 @@ final class ClientDao implements ClientSchema {
         sb.append("a.");
         sb.append(AttributeSchema.NAME);
         sb.append(prepared);
-        sb.append(and);
-        sb.append("d.");
-        sb.append(DeviceSchema.SERVICE_ID);
-        sb.append(prepared);
 
-        String inter = (event.getInterface() == null) ? "" : event.getInterface();
-        String attr = (event.getAttribute() == null) ? "" : event.getAttribute();
-        String serviceId = (event.getServiceId() == null) ? "" : event.getServiceId();
-        String[] params = {event.getProfile(), inter, attr, serviceId};
-        Cursor c = db.rawQuery(sb.toString(), params);
+        if (serviceId != null) {
+            sb.append(and);
+            sb.append("d.");
+            sb.append(DeviceSchema.SERVICE_ID);
+            sb.append(prepared);
+        }
+
+        Cursor c = db.rawQuery(sb.toString(), params.toArray(new String[0]));
 
         if (c.moveToFirst()) {
             int index = 0;
             result = new Client[c.getCount()];
             do {
-                 if (c.getColumnIndex(_ID) != -1) {
-                     Client data = new Client();
+                if (c.getColumnIndex(_ID) != -1) {
+                    Client data = new Client();
                     data.mId = c.getLong(0);
                     data.mOrigin = c.getString(1);
                     data.mAccessToken = c.getString(2);

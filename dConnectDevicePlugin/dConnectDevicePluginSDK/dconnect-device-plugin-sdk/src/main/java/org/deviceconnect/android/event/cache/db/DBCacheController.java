@@ -233,8 +233,8 @@ public final class DBCacheController extends BaseCacheController {
     public synchronized List<Event> getEvents(final String serviceId, final String profile, 
             final String inter, final String attribute) {
         
-        List<Event> result = new ArrayList<Event>();
-        SQLiteDatabase db = null;
+        List<Event> result = new ArrayList<>();
+        SQLiteDatabase db;
         do {
             db = openDB();
             if (db == null) {
@@ -290,7 +290,7 @@ public final class DBCacheController extends BaseCacheController {
             throw new IllegalArgumentException("origin key is null.");
         }
 
-        List<Event> result = new ArrayList<Event>();
+        List<Event> result = new ArrayList<>();
         SQLiteDatabase db;
         do {
             db = openDB();
@@ -335,7 +335,7 @@ public final class DBCacheController extends BaseCacheController {
         }
         
         boolean result = false;
-        SQLiteDatabase db = null;
+        SQLiteDatabase db;
         do {
             db = openDB();
             if (db == null) {
@@ -393,7 +393,7 @@ public final class DBCacheController extends BaseCacheController {
          * 
          * @param context コンテキストオブジェクト
          */
-        public EventDBOpenHelper(final Context context) {
+        EventDBOpenHelper(final Context context) {
             super(context, DB_NAME, null, DB_VERSION);
         }
 

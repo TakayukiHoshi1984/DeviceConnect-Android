@@ -172,37 +172,24 @@ public class MemoryCacheController extends BaseCacheController {
         if (tmpReceiver == null) {
             tmpReceiver = NULL_RECEIVER_NAME;
         }
-        
-        do {
-            List<Event> eventList = getEvents(serviceId, profile, inter, attribute);
-            if (eventList == null) {
-                break;
-            }
-            
+
+        List<Event> eventList = getEvents(serviceId, profile, inter, attribute);
+        if (eventList != null) {
             for (Event e : eventList) {
                 if (compare(e.getOrigin(), origin) && compare(e.getReceiverName(), tmpReceiver)) {
                     event = e;
                     break;
                 }
-            }            
-        } while (false);
-        
+            }
+        }
+
         return event;
     }
 
     @Override
     public synchronized List<Event> getEvents(final String serviceId, final String profile, 
             final String inter, final String attribute) {
-        
-        String tmpServiceId = serviceId;
-        if (serviceId == null) {
-            tmpServiceId = NULL_SERVICE_ID;
-        }
-        Map<String, List<Event>> events = mEventMap.get(tmpServiceId);
-        
-        if (events == null) {
-            return new ArrayList<>();
-        }
+        List<Event> result = new ArrayList<>();
 
         String path = profile;
         if (inter != null) {
@@ -212,12 +199,27 @@ public class MemoryCacheController extends BaseCacheController {
             path += attribute;
         }
 
-        List<Event> res = events.get(path);
-        if (res == null) {
-            return new ArrayList<>();
+        if (serviceId == null) {
+            // サービス ID が null の場合には、全てのイベントから同じパスを探します
+            for (String id : mEventMap.keySet()) {
+                Map<String, List<Event>> events = mEventMap.get(id);
+                if (events != null) {
+                    List<Event> eventList = events.get(path);
+                    if (eventList != null) {
+                        result.addAll(eventList);
+                    }
+                }
+            }
+        } else {
+            Map<String, List<Event>> events = mEventMap.get(serviceId);
+            if (events != null) {
+                List<Event> eventList = events.get(path);
+                if (eventList != null) {
+                    result.addAll(eventList);
+                }
+            }
         }
-
-        return res;
+        return result;
     }
 
     @Override
@@ -243,7 +245,7 @@ public class MemoryCacheController extends BaseCacheController {
     @Override
     public synchronized boolean removeAll() {
         mEventMap.clear();
-        return mEventMap.size() == 0;
+        return mEventMap.isEmpty();
     }
 
     private boolean compare(final String s1, final String s2) {
