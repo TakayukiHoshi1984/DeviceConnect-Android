@@ -70,10 +70,9 @@ body {
 
 @media screen and (orientation: portrait) {
   #preview {
-    display: block;
-    width: 100%;
-    height: auto;
-    position: absolute;
+    width: auto;
+    height: 100%;
+    position: fixed;
     left: 50%;
     top: 50%;
     -webkit-transform: translate(-50%, -50%);
@@ -118,10 +117,9 @@ body {
 }
 @media screen and (orientation: landscape) {
   #preview {
-    display: block;
-    width: auto;
-    height: 100%;
-    position: absolute;
+    width: 100%;
+    height: auto;
+    position: fixed;
     left: 50%;
     top: 50%;
     -webkit-transform: translate(-50%, -50%);
