@@ -206,7 +206,11 @@ public abstract class DConnectManager implements DConnectInterface {
     /**
      * Device Connect サーバを起動します.
      */
-    public void initDConnect() {
+    public synchronized void initDConnect() {
+        if (mCore != null) {
+            mCore.start();
+            return;
+        }
         mCore = new DConnectCore(mContext, mSettings, mEventSessionFactory);
         mCore.setDConnectInterface(this);
         mCore.setIDConnectCallback(new IDConnectCallback.Stub() {
@@ -228,6 +232,7 @@ public abstract class DConnectManager implements DConnectInterface {
             postFinishSearchPlugin();
         });
     }
+
     public void startDConnect() {
         initDConnect();
         mExecutor.execute(() -> {
