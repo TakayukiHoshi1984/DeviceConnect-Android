@@ -19,6 +19,7 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 26
+        versionName '2.3.0'
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     packagingOptions {
@@ -95,7 +96,7 @@ android.testVariants.all { variant ->
     }
 }
 
-def repo = new File(rootDir, "repository")
+def repo = new File(new File(rootDir, "../"), "repository")
 
 apply plugin: 'maven'
 
@@ -103,7 +104,7 @@ uploadArchives {
     repositories {
         mavenDeployer {
             repository url: "file://${repo.absolutePath}"
-            pom.version = '2.3.0'
+            pom.version = android.defaultConfig.versionName
             pom.groupId = 'org.deviceconnect'
             pom.artifactId = 'dconnect-sdk-for-android'
         }

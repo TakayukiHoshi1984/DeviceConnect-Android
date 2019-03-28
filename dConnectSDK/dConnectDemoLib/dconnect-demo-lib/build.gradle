@@ -37,7 +37,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }
 
-def repo = new File(rootDir, "repository")
+def repo = new File(new File(rootDir, "../"), "repository")
 
 apply plugin: 'maven'
 
