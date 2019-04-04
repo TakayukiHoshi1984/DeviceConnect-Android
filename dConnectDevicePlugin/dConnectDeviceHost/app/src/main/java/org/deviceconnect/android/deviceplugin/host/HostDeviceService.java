@@ -14,6 +14,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -166,7 +167,7 @@ public class HostDeviceService extends DConnectMessageService {
         mDemoNotification = new DemoInstaller.Notification(
                 1,
                 getString(R.string.app_name_host),
-                R.drawable.dconnect_icon,
+                getNotificationIconResource(),
                 "org.deviceconnect.android.deviceconnect.host.channel.demo",
                 "Host Plugin Demo Page",
                 "Host Plugin Demo Page"
@@ -234,6 +235,12 @@ public class HostDeviceService extends DConnectMessageService {
 
         registerDemoNotification();
         updateDemoPageIfNeeded();
+    }
+
+    private int getNotificationIconResource() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ?
+                R.drawable.dconnect_icon_lollipop :
+                R.drawable.dconnect_icon;
     }
 
     private void registerDemoNotification() {
