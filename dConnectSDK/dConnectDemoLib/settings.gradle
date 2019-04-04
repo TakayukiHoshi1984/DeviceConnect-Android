@@ -1,1 +1,1 @@
-include ':app', ':dconnect-demo-lib'
+include ':dconnect-demo-lib'
