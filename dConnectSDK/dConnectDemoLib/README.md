@@ -39,21 +39,21 @@ DemoSettingFragment を Activity 上で使用することで、以下のUIをユ
 dConnectDemoLib の使用にあたって、以下の項目を決定してください。
 
 - デモのソースコードの置き場所
-- デモのZIPファイル名
+- APKに同梱する際のZIPファイル名
 - デモのインストール先のフォルダ名
-- デモページのエントリポイント
+- デモのトップページ
 - プラグインのパッケージ名
 - デモの更新判定のタイミング
-- デモインストールUIを持たせる設定画面:
+- デモインストールUIを持たせる設定画面
 
 以降、ExamplePlugin というAndroidStudioプロジェクトで本ライブラリを使用するという設定で説明します。
 
 ExamplePlugin での前提は以下のとおりです。
 
 - デモのソースコードの置き場所: ExamplePlugin/path/to/demo/src
-- デモのZIPファイル名: example-demo.zip
+- APKに同梱する際のZIPファイル名: example-demo.zip
 - デモのインストール先のフォルダ名: example-demo
-- デモページのエントリポイント: example-demo/index.html
+- デモのトップページ: example-demo/index.html
 - プラグインのパッケージ名: com.example.plugin
 - デモの更新判定のタイミング: プラグイン起動時
 - デモインストールUIを持たせる設定画面: ExampleSettingActivity
@@ -254,6 +254,20 @@ public class ExamplePlugin extends DConnectMessageService {
      * デモページアップデート通知.
      */
     private DemoInstaller.Notification mDemoNotification;
+    
+    /**
+     * デモページ関連の通知を受信するレシーバー.
+     */
+    private final BroadcastReceiver mDemoNotificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            String action = intent.getAction();
+            mDemoNotification.cancel(context);
+            if (DemoInstaller.Notification.ACTON_UPDATE_DEMO.equals(action)) {
+                updateDemoPage(context);
+            }
+        }
+    };
 
     @Override
     protected void onCreate() {
