@@ -17,16 +17,19 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.telephony.TelephonyManager;
 import android.view.WindowManager;
 
+import org.deviceconnect.android.deviceplugin.demo.DemoInstaller;
 import org.deviceconnect.android.deviceplugin.host.battery.HostBatteryManager;
-import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapper;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
+import org.deviceconnect.android.deviceplugin.host.demo.HostDemoInstaller;
 import org.deviceconnect.android.deviceplugin.host.file.FileDataManager;
 import org.deviceconnect.android.deviceplugin.host.file.HostFileProvider;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.HostMediaPlayerManager;
 import org.deviceconnect.android.deviceplugin.host.profile.HostBatteryProfile;
+import org.deviceconnect.android.deviceplugin.host.profile.HostCameraProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostConnectionProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostDeviceOrientationProfile;
@@ -56,6 +59,8 @@ import org.deviceconnect.android.profile.TouchProfile;
 import org.deviceconnect.android.provider.FileManager;
 import org.deviceconnect.android.service.DConnectService;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -100,6 +105,21 @@ public class HostDeviceService extends DConnectMessageService {
     private HostPhoneProfile mPhoneProfile;
 
     /**
+     * MediaStreamRecordingProfile の実装.
+     */
+    private HostMediaStreamingRecordingProfile mHostMediaStreamRecordingProfile;
+
+    /**
+     * デモページインストーラ.
+     */
+    private DemoInstaller mDemoInstaller;
+
+    /**
+     * デモページアップデート通知.
+     */
+    private DemoInstaller.Notification mDemoNotification;
+
+    /**
      * ブロードキャストレシーバー.
      */
     private final BroadcastReceiver mHostConnectionReceiver = new BroadcastReceiver() {
@@ -117,12 +137,28 @@ public class HostDeviceService extends DConnectMessageService {
             } else if (BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 onChangedBluetoothStatus();
+            } else if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
+                stopWebServer(intent);
             }
         }
     };
 
     private Handler mCameraHandler;
 
+    /**
+     * デモページ関連の通知を受信するレシーバー.
+     */
+    private final BroadcastReceiver mDemoNotificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            String action = intent.getAction();
+            mLogger.info("Demo Notification: " + action);
+            mDemoNotification.cancel(context);
+            if (DemoInstaller.Notification.ACTON_UPDATE_DEMO.equals(action)) {
+                updateDemoPage(context);
+            }
+        }
+    };
 
     @Override
     public void onCreate() {
@@ -133,6 +169,16 @@ public class HostDeviceService extends DConnectMessageService {
 
         mFileMgr = new FileManager(this, HostFileProvider.class.getName());
         mFileDataManager = new FileDataManager(mFileMgr);
+
+        mDemoInstaller = new HostDemoInstaller(getApplicationContext());
+        mDemoNotification = new DemoInstaller.Notification(
+                1,
+                getString(R.string.app_name_host),
+                R.drawable.dconnect_icon,
+                "org.deviceconnect.android.deviceconnect.host.channel.demo",
+                "Host Plugin Demo Page",
+                "Host Plugin Demo Page"
+        );
 
         mHostBatteryManager = new HostBatteryManager(getPluginContext());
         mHostBatteryManager.getBatteryInfo();
@@ -168,7 +214,9 @@ public class HostDeviceService extends DConnectMessageService {
         }
 
         if (mRecorderMgr.getRecorders().length > 0) {
-            hostService.addProfile(new HostMediaStreamingRecordingProfile(mRecorderMgr, mFileMgr));
+            mHostMediaStreamRecordingProfile = new HostMediaStreamingRecordingProfile(mRecorderMgr, mFileMgr);
+            hostService.addProfile(mHostMediaStreamRecordingProfile);
+            hostService.addProfile(new HostCameraProfile());
         }
         if (checkCameraHardware()) {
             HostDeviceRecorder defaultRecorder = mRecorderMgr.getRecorder(null);
@@ -190,8 +238,18 @@ public class HostDeviceService extends DConnectMessageService {
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(PreviewServerProvider.DELETE_PREVIEW_ACTION);
         registerReceiver(mHostConnectionReceiver, filter);
 
+        registerDemoNotification();
+        updateDemoPageIfNeeded();
+    }
+
+    private void registerDemoNotification() {
+        IntentFilter filter  = new IntentFilter();
+        filter.addAction(DemoInstaller.Notification.ACTON_CONFIRM_NEW_DEMO);
+        filter.addAction(DemoInstaller.Notification.ACTON_UPDATE_DEMO);
+        registerReceiver(mDemoNotificationReceiver, filter);
     }
 
     private void initRecorders(final HostDeviceRecorderManager recorderMgr) {
@@ -216,10 +274,48 @@ public class HostDeviceService extends DConnectMessageService {
         }
     }
 
+    private void updateDemoPageIfNeeded() {
+        final Context context = getApplicationContext();
+        if (DemoInstaller.isUpdateNeeded(context)) {
+            mLogger.info("Demo page must be updated.");
+            updateDemoPage(context);
+        } else {
+            mLogger.info("Demo page update is not needed.");
+        }
+    }
+
+    private void updateDemoPage(final Context context) {
+        mDemoInstaller.update(new DemoInstaller.UpdateCallback() {
+            @Override
+            public void onBeforeUpdate(final File demoDir) {
+                mLogger.info("Updating demo page: " + demoDir.getAbsolutePath());
+            }
+
+            @Override
+            public void onAfterUpdate(final File demoDir) {
+                mLogger.info("Updated demo page: " + demoDir.getAbsolutePath());
+                mDemoNotification.showUpdateSuccess(context);
+            }
+
+            @Override
+            public void onFileError(final IOException e) {
+                mLogger.severe("Failed to update demo page for file error: " + e.getMessage());
+                mDemoNotification.showUpdateError(context);
+            }
+
+            @Override
+            public void onUnexpectedError(final Throwable e) {
+                mLogger.severe("Failed to update demo page for unexpected error: " + e.getMessage());
+                mDemoNotification.showUpdateError(context);
+            }
+        }, new Handler(Looper.getMainLooper()));
+    }
+
     @Override
     public void onDestroy() {
         mRecorderMgr.stop();
         mRecorderMgr.clean();
+        mRecorderMgr.destroy();
         mFileDataManager.stopTimer();
         if (mCameraWrapperManager != null) {
             mCameraWrapperManager.destroy();
@@ -227,7 +323,11 @@ public class HostDeviceService extends DConnectMessageService {
         if (mCameraHandler != null) {
             mCameraHandler.getLooper().quit();
         }
+        if (mHostMediaStreamRecordingProfile != null) {
+            mHostMediaStreamRecordingProfile.destroy();
+        }
         unregisterReceiver(mHostConnectionReceiver);
+        unregisterReceiver(mDemoNotificationReceiver);
         super.onDestroy();
     }
 

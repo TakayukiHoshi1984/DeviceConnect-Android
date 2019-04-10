@@ -7,9 +7,11 @@
 package org.deviceconnect.android.deviceplugin.host.camera;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
@@ -22,6 +24,7 @@ import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
@@ -33,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * カメラ操作クラス.
@@ -41,6 +45,31 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings("MissingPermission")
 public class CameraWrapper {
+
+    public enum CameraEvent {
+        SHUTTERED,
+        STARTED_VIDEO_RECORDING,
+        STOPPED_VIDEO_RECORDING
+    }
+
+    public interface CameraEventListener {
+        void onEvent(CameraEvent event);
+    }
+
+    private static class CameraEventListenerHolder {
+        private CameraEventListener mListener;
+        private Handler mHandler;
+
+        CameraEventListenerHolder(final @NonNull CameraEventListener listener,
+                                  final @NonNull Handler handler) {
+            mListener = listener;
+            mHandler = handler;
+        }
+
+        void notifyEvent(final CameraEvent event) {
+            mHandler.post(() -> mListener.onEvent(event));
+        }
+    }
 
     private static final boolean DEBUG = BuildConfig.DEBUG;
 
@@ -61,6 +90,10 @@ public class CameraWrapper {
     private final ImageReader mDummyPreviewReader;
 
     private final Options mOptions;
+
+    private final Integer mAutoFocusMode;
+
+    private final Integer mAutoExposureMode;
 
     private CameraDevice mCameraDevice;
 
@@ -84,7 +117,10 @@ public class CameraWrapper {
 
     private byte mPreviewJpegQuality;
 
-    public CameraWrapper(final @NonNull Context context, final @NonNull String cameraId) {
+    private CameraEventListenerHolder mCameraEventListenerHolder;
+
+    CameraWrapper(final @NonNull Context context,
+                  final @NonNull String cameraId) throws CameraAccessException {
         mCameraId = cameraId;
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mBackgroundThread.start();
@@ -92,17 +128,40 @@ public class CameraWrapper {
         mSessionConfigurationThread.start();
         mSessionConfigurationHandler = new Handler(mSessionConfigurationThread.getLooper());
         mOptions = initOptions();
+        mAutoFocusMode = choiceAutoFocusMode(context, mCameraManager, cameraId);
+        mAutoExposureMode = choiceAutoExposureMode(mCameraManager, cameraId);
 
         mDummyPreviewReader = createImageReader(mOptions.getPreviewSize(), ImageFormat.YUV_420_888);
-        mDummyPreviewReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
-            @Override
-            public void onImageAvailable(final ImageReader reader) {
-                Image image = reader.acquireNextImage();
-                if (image != null) {
-                    image.close();
-                }
+        mDummyPreviewReader.setOnImageAvailableListener(reader -> {
+            Image image = reader.acquireNextImage();
+            if (image != null) {
+                image.close();
             }
         }, mBackgroundHandler);
+
+        if (DEBUG) {
+            Log.d(TAG, "CameraWrapper: cameraId=" + cameraId + " autoFocus=" + mAutoFocusMode + " autoExposure=" + mAutoExposureMode);
+        }
+    }
+
+    private boolean hasAutoFocus() {
+        return mAutoFocusMode != null;
+    }
+
+    private boolean hasAutoExposure() {
+        return mAutoExposureMode != null;
+    }
+
+    private void notifyCameraEvent(final CameraEvent event) {
+        CameraEventListenerHolder holder = mCameraEventListenerHolder;
+        if (holder != null) {
+            holder.notifyEvent(event);
+        }
+    }
+
+    public void setCameraEventListener(final CameraEventListener listener,
+                                       final Handler handler) {
+        mCameraEventListenerHolder = new CameraEventListenerHolder(listener, handler);
     }
 
     public String getId() {
@@ -191,14 +250,15 @@ public class CameraWrapper {
         if (mCameraDevice != null) {
             return mCameraDevice;
         }
+
         try {
             final CountDownLatch lock = new CountDownLatch(1);
-            final CameraDevice[] cameras = new CameraDevice[1];
+            final AtomicReference<CameraDevice> cameraRef = new AtomicReference<>();
             mCameraManager.openCamera(mCameraId, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(final @NonNull CameraDevice camera) {
                     mCameraDevice = camera;
-                    cameras[0] = camera;
+                    cameraRef.set(camera);
                     lock.countDown();
                 }
 
@@ -212,18 +272,60 @@ public class CameraWrapper {
                     lock.countDown();
                 }
             }, mBackgroundHandler);
-            if (!lock.await(30, TimeUnit.SECONDS)) {
+            if (!lock.await(5, TimeUnit.SECONDS)) {
                 throw new CameraWrapperException("Failed to open camera.");
             }
-            if (cameras[0] == null) {
+            CameraDevice camera = cameraRef.get();
+            if (camera == null) {
                 throw new CameraWrapperException("Failed to open camera.");
             }
-            return cameras[0];
+            return camera;
         } catch (CameraAccessException e) {
             throw new CameraWrapperException(e);
         } catch (InterruptedException e) {
             throw new CameraWrapperException(e);
         }
+    }
+
+    private static Integer choiceAutoFocusMode(final Context context,
+                                               final CameraManager cameraManager,
+                                               final String cameraId) throws CameraAccessException {
+        PackageManager pkgMgr = context.getPackageManager();
+        if (!pkgMgr.hasSystemFeature(PackageManager.FEATURE_CAMERA_AUTOFOCUS)) {
+            return null;
+        }
+
+        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+        int[] afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
+        if (afModes == null) {
+            return null;
+        }
+        for (int i = 0; i < afModes.length; i++) {
+            if (afModes[i] == CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE) {
+                return afModes[i];
+            }
+        }
+        return null;
+    }
+
+    private static Integer choiceAutoExposureMode(final CameraManager cameraManager,
+                                                  final String cameraId) throws CameraAccessException {
+        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+        int[] aeModes = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES);
+        if (aeModes == null) {
+            return null;
+        }
+        for (int i = 0; i < aeModes.length; i++) {
+            if (aeModes[i] == CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH) {
+                return aeModes[i];
+            }
+        }
+        for (int i = 0; i < aeModes.length; i++) {
+            if (aeModes[i] == CameraMetadata.CONTROL_AE_MODE_ON) {
+                return aeModes[i];
+            }
+        }
+        return null;
     }
 
     private List<Surface> createSurfaceList() {
@@ -263,11 +365,11 @@ public class CameraWrapper {
                 mCaptureSession.close();
             }
             final CountDownLatch lock = new CountDownLatch(1);
-            final CameraCaptureSession[] sessions = new CameraCaptureSession[1];
-            cameraDevice.createCaptureSession(createSurfaceList(), new CameraCaptureSession.StateCallback() {
+            final AtomicReference<CameraCaptureSession> sessionRef = new AtomicReference<>();
+            cameraDevice.createCaptureSession(targets, new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(final @NonNull CameraCaptureSession session) {
-                    sessions[0] = session;
+                    sessionRef.set(session);
                     lock.countDown();
                 }
 
@@ -276,18 +378,40 @@ public class CameraWrapper {
                     lock.countDown();
                 }
             }, mSessionConfigurationHandler);
-            if (!lock.await(30, TimeUnit.SECONDS)) {
+            if (!lock.await(5, TimeUnit.SECONDS)) {
                 throw new CameraWrapperException("Failed to configure capture session.");
             }
-            if (sessions[0] == null) {
+            CameraCaptureSession session = sessionRef.get();
+            if (session == null) {
                 throw new CameraWrapperException("Failed to configure capture session.");
             }
-            return sessions[0];
+            return session;
         } catch (CameraAccessException e) {
             throw new CameraWrapperException(e);
         } catch (InterruptedException e) {
             throw new CameraWrapperException(e);
         }
+    }
+
+    private void setDefaultCaptureRequest(final CaptureRequest.Builder request) {
+        setDefaultCaptureRequest(request, false);
+    }
+
+    private void setDefaultCaptureRequest(final CaptureRequest.Builder request,
+                                          final boolean trigger) {
+        if (hasAutoFocus()) {
+            request.set(CaptureRequest.CONTROL_AF_MODE, mAutoFocusMode);
+            if (trigger) {
+                request.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+            }
+        }
+        if (hasAutoExposure()) {
+            request.set(CaptureRequest.CONTROL_AE_MODE, mAutoExposureMode);
+            if (trigger) {
+                request.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            }
+        }
+        setWhiteBalance(request);
     }
 
     public synchronized void startPreview(final Surface previewSurface, final boolean isResume) throws CameraWrapperException {
@@ -302,12 +426,13 @@ public class CameraWrapper {
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             request.addTarget(mPreviewSurface);
             request.set(CaptureRequest.JPEG_QUALITY, mPreviewJpegQuality);
-            request.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            setDefaultCaptureRequest(request);
             captureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
-                    Log.e(TAG, "onCaptureFailed: failure=" + failure.getReason());
+                    if (DEBUG) {
+                        Log.e(TAG, "onCaptureFailed: failure=" + failure.getReason());
+                    }
                 }
             }, mBackgroundHandler);
             mCaptureSession = captureSession;
@@ -333,7 +458,8 @@ public class CameraWrapper {
         }
     }
 
-    public synchronized void startRecording(final Surface recordingSurface, final boolean isResume) throws CameraWrapperException {
+    public synchronized void startRecording(final Surface recordingSurface,
+                                            final boolean isResume) throws CameraWrapperException {
         if (mIsRecording && !isResume) {
             throw new CameraWrapperException("recording is started already.");
         }
@@ -347,9 +473,19 @@ public class CameraWrapper {
                 request.addTarget(mPreviewSurface);
             }
             request.addTarget(mRecordingSurface);
-            request.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            captureSession.setRepeatingRequest(request.build(), null, null);
+            setDefaultCaptureRequest(request);
+            captureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
+
+                private boolean mStarted;
+
+                @Override
+                public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
+                    if (!mStarted && !isResume) {
+                        mStarted = true;
+                        notifyCameraEvent(CameraEvent.STARTED_VIDEO_RECORDING);
+                    }
+                }
+            }, null);
             mCaptureSession = captureSession;
         } catch (CameraAccessException e) {
             throw new CameraWrapperException(e);
@@ -371,6 +507,7 @@ public class CameraWrapper {
         } else {
             close();
         }
+        notifyCameraEvent(CameraEvent.STOPPED_VIDEO_RECORDING);
     }
 
     public synchronized void takeStillImage(final Surface stillImageSurface) throws CameraWrapperException {
@@ -391,23 +528,21 @@ public class CameraWrapper {
             if (DEBUG) {
                 Log.d(TAG, "takeStillImage: Created capture session.");
             }
-            autoFocus(cameraDevice);
-            if (DEBUG) {
-                Log.d(TAG, "takeStillImage: ");
+            if (!mIsPreview) {
+                prepareCapture(cameraDevice);
             }
-            autoExposure(cameraDevice);
 
             int template = mIsRecording ? CameraDevice.TEMPLATE_VIDEO_SNAPSHOT : CameraDevice.TEMPLATE_STILL_CAPTURE;
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(template);
             request.addTarget(stillImageSurface);
-            request.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            setDefaultCaptureRequest(request);
             mCaptureSession.capture(request.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
                     if (DEBUG) {
                         Log.d(TAG, "takeStillImage: onCaptureStarted");
                     }
+                    notifyCameraEvent(CameraEvent.SHUTTERED);
                 }
 
                 @Override
@@ -420,7 +555,9 @@ public class CameraWrapper {
 
                 @Override
                 public void onCaptureFailed(final @NonNull CameraCaptureSession session, final @NonNull CaptureRequest request, final @NonNull CaptureFailure failure) {
-                    Log.e(TAG, "takeStillImage: onCaptureFailed");
+                    if (DEBUG) {
+                        Log.e(TAG, "takeStillImage: onCaptureFailed");
+                    }
                     resumeRepeatingRequest();
                 }
 
@@ -430,46 +567,87 @@ public class CameraWrapper {
                         Log.w(TAG, "takeStillImage: onCaptureBufferLost");
                     }
                 }
-
-                private void resumeRepeatingRequest() {
-                    mIsTakingStillImage = false;
-
-                    try {
-                        if (mIsRecording) {
-                            startRecording(mRecordingSurface, true);
-                        } else if (mIsPreview) {
-                            startPreview(mPreviewSurface, true);
-                        } else {
-                            close();
-                        }
-                    } catch (CameraWrapperException e) {
-                        Log.e(TAG, "Failed to resume recording or preview.", e);
-                    }
-                }
             }, mBackgroundHandler);
             if (DEBUG) {
                 Log.d(TAG, "takeStillImage: Started capture:");
             }
         } catch (Throwable e) {
-            Log.e(TAG, "Failed to take still image.", e);
-            mIsTakingStillImage = false;
+            if (DEBUG) {
+                Log.e(TAG, "Failed to take still image.", e);
+            }
+            resumeRepeatingRequest();
             throw new CameraWrapperException(e);
         }
     }
 
-    private void autoFocus(final CameraDevice cameraDevice) throws CameraWrapperException {
+    private void resumeRepeatingRequest() {
+        mIsTakingStillImage = false;
+
+        try {
+            if (mIsRecording) {
+                startRecording(mRecordingSurface, true);
+            } else if (mIsPreview) {
+                startPreview(mPreviewSurface, true);
+            } else {
+                close();
+            }
+        } catch (CameraWrapperException e) {
+            if (DEBUG) {
+                Log.e(TAG, "Failed to resume recording or preview.", e);
+            }
+        }
+    }
+
+    private void setWhiteBalance(final CaptureRequest.Builder request) {
+        Integer whiteBalance = getWhiteBalanceOption();
+        if (DEBUG) {
+            Log.d(TAG, "White Balance: " + whiteBalance);
+        }
+        if (whiteBalance != null) {
+            request.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+            request.set(CaptureRequest.CONTROL_AWB_MODE, whiteBalance);
+        }
+    }
+
+    private Integer getWhiteBalanceOption() {
+        String whiteBalance = getOptions().getWhiteBalance();
+        Integer mode;
+        if ("auto".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_AUTO;
+        } else if ("incandescent".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_INCANDESCENT;
+        } else if ("fluorescent".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_FLUORESCENT;
+        } else if ("warm-fluorescent".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_WARM_FLUORESCENT;
+        } else if ("daylight".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_DAYLIGHT;
+        } else if ("cloudy-daylight".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT;
+        } else if ("twilight".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_TWILIGHT;
+        } else if ("shade".equals(whiteBalance)) {
+            mode = CameraMetadata.CONTROL_AWB_MODE_SHADE;
+        } else {
+            mode = null;
+        }
+        return mode;
+    }
+
+    private void prepareCapture(final CameraDevice cameraDevice) throws CameraWrapperException {
+        if (!hasAutoFocus() && !hasAutoExposure()) {
+            return;
+        }
         try {
             final CountDownLatch lock = new CountDownLatch(1);
-            final CaptureResult[] results = new CaptureResult[1];
+            final AtomicReference<CaptureResult> resultRef = new AtomicReference<>();
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             if (mIsPreview) {
                 request.addTarget(mPreviewSurface);
             } else {
                 request.addTarget(mDummyPreviewReader.getSurface());
             }
-            request.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            request.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+            setDefaultCaptureRequest(request, true);
             mCaptureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
 
                 @Override
@@ -490,23 +668,37 @@ public class CameraWrapper {
                     lock.countDown();
                 }
 
+                private boolean mIsAfReady = !hasAutoFocus();
+                private boolean mIsAeReady = !hasAutoExposure();
+                private boolean mIsCaptureReady;
+
                 private void onCaptureResult(final CaptureResult result, final boolean isCompleted) {
-                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-                    boolean isAfReady = afState == null
-                            || afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED
-                            || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED;
-                    if (DEBUG) {
-                        Log.d(TAG, "autoFocus: onCaptureCompleted: isAfReady=" + isAfReady);
+                    if (!mIsAfReady) {
+                        Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+                        mIsAfReady = afState == null
+                                || afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED
+                                || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED;
                     }
-                    if (isAfReady) {
-                        results[0] = result;
+                    if (!mIsAeReady) {
+                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                        mIsAeReady = aeState == null
+                                || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED
+                                || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED;
+                    }
+                    mIsCaptureReady |= isCompleted;
+                    if (DEBUG) {
+                        Log.d(TAG, "prepareCapture: onCaptureCompleted: isAfReady=" + mIsAfReady + " isAeReady=" + mIsAeReady + " isCaptureReady=" + mIsCaptureReady);
+                    }
+
+                    if (mIsAfReady && mIsAeReady && mIsCaptureReady) {
+                        resultRef.set(result);
                         lock.countDown();
                     }
                 }
             }, mBackgroundHandler);
-            lock.await(60, TimeUnit.SECONDS);
+            lock.await(10, TimeUnit.SECONDS);
             mCaptureSession.stopRepeating();
-            if (results[0] == null) {
+            if (resultRef.get() == null) {
                 throw new CameraWrapperException("Failed auto focus.");
             }
         } catch (CameraAccessException e) {
@@ -516,67 +708,30 @@ public class CameraWrapper {
         }
     }
 
-    private void autoExposure(final CameraDevice cameraDevice) throws CameraWrapperException {
-        try {
-            final CountDownLatch lock = new CountDownLatch(1);
-            final CaptureResult[] results = new CaptureResult[1];
-            CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            if (mIsPreview) {
-                request.addTarget(mPreviewSurface);
-            } else {
-                request.addTarget(mDummyPreviewReader.getSurface());
-            }
-            request.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            request.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            mCaptureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
-
-                @Override
-                public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
-                    onCaptureResult(partialResult, false);
-                }
-
-                @Override
-                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
-                    onCaptureResult(result, true);
-                }
-
-                @Override
-                public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
-                    if (DEBUG) {
-                        Log.e(TAG, "autoFocus: onCaptureFailed");
-                    }
-                    lock.countDown();
-                }
-
-                private void onCaptureResult(final CaptureResult result, final boolean isCompleted) {
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    boolean isAeReady = aeState == null
-                            || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED
-                            || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED;
-                    if (DEBUG) {
-                        Log.d(TAG, "autoExposure: onCaptureCompleted: isAeReady=" + isAeReady);
-                    }
-                    if (isAeReady) {
-                        results[0] = result;
-                        lock.countDown();
-                    }
-                }
-            }, mBackgroundHandler);
-            lock.await(60, TimeUnit.SECONDS);
-            mCaptureSession.stopRepeating();
-            if (results[0] == null) {
-                throw new CameraWrapperException("Failed auto focus.");
-            }
-        } catch (CameraAccessException e) {
-            throw new CameraWrapperException(e);
-        } catch (InterruptedException e) {
-            throw new CameraWrapperException(e);
-        }
-    }
-
+    /**
+     * カメラのライトをONにする.
+     *
+     * @throws CameraWrapperException カメラに何らかの致命的なエラーが発生した場合
+     */
     public synchronized void turnOnTorch() throws CameraWrapperException {
+        turnOnTorch(null, null);
+    }
+
+    /**
+     * カメラのライトをONにする.
+     *
+     * @param listener 実際にライトがONになったタイミングで実行されるリスナー
+     * @param handler リスナーを実行するハンドラー. リスナーを指定する場合は必須
+     * @throws IllegalArgumentException リスナーを指定しているのにハンドラーを指定していない場合
+     * @throws CameraWrapperException カメラに何らかの致命的なエラーが発生した場合
+     */
+    public synchronized void turnOnTorch(final @Nullable TorchOnListener listener,
+                                         final @Nullable Handler handler) throws CameraWrapperException {
+        if (listener != null && handler == null) {
+            throw new IllegalArgumentException("handler is mandatory if listener is specified.");
+        }
         if (mIsTouchOn) {
+            notifyTorchOnEvent(listener, handler);
             return;
         }
         try {
@@ -596,6 +751,7 @@ public class CameraWrapper {
                     }
                     if (isTorchOn) {
                         mIsTouchOn = true;
+                        notifyTorchOnEvent(listener, handler);
                     }
                 }
             }, mBackgroundHandler);
@@ -605,11 +761,30 @@ public class CameraWrapper {
         }
     }
 
+    /**
+     * カメラのライトをOFFにする.
+     */
     public synchronized void turnOffTorch() {
+        turnOffTorch(null, null);
+    }
+
+    /**
+     * カメラのライトをOFFにする.
+     *
+     * @param listener 実際にライトがOFFになったタイミングで実行されるリスナー
+     * @param handler リスナーを実行するハンドラー. リスナーを指定する場合は必須
+     * @throws IllegalArgumentException リスナーを指定しているのにハンドラーを指定していない場合
+     */
+    public synchronized void turnOffTorch(final @Nullable TorchOffListener listener,
+                                          final @Nullable Handler handler) {
+        if (listener != null && handler == null) {
+            throw new IllegalArgumentException("handler is mandatory if listener is specified.");
+        }
         if (mUseTouch && mIsTouchOn) {
             mIsTouchOn = false;
             mUseTouch = false;
             close();
+            notifyTorchOffEvent(listener, handler);
         }
     }
 
@@ -619,6 +794,18 @@ public class CameraWrapper {
 
     public boolean isUseTorch() {
         return mUseTouch;
+    }
+
+    private void notifyTorchOnEvent(final TorchOnListener listener, final Handler handler) {
+        if (listener != null && handler != null) {
+            handler.post(listener::onTurnOn);
+        }
+    }
+
+    private void notifyTorchOffEvent(final TorchOffListener listener, final Handler handler) {
+        if (listener != null && handler != null) {
+            handler.post(listener::onTurnOff);
+        }
     }
 
     /**
@@ -636,6 +823,11 @@ public class CameraWrapper {
          */
         private static final int DEFAULT_PREVIEW_HEIGHT_THRESHOLD = 480;
 
+        /**
+         * デフォルトのホワイトバランス.
+         */
+        private static final String DEFAULT_WHITE_BALANCE = "auto";
+
         private Size mPictureSize;
 
         private Size mPreviewSize;
@@ -647,6 +839,8 @@ public class CameraWrapper {
         private double mPreviewMaxFrameRate = 30.0d; //fps
 
         private int mPreviewBitRate = 1000 * 1000; //bps
+
+        private String mWhiteBalance = DEFAULT_WHITE_BALANCE;
 
         public Size getPictureSize() {
             return mPictureSize;
@@ -729,5 +923,21 @@ public class CameraWrapper {
         public void setPreviewBitRate(final int previewBitRate) {
             mPreviewBitRate = previewBitRate;
         }
+
+        public String getWhiteBalance() {
+            return mWhiteBalance;
+        }
+
+        public void setWhiteBalance(final String whiteBalance) {
+            mWhiteBalance = whiteBalance;
+        }
+    }
+
+    public interface TorchOnListener {
+        void onTurnOn();
+    }
+
+    public interface TorchOffListener {
+        void onTurnOff();
     }
 }

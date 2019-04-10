@@ -10,6 +10,8 @@ package org.deviceconnect.android.deviceplugin.host.profile;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 
 import org.deviceconnect.android.activity.PermissionUtility;
@@ -48,12 +50,20 @@ import java.util.concurrent.CountDownLatch;
 @SuppressWarnings("deprecation")
 public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProfile {
 
+    /**
+     * レコーダー管理クラス.
+     */
     private final HostDeviceRecorderManager mRecorderMgr;
+
     /**
      * ファイル管理クラス.
      */
-    private FileManager mFileManager;
+    private final FileManager mFileManager;
 
+    /**
+     * ライト操作結果のリスナーを実行するハンドラー.
+     */
+    private final Handler mLightHandler;
 
     private final DConnectApi mGetMediaRecorderApi = new GetApi() {
         @Override
@@ -349,7 +359,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 public void onSuccess() {
                     recorder.takePhoto(new HostDevicePhotoRecorder.OnPhotoEventListener() {
                         @Override
-                        public void onTakePhoto(final String uri, final String filePath) {
+                        public void onTakePhoto(final String uri, final String filePath, final String mimeType) {
                             setResult(response, DConnectMessage.RESULT_OK);
                             setUri(response, uri);
                             setPath(response, filePath);
@@ -362,7 +372,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                             Bundle photo = new Bundle();
                             photo.putString(MediaStreamRecordingProfile.PARAM_URI, uri);
                             photo.putString(MediaStreamRecordingProfile.PARAM_PATH, filePath);
-                            photo.putString(MediaStreamRecordingProfile.PARAM_MIME_TYPE, "image/png");
+                            photo.putString(MediaStreamRecordingProfile.PARAM_MIME_TYPE, mimeType);
 
                             for (Event evt : evts) {
                                 Intent intent = EventManager.createEventMessage(evt);
@@ -733,6 +743,10 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
         mRecorderMgr = mgr;
         mFileManager = fileMgr;
 
+        HandlerThread thread = new HandlerThread("light");
+        thread.start();
+        mLightHandler = new Handler(thread.getLooper());
+
         addApi(mGetMediaRecorderApi);
         addApi(mGetOptionsApi);
         addApi(mPutOptionsApi);
@@ -747,6 +761,10 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
         addApi(mPutResumeApi);
         addApi(mPutOnRecordingChangeApi);
         addApi(mDeleteOnRecordingChangeApi);
+    }
+
+    public void destroy() {
+        mLightHandler.getLooper().quit();
     }
 
     private void init(final PermissionUtility.PermissionRequestCallback callback) {
@@ -820,7 +838,22 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
         // ライト点灯中なら消灯処理を実施.
         HostDevicePhotoRecorder recorder = mRecorderMgr.getCameraRecorder(null);
         if (recorder != null && recorder.isUseFlashLight()) {
-            recorder.turnOffFlashLight();
+            recorder.turnOffFlashLight(new HostDevicePhotoRecorder.TurnOffFlashLightListener() {
+                @Override
+                public void onRequested() {
+                    // NOP.
+                }
+
+                @Override
+                public void onTurnOff() {
+                    // NOP.
+                }
+
+                @Override
+                public void onError(final HostDevicePhotoRecorder.Error error) {
+                    // NOP.
+                }
+            }, mLightHandler);
         }
     }
 
