@@ -10,12 +10,10 @@ import android.content.Context;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
-import org.deviceconnect.android.deviceplugin.host.recorder.camera.Camera2Recorder;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -53,19 +51,22 @@ public class CameraWrapperManager {
                 Log.d(TAG, "onCameraAvailable: cameraId=" + cameraId);
             }
             synchronized (mCameras) {
-                final CameraWrapper camera = new CameraWrapper(mContext, cameraId);
-                mCameras.put(cameraId, camera);
+                try {
+                    final CameraWrapper camera = new CameraWrapper(mContext, cameraId);
+                    mCameras.put(cameraId, camera);
 
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
+                    mHandler.post(() -> {
                         synchronized (mAvailabilityListeners) {
                             for (final AvailabilityListener l : mAvailabilityListeners) {
                                 l.onCameraAvailable(camera);
                             }
                         }
+                    });
+                } catch (CameraAccessException e) {
+                    if (DEBUG) {
+                        Log.w(TAG, "Failed to check new host camera: cameraId=" + cameraId, e);
                     }
-                });
+                }
             }
         }
 
@@ -77,13 +78,10 @@ public class CameraWrapperManager {
             synchronized (mCameras) {
                 final CameraWrapper camera = mCameras.remove(cameraId);
                 if (camera != null) {
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            synchronized (mAvailabilityListeners) {
-                                for (final AvailabilityListener l : mAvailabilityListeners) {
-                                    l.onCameraUnavailable(camera);
-                                }
+                    mHandler.post(() -> {
+                        synchronized (mAvailabilityListeners) {
+                            for (final AvailabilityListener l : mAvailabilityListeners) {
+                                l.onCameraUnavailable(camera);
                             }
                         }
                     });
