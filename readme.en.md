@@ -18,25 +18,71 @@ Click [here](https://github.com/DeviceConnect/DeviceConnect-Docs/wiki)
 # Quick Start
 This tutorial explain how to build and run the Device Connect Manager.
 
+It assumes that the following commands are installed here.
+
+* cURL
+* git
+* adb
+* Android SDK
+
 ## Build Device Connect Manager
+### Mac/Linux
 Download DeviceConnect-Android source code.
 
 ```
-$ curl -LkO https://github.com/DeviceConnect/DeviceConnect-Android/archive/master.zip
-$ unzip master.zip
+$ git clone https://github.com/DeviceConnect/DeviceConnect-Android.git
 ```
 
+Before building, make sure the path to AndroidSDK is set to the ANDROID_HOME environment variable.
+
+```
+$ echo 'export ANDROID_HOME=<path>' >> ~/.bash_profile
+```
+
+For &lt;path&gt;, please specify the path to Android SDK.
+<br><br>
 Build Device Connect Manager.
 
 ```
 $ cd DeviceConnect-Android-master/dConnectManager/dConnectManager
-$ gradle assembleDebug
+$ ./gradlew assembleDebug
 ```
 
 Install Device Connect Manager.
 
 ```
 $ adb install app/build/outputs/apk/app-debug.apk
+```
+
+
+### Windows
+Download DeviceConnect-Android source code.
+
+```
+> git clone https://github.com/DeviceConnect/DeviceConnect-Android.git
+```
+
+Before building, make sure the path to AndroidSDK is set to the ANDROID_HOME environment variable.
+
+```
+> setx ANDROID_HOME <path>
+```
+
+For &lt;path&gt;, please specify the path to Android SDK.
+<br><br>
+Build Device Connect Manager.
+
+
+```
+> cd DeviceConnect-Android/dConnectManager/dConnectManager
+> gradlew.bat assembleDebug
+```
+
+
+Install Device Connect Manager.
+
+```
+> adb install app/build/outputs/apk/app-debug.apk
 ```
 
 ## Starting Device Connect Manager
@@ -90,12 +136,9 @@ If the following response is returned, you can check that Device Connect Manager
 ## Device Plugin
 | Project Name|Content  |
 |:-----------|:---------|
-|[dConnectDeviceAllJoyn](dConnectDevicePlugin/dConnectDeviceAllJoyn)|Device Plug-in for AllJoyn.|
 |[dConnectDeviceAndroidWear](dConnectDevicePlugin/dConnectDeviceAndroidWear)|Device Plug-in for AndroidWear.|
-|[dConnectDeviceAWSIoT](dConnectDevicePlugin/dConnectDeviceAWSIot)|Plug-in for AWSIoT.|
 |[dConnectDeviceChromeCast](dConnectDevicePlugin/dConnectDeviceChromeCast)|Device Plug-in for ChromeCast.|
 |[dConnectDeviceFaBo](dConnectDevicePlugin/dConnectDeviceFaBo)|Device Plug-in for FaBo.|
-|[dConnectDeviceFPLUG](dConnectDevicePlugin/dConnectDeviceFPLUG)|Device Plug-in for F-PLUG.|
 |[dConnectDeviceHeartRate](dConnectDevicePlugin/dConnectDeviceHeartRate)|Device Plug-in for HeartRate such as Mio Alpha.|
 |[dConnectDeviceHitoe](dConnectDevicePlugin/dConnectDeviceHitoe)|Device Plug-in for Hitoe.|
 |[dConnectDeviceHOGP](dConnectDevicePlugin/dConnectDeviceHOGP)|Device Plug-in for HOGP.|
@@ -105,17 +148,10 @@ If the following response is returned, you can check that Device Connect Manager
 |[dConnectDeviceHVCC2W](dConnectDevicePlugin/dConnectDeviceHVCC2W)|Device Plug-in for HVC-C2W.|
 |[dConnectDeviceHVCP](dConnectDevicePlugin/dConnectDeviceHVCP)|Device Plug-in for HVC-P.|
 |[dConnectDeviceIRKit](dConnectDevicePlugin/dConnectDeviceIRKit)|Device Plug-in for IRKit.|
-|[dConnectDeviceKadecot](dConnectDevicePlugin/dConnectDeviceKadecot)|Device Plug-in for Kadecot.|
 |[dConnectDeviceLinking](dConnectDevicePlugin/dConnectDeviceLinking)|Device Plug-in for Linking.|
-|[dConnectDevicePebble](dConnectDevicePlugin/dConnectDevicePebble)|Device Plug-in for Pebble.|
-|[dConnectDeviceSlackMessageHook](dConnectDevicePlugin/dConnectDeviceSlackMessageHook)|Plug-in for Slack.|
-|[dConnectDeviceSmartMeter](dConnectDevicePlugin/dConnectDeviceSmartMeter)|Plug-in for Smart Meter.|
-|[dConnectDeviceSonyCamera](dConnectDevicePlugin/dConnectDeviceSonyCamera)|Device Plug-in for SonyCamera such as QX10.|
-|[dConnectDeviceSonySW](dConnectDevicePlugin/dConnectDeviceSonySW)|Device Plug-in for SonySmartWatch<br>※SmartWatch3 is not supported.|
 |[dConnectDeviceSphero](dConnectDevicePlugin/dConnectDeviceSphero)|Device Plug-in for Sphero.|
 |[dConnectDeviceTheta](dConnectDevicePlugin/dConnectDeviceTheta)|Device Plug-in for THETA.|
 |[dConnectDeviceUVC](dConnectDevicePlugin/dConnectDeviceUVC)|Device Plug-in for UVC Camera.|
-|[dConnectDeviceWebRTC](dConnectDevicePlugin/dConnectDeviceWebRTC)|Device Plug-in for WebRTC.|
 |[dConnectDeviceTest](dConnectDevicePlugin/dConnectDeviceTest)|Device Plug-in for test of DeviceConnect.|
 |[dConnectDevicePluginSDK](dConnectDevicePlugin/dConnectDevicePluginSDK)|SDK for creating DevicePlugin. dConnectSDKForAndroid necessary.|
 
@@ -129,7 +165,6 @@ If the following response is returned, you can check that Device Connect Manager
 ## Device Connect SDK
 | Project Name | Content |
 |:-----------|:---------|
-|dConnectApp|DeviceConnect operation check for app.|
 |[dConnectSDKForAndroid](dConnectSDK/dConnectSDKForAndroid)|SDK of DeviceConnect. DevicePlugin development and SDK to be used for application development.|
 
 # Development of DeviceConnect app
@@ -143,17 +178,36 @@ If you want to develop a device plug-ins using the Device Connect Manager, pleas
 * [Device Plug-in Development Manual](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/DevicePlugin-Manual-for-Android-Studio-200)
 
 # Generate a Javadoc of Device Connect SDK
+## Mac/Linux
 
 ```
-$ cd DeviceConnect-Android-master/dConnectManager/dConnectManager
-$ gradle generateJavadocForSDK
+$ cd DeviceConnect-Android/dConnectSDK/dConnectSDKForAndroid
+$ ./gradlew generateJavadocForSDK
+```
+
+## Windows
+
+```
+> cd DeviceConnect-Android/dConnectSDK/dConnectSDKForAndroid
+> gradlew.bat generateJavadocForSDK
 ```
 
 `DeviceConnectSDK-Javadoc` is created in the directory where gradle is executed and Javadoc of Device Connect SDK is output.
 
+
+# Generate a Javadoc of Device Connect Plug-in SDK
+# Mac/Linux
+
 ```
-$ cd DeviceConnect-Android-master/dConnectManager/dConnectManager
-$ gradle generateJavadocForPlugin
+$ cd DeviceConnect-Android/dConnectDevicePlugin/dConnectDevicePluginSDK
+$ ./gradlew generateJavadocForPlugin
+```
+
+# Windows
+
+```
+> cd DeviceConnect-Android/dConnectSDK/dConnectSDKForAndroid
+> gradlew.bat generateJavadocForPlugin
 ```
 
 `DevicePluginSDK-Javadoc` is created in the directory where gradle was executed and Javadoc of Device Plugin SDK is output.
@@ -162,9 +216,7 @@ $ gradle generateJavadocForPlugin
 People who want to develop the DeviceConnectManager and device Plug-ins, please build in accordance with this build instructions.
 
 * [DeviceConnectManager](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/DeviceConnectManager-Build)
-* [AllJoyn](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/AllJoyn-Build)
 * [ChromeCast](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/ChromeCast-Build)
-* [F-PLUG](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/F-PLUG-Build)
 * [FaBo](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/FaBo-Build)
 * [HeartRate](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/HeartRateDevice-Build)
 * [Hitoe](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Hitoe-Build)
@@ -175,15 +227,8 @@ People who want to develop the DeviceConnectManager and device Plug-ins, please 
 * [HVC-C2W](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/HVCC2WDevice-Build)
 * [HVC-P](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/HVCPDevice-Build)
 * [IRKit](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/IRKit-Build)
-* [Kadecot](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Kadecot-Build)
 * [Linking](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Linking-Build)
-* [Pebble](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Pebble-Build)
-* [SonyCamera](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/SonyCamera-Build)
-* [SonySW](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/SonySW-Build)
 * [Sphero](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Sphero-Build)
 * [Theta](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/Theta-Build)
 * [UVC](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/UVC-Build)
 * [AndroidWear](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/AndroidWear-Build)
-* [WebRTC](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/WebRTC-Build)
-* [AWSIoT](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/AWSIoT-Build)
-* [SlackMessageHook](https://github.com/DeviceConnect/DeviceConnect-Android/wiki/SlackBot-Build)

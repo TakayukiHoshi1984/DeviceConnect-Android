@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.util.DisplayMetrics;
+import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.recorder.AbstractPreviewServerProvider;
@@ -47,6 +48,10 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
 
     static final String EXTRA_CALLBACK = "callback";
 
+    private static final boolean DEBUG = BuildConfig.DEBUG;
+
+    private static final String TAG = "host.dplugin";
+
     private static final String ID = "screen";
 
     private static final String NAME = "AndroidHost Screen";
@@ -69,7 +74,7 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
      */
     private List<String> mMimeTypes = new ArrayList<String>() {
         {
-            add("image/png");
+            add(MIME_TYPE_JPEG);
             add(ScreenCastMJPEGPreviewServer.MIME_TYPE);
             add(ScreenCastRTSPPreviewServer.MIME_TYPE);
         }
@@ -104,6 +109,7 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
         mScreenCastMgr = new ScreenCastManager(context);
         mScreenCastRTSPServer = new ScreenCastRTSPPreviewServer(context, this, mScreenCastMgr);
         mScreenCastMJPEGServer = new ScreenCastMJPEGPreviewServer(context, this, mScreenCastMgr);
+        mScreenCastMJPEGServer.setQuality(readPreviewQuality(mScreenCastMJPEGServer));
     }
 
     private void initSupportedPreviewSizes(final PictureSize originalSize) {
@@ -127,6 +133,21 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
         servers.add(mScreenCastMJPEGServer);
         servers.add(mScreenCastRTSPServer);
         return servers;
+    }
+
+    @Override
+    public PreviewServer getServerForMimeType(final String mimeType) {
+        for (PreviewServer server : getServers()) {
+            if (server.getMimeType().equals(mimeType)) {
+                return server;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected int getDefaultPreviewQuality(final String mimeType) {
+        return 40;
     }
 
     @Override
@@ -265,13 +286,27 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
     }
 
     @Override
-    public void turnOnFlashLight() {
-
+    public void turnOnFlashLight(final TurnOnFlashLightListener listener,
+                                 final Handler handler) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener is null.");
+        }
+        if (handler == null) {
+            throw new IllegalArgumentException("handler is null.");
+        }
+        handler.post(() -> listener.onError(Error.UNSUPPORTED));
     }
 
     @Override
-    public void turnOffFlashLight() {
-
+    public void turnOffFlashLight(final TurnOffFlashLightListener listener,
+                                  final Handler handler) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener is null.");
+        }
+        if (handler == null) {
+            throw new IllegalArgumentException("handler is null.");
+        }
+        handler.post(() -> listener.onError(Error.UNSUPPORTED));
     }
 
     @Override
@@ -289,62 +324,59 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
         mScreenCastMgr.requestPermission(new ScreenCastManager.PermissionCallback() {
             @Override
             public void onAllowed() {
-                mPhotoThread.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            mState = RecorderState.RECORDING;
+                mPhotoThread.execute(() -> {
+                    try {
+                        mState = RecorderState.RECORDING;
 
-                            HostDeviceRecorder.PictureSize size = getPreviewSize();
-                            int w = size.getWidth();
-                            int h = size.getHeight();
-                            ImageReader imageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 4);
-                            final ImageScreenCast screenCast = mScreenCastMgr.createScreenCast(imageReader, size);
-                            final Bitmap[] screenshot = new Bitmap[1];
-                            final CountDownLatch mLatch = new CountDownLatch(1);
-                            imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
-                                @Override
-                                public void onImageAvailable(final ImageReader reader) {
-                                    if (BuildConfig.DEBUG) {
-                                        mLogger.info("onImageAvailable");
-                                    }
-                                    screenshot[0] = screenCast.getScreenshot();
-                                    mLatch.countDown();
+                        HostDeviceRecorder.PictureSize size = getPreviewSize();
+                        int w = size.getWidth();
+                        int h = size.getHeight();
+                        ImageReader imageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 4);
+                        final ImageScreenCast screenCast = mScreenCastMgr.createScreenCast(imageReader, size);
+                        final Bitmap[] screenshot = new Bitmap[1];
+                        final CountDownLatch mLatch = new CountDownLatch(1);
+                        imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+                            @Override
+                            public void onImageAvailable(final ImageReader reader) {
+                                if (BuildConfig.DEBUG) {
+                                    mLogger.info("onImageAvailable");
                                 }
-                            }, mImageReaderHandler);
-                            screenCast.startCast();
-                            mLatch.await(5, TimeUnit.SECONDS);
-                            screenCast.stopCast();
+                                screenshot[0] = screenCast.getScreenshot();
+                                mLatch.countDown();
+                            }
+                        }, mImageReaderHandler);
+                        screenCast.startCast();
+                        mLatch.await(5, TimeUnit.SECONDS);
+                        screenCast.stopCast();
 
-                            Bitmap bitmap = screenshot[0];
-                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                            byte[] media = baos.toByteArray();
-                            if (media == null) {
+                        Bitmap bitmap = screenshot[0];
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+                        byte[] media = baos.toByteArray();
+                        if (media == null) {
+                            mState = RecorderState.INACTTIVE;
+                            listener.onFailedTakePhoto("Failed to get Screenshot.");
+                            return;
+                        }
+
+                        // 常に新しいファイル名になるため重複はない。そのため、Overwriteフラグをtrueにする。
+                        mFileMgr.saveFile(createNewFileName(), media, true, new FileManager.SaveFileCallback() {
+                            @Override
+                            public void onSuccess(@NonNull final String uri) {
                                 mState = RecorderState.INACTTIVE;
-                                listener.onFailedTakePhoto("Failed to get Screenshot.");
-                                return;
+                                listener.onTakePhoto(uri, null, MIME_TYPE_JPEG);
                             }
 
-                            // 常に新しいファイル名になるため重複はない。そのため、Overwriteフラグをtrueにする。
-                            mFileMgr.saveFile(createNewFileName(), media, true, new FileManager.SaveFileCallback() {
-                                @Override
-                                public void onSuccess(@NonNull final String uri) {
-                                    mState = RecorderState.INACTTIVE;
-                                    listener.onTakePhoto(uri, null);
-                                }
-
-                                @Override
-                                public void onFail(@NonNull final Throwable throwable) {
-                                    mState = RecorderState.INACTTIVE;
-                                    listener.onFailedTakePhoto(throwable.getMessage());
-                                }
-                            });
-                        } catch (InterruptedException e) {
-                            listener.onFailedTakePhoto("Taking photo is shutdown.");
-                        } catch (OutOfMemoryError e) {
-                            listener.onFailedTakePhoto("Out of memory.");
-                        }
+                            @Override
+                            public void onFail(@NonNull final Throwable throwable) {
+                                mState = RecorderState.INACTTIVE;
+                                listener.onFailedTakePhoto(throwable.getMessage());
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        listener.onFailedTakePhoto("Taking photo is shutdown.");
+                    } catch (OutOfMemoryError e) {
+                        listener.onFailedTakePhoto("Out of memory.");
                     }
                 });
             }
@@ -360,4 +392,13 @@ public class HostDeviceScreenCastRecorder extends AbstractPreviewServerProvider 
         return FILENAME_PREFIX + mSimpleDateFormat.format(new Date()) + FILE_EXTENSION;
     }
 
+    @Override
+    public void onDisplayRotation(final int rotation) {
+        if (DEBUG) {
+            Log.d(TAG, "ScreenCastRecorder.onDisplayRotation: rotation=" + rotation);
+        }
+        for (PreviewServer server : getServers()) {
+            server.onDisplayRotation(rotation);
+        }
+    }
 }

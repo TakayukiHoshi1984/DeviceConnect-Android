@@ -1,4 +1,4 @@
-include ':app'
+include ':dconnect-manager-core', ':dconnect-manager-app', ':dconnect-manager-app-things'
 include 'dconnect-server'
 project(':dconnect-server').projectDir = new File('../dConnectServer')
 include 'dconnect-server-nano-httpd'
@@ -6,4 +6,6 @@ project(':dconnect-server-nano-httpd').projectDir = new File('../dConnectServerN
 include 'dconnect-device-plugin-host'
 project(':dconnect-device-plugin-host').projectDir = new File('../../dConnectDevicePlugin/dConnectDeviceHost/app')
 include 'libstreaming'
-project(':libstreaming').projectDir = new File('../../dConnectDevicePlugin/dConnectDeviceHost/libstreaming')
+project(':libstreaming').projectDir = new File('../../dConnectSDK/dConnectLibStreaming/libstreaming')
+include 'dconnect-demo-lib'
+project(':dconnect-demo-lib').projectDir = new File('../../dConnectSDK/dConnectDemoLib/dconnect-demo-lib')
