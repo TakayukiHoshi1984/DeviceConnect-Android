@@ -14,6 +14,8 @@ import org.deviceconnect.server.DConnectServerConfig;
 import org.deviceconnect.server.DConnectServerError;
 import org.deviceconnect.server.http.HttpRequest;
 import org.deviceconnect.server.http.HttpResponse;
+import org.deviceconnect.server.nanohttpd.accesslog.AccessLog;
+import org.deviceconnect.server.nanohttpd.accesslog.AccessLogProvider;
 import org.deviceconnect.server.nanohttpd.logger.AndroidHandler;
 import org.deviceconnect.server.nanohttpd.security.Firewall;
 import org.deviceconnect.server.websocket.DConnectWebSocket;
@@ -24,8 +26,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +41,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.StringTokenizer;
@@ -157,6 +156,11 @@ public class DConnectServerNanoHttpd extends DConnectServer {
     private Context mContext;
 
     /**
+     * アクセスログ管理クラス.
+     */
+    private AccessLogProvider mAccessLogProvider;
+
+    /**
      * SSLサーバーソケットファクトリ.
      */
     private SSLServerSocketFactory mServerSocketFactory;
@@ -214,6 +218,7 @@ public class DConnectServerNanoHttpd extends DConnectServer {
             throw new IllegalArgumentException("keyStoreManager must not be null if SSL is enabled.");
         }
         mServerSocketFactory = socketFactory;
+        mAccessLogProvider = new AccessLogProvider(context);
 
         if (BuildConfig.DEBUG) {
             Handler handler = new AndroidHandler(TAG);
@@ -296,7 +301,11 @@ public class DConnectServerNanoHttpd extends DConnectServer {
 
         synchronized (mSockets) {
             for (Entry<String, DConnectWebSocket> data : mSockets.entrySet()) {
-                data.getValue().disconnect();
+                try {
+                    data.getValue().disconnect();
+                } catch (Exception e) {
+                    // ignore.
+                }
             }
         }
         mSockets.clear();
@@ -329,15 +338,23 @@ public class DConnectServerNanoHttpd extends DConnectServer {
 
     /**
      * 設定されたドキュメントルートが正しいかチェックする.
-     *
+     * <p>
+     * ドキュメントルートパスに file:///android_asset が指定された場合には assets フォルダをドキュメントルートとして使用します。
+     * </p>
      * @return 正しい場合true、不正な場合falseを返す。
      */
     private boolean checkDocumentRoot() {
+        if (mConfig.getDocumentRootPath() == null) {
+            // ドキュメントルートが設定されていない場合は、チェックしない。
+            return true;
+        }
         boolean retVal = true;
-        File documentRoot = new File(mConfig.getDocumentRootPath());
-        if (!documentRoot.exists() || !documentRoot.isDirectory()) {
-            mLogger.warning("Invalid document root path: " + documentRoot.getPath());
-            retVal = false;
+        if (!mConfig.getDocumentRootPath().startsWith(DConnectServerConfig.DOC_ASSETS)) {
+            File documentRoot = new File(mConfig.getDocumentRootPath());
+            if (!documentRoot.exists() || !documentRoot.isDirectory()) {
+                mLogger.warning("Invalid document root path: " + documentRoot.getPath());
+                retVal = false;
+            }
         }
         return retVal;
     }
@@ -478,13 +495,6 @@ public class DConnectServerNanoHttpd extends DConnectServer {
                 return res;
             }
 
-            if (session.getMethod() == Method.GET) {
-                Response nanoRes = checkStaticFile(session);
-                if (nanoRes != null) {
-                    return nanoRes;
-                }
-            }
-
             try {
                 HttpRequest.Method method = HttpRequest.Method.valueFrom(session.getMethod().name());
                 if (method == null) {
@@ -498,16 +508,20 @@ public class DConnectServerNanoHttpd extends DConnectServer {
                 request.setQuery(session.getParms());
                 request.setHeaders(session.getHeaders());
                 request.setQueryString(session.getQueryParameterString());
+                request.setRemoteIpAddress(session.getRemoteIpAddress());
+                request.setRemoteHostName(session.getRemoteHostName());
 
                 parseBody(session, request);
 
-                DConnectHttpResponse response = new DConnectHttpResponse();
-                if (mListener != null && mListener.onReceivedHttpRequest(request, response)) {
-                    return newFixedLengthResponse(response);
+                DConnectHttpResponse response;
+                if (mConfig.isEnableAccessLog()) {
+                    AccessLog accessLog = createAccessLog(request);
+                    response = execute(request);
+                    saveAccessLog(response, accessLog);
                 } else {
-                    return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_APPLICATION_JSON,
-                            "{\"result\" : 1, \"errorCode\" : 1, \"errorMessage\" : \"Not found.\"}");
+                    response = execute(request);
                 }
+                return newFixedLengthResponse(response);
             } catch (OutOfMemoryError e) {
                 return newFixedLengthResponse(Status.BAD_REQUEST, MIME_APPLICATION_JSON,
                         "{\"result\" : 1, \"errorCode\" : 1, \"errorMessage\" : \"Too large request.\"}");
@@ -526,6 +540,101 @@ public class DConnectServerNanoHttpd extends DConnectServer {
         @Override
         protected WebSocket openWebSocket(final IHTTPSession handshake) {
             return new NanoWebSocket(handshake);
+        }
+
+        /**
+         * HTTPリクエストからアクセスログを作成します.
+         *
+         * @param request リクエスト
+         * @return アクセスログ
+         */
+        private AccessLog createAccessLog(DConnectHttpRequest request) {
+            AccessLog accessLog = mAccessLogProvider.createAccessLog();
+            accessLog.setRemoteIpAddress(request.getRemoteIpAddress());
+            accessLog.setRemoteHostName(request.getRemoteHostName());
+            accessLog.setRequestReceivedTime(System.currentTimeMillis());
+            accessLog.setRequestMethod(request.getMethod().name());
+            accessLog.setRequestHeader(request.getHeaders());
+            accessLog.setRequestPath(getRequestPath(request));
+
+            if (checkMethodPutPost(request.getMethod())) {
+                Map<String, String> queryParameters = request.getQueryParameters();
+                if (queryParameters != null) {
+                    StringBuilder body = new StringBuilder();
+                    for (String key : queryParameters.keySet()) {
+                        if (body.length() > 0) {
+                            body.append("&");
+                        }
+                        if (!key.equals("postData")) {
+                            body.append(key).append("=").append(queryParameters.get(key));
+                        } else {
+                            body.append(key).append("=").append("[File Data]");
+                        }
+                    }
+                    accessLog.setRequestBody(body.toString());
+                }
+            }
+
+            return accessLog;
+        }
+
+        /**
+         * HTTPメソッドが PUT もしくは POST か確認します.
+         *
+         * @param method HTTPメソッド
+         * @return PUTもしくはPOSTの場合はtrue、それ以外はfalse
+         */
+        private boolean checkMethodPutPost(HttpRequest.Method method) {
+            return (method.equals(HttpRequest.Method.PUT) || method.equals(HttpRequest.Method.POST));
+        }
+
+        /**
+         * HTTPメソッドがGETもしくはDELETE時は、QueryString をパスに付加して取得します.
+         * @param request リクエスト
+         * @return リクエストのパス
+         */
+        private String getRequestPath(DConnectHttpRequest request) {
+            if (checkMethodPutPost(request.getMethod())) {
+                return request.getUri();
+            } else {
+                return request.getQueryString() == null ?
+                        request.getUri() : request.getUri() + "?" + request.getQueryString();
+            }
+        }
+
+        /**
+         * アクセスログにレスポンスの情報を加えて、DBに保存します.
+         *
+         * @param response レスポンス
+         * @param accessLog アクセスログ
+         */
+        private void saveAccessLog(DConnectHttpResponse response, AccessLog accessLog) {
+            String contentType = response.getContentType();
+            if (contentType != null && contentType.startsWith("application/json")) {
+                accessLog.setResponseBody(new String(response.getBody()));
+            }
+            accessLog.setResponseContentType(contentType);
+            accessLog.setResponseStatusCode(response.getStatusCode().getCode());
+            accessLog.setResponseSendTime(System.currentTimeMillis());
+            mAccessLogProvider.add(accessLog);
+        }
+
+        /**
+         * リクエストを Listener に通知して、実行します.
+         *
+         * @param request リクエスト
+         * @return レスポンス
+         */
+        private DConnectHttpResponse execute(final HttpRequest request) {
+            DConnectHttpResponse response = new DConnectHttpResponse();
+            if (mListener == null || !mListener.onReceivedHttpRequest(request, response)) {
+                byte[] body = "{\"result\" : 1, \"errorCode\" : 1, \"errorMessage\" : \"Not found.\"}".getBytes();
+                response.setCode(HttpResponse.StatusCode.NOT_FOUND);
+                response.setContentType(MIME_APPLICATION_JSON);
+                response.setBody(body);
+                response.setContentLength(body.length);
+            }
+            return response;
         }
 
         /**
@@ -1013,109 +1122,6 @@ public class DConnectServerNanoHttpd extends DConnectServer {
             }
             // NanoHTTPDで対応していない物は全てエラーとして扱う
             return Status.INTERNAL_ERROR;
-        }
-
-        /**
-         * 静的コンテンツへのリクエストかどうかをチェックし、静的コンテンツへのアクセスの場合にはレスポンスを返却します.
-         * <p>
-         *     静的コンテンツ以外のアクセスの場合には、nullを返却します。
-         * </p>
-         * @param session HTTPリクエストデータ
-         * @return 静的コンテンツの場合はResponseのインスタンス、それ以外の場合はnull
-         */
-        private Response checkStaticFile(final IHTTPSession session) {
-            Response retValue = null;
-
-            do {
-                String mime = session.getHeaders().get("content-type");
-                // httpの仕様より、content-typeでMIME Typeが特定できない場合はURIから
-                // MIME Typeを推測する。
-                if (mime == null || !MIME_TYPES.containsValue(mime)) {
-                    mime = getMimeTypeFromURI(session.getUri());
-                }
-
-                // MIMEタイプがファイルで無い場合はdConnectへのリクエストかどうかの
-                // チェックに回す。
-                if (mime == null) {
-                    break;
-                }
-
-                // ドキュメントルートが設定されていない場合には、静的コンテンツへのアクセスはない。
-                if (mConfig.getDocumentRootPath() == null) {
-                    break;
-                }
-
-                // 静的コンテンツへのアクセスの場合はdocument rootからファイルを検索する。
-                File file = new File(mConfig.getDocumentRootPath(), session.getUri());
-
-                if (!file.exists()) {
-                    retValue = newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, Status.NOT_FOUND.getDescription());
-                    break;
-                } else if (file.isDirectory()) {
-                    break;
-                } else if (!isReadableFile(file)) {
-                    retValue = newFixedLengthResponse(Status.FORBIDDEN, MIME_PLAINTEXT, Status.FORBIDDEN.getDescription());
-                    break;
-                }
-
-                // If-None-Match対応
-                String etag = Integer.toHexString((file.getAbsolutePath() + file.lastModified() + "" + file.length())
-                        .hashCode());
-                if (etag.equals(session.getHeaders().get("if-none-match"))) {
-                    retValue = newFixedLengthResponse(Status.NOT_MODIFIED, mime, "");
-                } else {
-                    try {
-                        retValue = newFixedLengthResponse(Status.OK, mime, new FileInputStream(file), file.length());
-                        retValue.addHeader("Content-Length", "" + file.length());
-                        retValue.addHeader("ETag", etag);
-                    } catch (FileNotFoundException e) {
-                        retValue = newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, Status.NOT_FOUND.getDescription());
-                        break;
-                    }
-                }
-
-                // ByteRangeへの対応は必須ではないため、noneを指定して対応しないことを伝える。
-                // 対応が必要な場合はbyteを設定して実装すること。
-                retValue.addHeader("Accept-Ranges", "none");
-
-            } while (false);
-            return retValue;
-        }
-
-        /**
-         * URIからMIMEタイプを推測する.
-         *
-         * @param uri リクエストURI
-         * @return MIMEタイプが推測できた場合MIMEタイプ文字列を、その他はnullを返す
-         */
-        private String getMimeTypeFromURI(final String uri) {
-            int dot = uri.lastIndexOf('.');
-            if (dot >= 0) {
-                return MIME_TYPES.get(uri.substring(dot + 1).toLowerCase(Locale.ENGLISH));
-            }
-            return null;
-        }
-
-        /**
-         * ファイルが読み込み可能なファイルかチェックする.
-         *
-         * @param file チェック対象のファイル。
-         * @return 読み込めるファイルの場合trueを、その他はfalseを返す。
-         */
-        private boolean isReadableFile(final File file) {
-            boolean retVal;
-            try {
-                // ../ などのDocument Rootより上の階層にいくファイルパスをチェックし
-                // 不正なリクエストを拒否する。
-                File root = new File(mConfig.getDocumentRootPath());
-                String rootAbPath = root.getCanonicalPath() + "/";
-                String fileAbPath = file.getCanonicalPath();
-                retVal = fileAbPath.contains(rootAbPath) && file.canRead();
-            } catch (IOException e) {
-                mLogger.warning("Exception in the NanoServer#isDeployedInDocumentRoot() method. " + e.toString());
-                retVal = false;
-            }
-            return retVal;
         }
     }
 

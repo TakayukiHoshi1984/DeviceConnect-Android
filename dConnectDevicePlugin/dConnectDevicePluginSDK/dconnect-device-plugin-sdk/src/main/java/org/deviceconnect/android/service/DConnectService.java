@@ -6,14 +6,15 @@
  */
 package org.deviceconnect.android.service;
 
-
 import android.content.Context;
 import android.content.Intent;
 
+import org.deviceconnect.android.message.DevicePluginContext;
 import org.deviceconnect.android.message.MessageUtils;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.android.profile.DConnectProfileProvider;
 import org.deviceconnect.android.profile.ServiceInformationProfile;
+import org.deviceconnect.android.profile.spec.DConnectServiceSpec;
 import org.deviceconnect.profile.ServiceDiscoveryProfileConstants;
 
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
     /**
      * サポートするプロファイル一覧.
      */
-    private final Map<String, DConnectProfile> mProfiles = new HashMap<String, DConnectProfile>();
+    private final Map<String, DConnectProfile> mProfiles = new HashMap<>();
 
     /**
      * サービス名.
@@ -62,6 +63,16 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
      * コンテキスト.
      */
     private Context mContext;
+
+    /**
+     * プラグインのコンテキスト.
+     */
+    private DevicePluginContext mPluginContext;
+
+    /**
+     * プラグインの API 定義.
+     */
+    private DConnectServiceSpec mServiceSpec;
 
     /**
      * ステータス更新通知リスナー.
@@ -193,19 +204,60 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
 
     /**
      * コンテキストを取得する.
-     * @return
+     * @return コンテキスト
      */
     public Context getContext() {
         return mContext;
     }
 
+    /**
+     * プラグインコンテキストを設定します.
+     *
+     * @param pluginContext プラグインコンテキスト
+     */
+    void setPluginContext(DevicePluginContext pluginContext) {
+        mPluginContext = pluginContext;
+    }
+
+    /**
+     * プラグインコンテキストを取得します.
+     *
+     * @return プラグインコンテキスト
+     */
+    public DevicePluginContext getPluginContext() {
+        return mPluginContext;
+    }
+
+    /**
+     * サービスで使用される API の定義を設定します.
+     *
+     * <p>
+     * ここで取得した API 定義を編集することで Service Information で返却する値を変更することができます。
+     * </p>
+     *
+     * <p>
+     * {@link DConnectServiceSpec} が設定されていない場合には、{@link DConnectServiceProvider#addService(DConnectService)}
+     * のタイミングで、プロファイル定義を assets から読み込みます。
+     * </p>
+     *
+     * @param serviceSpec サービスで使用される API の定義
+     */
+    public void setServiceSpec(DConnectServiceSpec serviceSpec) {
+        mServiceSpec = serviceSpec;
+    }
+
+    /**
+     * サービスで使用される API の定義を取得します.
+     *
+     * @return サービスで使用される API の定義
+     */
+    public DConnectServiceSpec getServiceSpec() {
+        return mServiceSpec;
+    }
+
     @Override
     public List<DConnectProfile> getProfileList() {
-        List<DConnectProfile> list = new ArrayList<DConnectProfile>();
-        for (DConnectProfile profile : mProfiles.values()) {
-            list.add(profile);
-        }
-        return list;
+        return new ArrayList<>(mProfiles.values());
     }
 
     @Override
@@ -221,7 +273,11 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
         if (profile == null) {
             return;
         }
+
         profile.setService(this);
+        profile.setContext(mContext);
+        profile.setPluginContext(mPluginContext);
+        profile.setResponder(mPluginContext);
         mProfiles.put(profile.getProfileName().toLowerCase(), profile);
     }
 

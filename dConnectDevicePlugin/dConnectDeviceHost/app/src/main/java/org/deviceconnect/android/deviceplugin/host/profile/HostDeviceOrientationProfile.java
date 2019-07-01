@@ -14,7 +14,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 
-import org.deviceconnect.android.deviceplugin.host.HostDeviceService;
 import org.deviceconnect.android.event.Event;
 import org.deviceconnect.android.event.EventError;
 import org.deviceconnect.android.event.EventManager;
@@ -35,6 +34,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author NTT DOCOMO, INC.
  */
 public class HostDeviceOrientationProfile extends DeviceOrientationProfile implements SensorEventListener {
+
+    /** 取得するべきセンサーの数. */
+    private static final int NO_SENSOR = 3;
 
     /** SensorManager. */
     private SensorManager mSensorManager;
@@ -194,14 +196,13 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
                 public void onSensorChanged(final SensorEvent event) {
                     processSensorData(event);
 
-                    if (mIsAccellReady.get() && mIsGravityReady.get() && mIsGyroReady.get()) {
+                    if (mIsAccellReady.get() || mIsGravityReady.get() || mIsGyroReady.get()) {
                         mAccelLastTime = System.currentTimeMillis();
 
                         Bundle orientation = createOrientation();
                         setResult(response, DConnectMessage.RESULT_OK);
                         setOrientation(response, orientation);
-                        HostDeviceService service = (HostDeviceService) getContext();
-                        service.sendResponse(response);
+                        sendResponse(response);
 
                         if (isEmptyEventList()) {
                             mSensorManager.unregisterListener(this);
@@ -217,13 +218,13 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
 
             mSensorManager = getSensorManager();
             sensors = mSensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+            int unsupported = 0;
             if (sensors.size() > 0) {
                 Sensor sensor = sensors.get(0);
                 mSensorManager.registerListener(l, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
             } else {
-                MessageUtils.setNotSupportAttributeError(response);
-                return true;
+                unsupported++;
             }
 
             sensors = mSensorManager
@@ -233,8 +234,7 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
                 mSensorManager.registerListener(l, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
             } else {
-                MessageUtils.setNotSupportAttributeError(response);
-                return true;
+                unsupported++;
             }
 
             sensors = mSensorManager.getSensorList(Sensor.TYPE_GYROSCOPE);
@@ -243,6 +243,10 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
                 mSensorManager.registerListener(l, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
             } else {
+                unsupported++;
+            }
+
+            if (unsupported == NO_SENSOR) {
                 MessageUtils.setNotSupportAttributeError(response);
                 return true;
             }
@@ -274,14 +278,14 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
         mAccelLastTime = System.currentTimeMillis();
 
         List<Sensor> sensors;
+        int unsupported = 0;
         sensors = mSensorManager
                 .getSensorList(Sensor.TYPE_ACCELEROMETER);
         if (sensors.size() > 0) {
             Sensor sensor = sensors.get(0);
             mSensorManager.registerListener(this, sensor, (int)mSensorInterval * 1000);
         } else {
-            MessageUtils.setNotSupportAttributeError(response);
-            return;
+            unsupported++;
         }
 
         sensors = mSensorManager
@@ -290,8 +294,7 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
             Sensor sensor = sensors.get(0);
             mSensorManager.registerListener(this, sensor, (int)mSensorInterval * 1000);
         } else {
-            MessageUtils.setNotSupportAttributeError(response);
-            return;
+            unsupported++;
         }
 
         sensors = mSensorManager.getSensorList(Sensor.TYPE_GYROSCOPE);
@@ -299,6 +302,10 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
             Sensor sensor = sensors.get(0);
             mSensorManager.registerListener(this, sensor, (int)mSensorInterval * 1000);
         } else {
+            unsupported++;
+        }
+
+        if (unsupported == NO_SENSOR) {
             MessageUtils.setNotSupportAttributeError(response);
             return;
         }
@@ -388,7 +395,7 @@ public class HostDeviceOrientationProfile extends DeviceOrientationProfile imple
     public void onSensorChanged(final SensorEvent sensorEvent) {
         processSensorData(sensorEvent);
 
-        if (mIsAccellReady.get() && mIsGravityReady.get() && mIsGyroReady.get()) {
+        if (mIsAccellReady.get() || mIsGravityReady.get() || mIsGyroReady.get()) {
             Bundle orientation = createOrientation();
             mAccelLastTime = System.currentTimeMillis();
 

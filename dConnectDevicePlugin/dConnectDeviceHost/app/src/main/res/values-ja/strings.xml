@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="host_ok">OK</string>
+    <string name="host_confirm">確認</string>
     <string name="app_name_host">Host (Device Connect Device Plug-in)</string>
 
-    <string name="shutter">シャッター</string>
+    <string name="shuttered">シャッター</string>
+    <string name="started_video_recording">録画開始</string>
+    <string name="stopped_video_recording">録画終了</string>
     <string name="zoomin">ズームイン</string>
     <string name="zoomout">ズームアウト</string>
 
@@ -23,6 +26,12 @@
     <string name="overlay_preview_content_message">タップして撮影を停止します。</string>
 
     <string name="host_settings_title">Host設定</string>
+    <string name="host_settings_item_gps">GPS</string>
+    <string name="host_settings_item_jpeg_quality_preview">JPEG 品質 - プレビュー</string>
+    <string name="host_settings_item_demo_page">デモページ</string>
+    <string name="pref_key_settings_gps">pref_key_settings_gps</string>
+    <string name="pref_key_settings_jpeg_quality_preview">pref_key_settings_jpeg_quality_preview</string>
+    <string name="pref_key_settings_demo_page">pref_key_settings_demo_page</string>
 
     <string name="gps_settings_title">GPS設定</string>
     <string name="gps_settings_body">このデバイスプラグインでは、GPS機能を使用しますので、端末のGPS設定画面より設定をONにしてください。</string>
@@ -31,6 +40,11 @@
     <string name="gps_settings_gps_permission">位置情報の許可</string>
     <string name="gps_settings_gps_permission_on">取得済み</string>
     <string name="gps_settings_gps_permission_off">取得</string>
+
+    <string name="recorder_settings_preview_jpeg_title">JPEG品質 - プレビュー</string>
+
+    <string name="demo_page_description">Host プラグインはカメラ機能等のデモページを提供します。\n\n外部ストレージにインストールすると Web ブラウザからデモページにアクセスできるようになります。</string>
+    <string name="demo_page_shortcut_label">カメラ</string>
 
     <string name="host_setting_dialog_error_permission">GPSを使用するためのパーミッションが許可されていないために検索できません。\nGPS設定画面から位置情報の許可を取得してください。</string>
     <string name="host_setting_dialog_disable_gps">GPSが無効になっているために検索できません。\nGPS設定画面からGPSを有効に設定してください。</string>

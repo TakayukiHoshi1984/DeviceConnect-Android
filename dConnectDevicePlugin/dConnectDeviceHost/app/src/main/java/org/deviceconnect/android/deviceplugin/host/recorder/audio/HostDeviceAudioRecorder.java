@@ -57,6 +57,7 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
     private RecorderState mState;
     public HostDeviceAudioRecorder(final Context context) {
         mContext = context;
+        mState = RecorderState.INACTTIVE;
     }
 
     @Override
@@ -67,6 +68,11 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
     @Override
     public void clean() {
         stopRecording(null);
+    }
+
+    @Override
+    public void destroy() {
+        // Nothing to do.
     }
 
     @Override
@@ -91,6 +97,11 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
 
     @Override
     public String getMimeType() {
+        return MIME_TYPE;
+    }
+
+    @Override
+    public String getStreamMimeType() {
         return MIME_TYPE;
     }
 
@@ -155,6 +166,21 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
     }
 
     @Override
+    public void mute() {
+
+    }
+
+    @Override
+    public void unMute() {
+
+    }
+
+    @Override
+    public boolean isMuted() {
+        return false;
+    }
+
+    @Override
     public List<String> getSupportedMimeTypes() {
         return mMimeTypes;
     }
@@ -181,8 +207,10 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
                 if (resultCode == Activity.RESULT_OK) {
+                    mState = RecorderState.RECORDING;
                     listener.onRecorded(HostDeviceAudioRecorder.this, mNowRecordingFileName);
                 } else {
+                    mState = RecorderState.ERROR;
                     String msg =
                         resultData.getString(VideoConst.EXTRA_CALLBACK_ERROR_MESSAGE, "Unknown error.");
                     listener.onFailed(HostDeviceAudioRecorder.this, msg);
@@ -220,6 +248,10 @@ public class HostDeviceAudioRecorder implements HostDeviceRecorder, HostDeviceSt
         Intent intent = new Intent(AudioConst.SEND_HOSTDP_TO_AUDIO);
         intent.putExtra(AudioConst.EXTRA_NAME, AudioConst.EXTRA_NAME_AUDIO_RECORD_RESUME);
         mContext.sendBroadcast(intent);
+    }
+
+    @Override
+    public void onDisplayRotation(final int degree) {
     }
 
     private String getClassnameOfTopActivity() {
