@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.View;
@@ -44,6 +45,12 @@ public class ExternalDisplayMediaPlayerPresentation extends Presentation impleme
                                                   final ExternalDisplayService edService,
                                                   final Uri uri) {
         super(outerContext, display);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            super.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+        } else {
+            super.getWindow().setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+        }
+
         mEDService = edService;
         mUri = uri;
     }

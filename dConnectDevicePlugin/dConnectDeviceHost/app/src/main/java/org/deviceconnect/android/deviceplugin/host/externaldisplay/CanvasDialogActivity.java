@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.Window;
 
@@ -138,7 +139,7 @@ public class CanvasDialogActivity extends Activity {
                 }
                 mDialog = new DownloadMessageDialogFragment();
                 mDialog.show(getFragmentManager(), "dialog");
-                BroadcastReceiver receiver = new BroadcastReceiver() {
+                final BroadcastReceiver receiver = new BroadcastReceiver() {
                     @Override
                     public void onReceive(Context context, Intent intent) {
                         if (mDialog != null) {
@@ -152,6 +153,14 @@ public class CanvasDialogActivity extends Activity {
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(ACTION_DISMISS_DOWNLAOD_DIALOG);
                 LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
+                new Handler().postDelayed(() -> {
+                    if (mDialog != null) {
+                        mDialog.dismiss();
+                        mDialog = null;
+                    }
+                    LocalBroadcastManager.getInstance(CanvasDialogActivity.this).unregisterReceiver(receiver);
+                    finish();
+                }, 10000);
                 break;
             case DismissDownload:
                 break;

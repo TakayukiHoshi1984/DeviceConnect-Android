@@ -6,14 +6,17 @@
  */
 package org.deviceconnect.android.deviceplugin.host.externaldisplay;
 
+import android.app.AlertDialog;
 import android.app.Presentation;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.Window;
@@ -67,6 +70,11 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
                                              final ExternalDisplayService service,
                                              final CanvasDrawImageObject drawObject) {
         super(outerContext, display);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            super.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+        } else {
+            super.getWindow().setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+        }
         mDrawImageObject = drawObject;
         mEDService = service;
     }
@@ -95,7 +103,6 @@ public class ExternalDisplayCanvasPresentation extends Presentation implements C
                 CanvasDrawImageObject.ACTION_EXTERNAL_DISPLAY_DRAW_CANVAS,
                 CanvasDrawImageObject.ACTION_EXTERNAL_DISPLAY_DELETE_CANVAS);
     }
-
     @Override
     protected void onStart() {
         super.onStart();

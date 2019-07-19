@@ -22,6 +22,7 @@ import org.deviceconnect.android.deviceplugin.host.canvas.CanvasDrawImageObject;
 import org.deviceconnect.android.deviceplugin.host.canvas.HostCanvasSettings;
 import org.deviceconnect.android.deviceplugin.host.externaldisplay.profile.ExternalDisplayCanvasProfile;
 import org.deviceconnect.android.deviceplugin.host.profile.HostMediaPlayerProfile;
+import org.deviceconnect.android.deviceplugin.host.recorder.util.CapabilityUtil;
 import org.deviceconnect.android.message.DevicePluginContext;
 import org.deviceconnect.android.service.DConnectService;
 import org.deviceconnect.android.service.DConnectServiceProvider;
@@ -87,16 +88,29 @@ public class ExternalDisplayService extends DConnectService {
             mCanvasPresentation.updateCanvasDisplay(drawImageObject);
             return;
         }
+        CapabilityUtil.checkCapability(getContext(), new Handler(Looper.getMainLooper()), new CapabilityUtil.Callback() {
 
-        mMainHandler.post(() -> {
-            mCanvasPresentation = new ExternalDisplayCanvasPresentation(getContext(), mPresentationDisplay, this, drawImageObject);
-            mCanvasPresentation.setOnDismissListener(mOnDismissListener);
-            try {
-                mCanvasPresentation.show();
-            } catch (WindowManager.InvalidDisplayException ex) {
+            @Override
+            public void onSuccess() {
+                mMainHandler.post(() -> {
+                    try {
+                        mCanvasPresentation = new ExternalDisplayCanvasPresentation(getContext(),
+                                mPresentationDisplay, ExternalDisplayService.this, drawImageObject);
+                        mCanvasPresentation.setOnDismissListener(mOnDismissListener);
+                        mCanvasPresentation.show();
+                    } catch (IllegalArgumentException | WindowManager.InvalidDisplayException ex) {
+                        Log.w(TAG, "Couldn't show presentation!  Display was removed in "
+                                + "the meantime.", ex);
+                        mCanvasPresentation = null;
+                    }
+                });
+            }
+
+            @Override
+            public void onFail() {
                 Log.w(TAG, "Couldn't show presentation!  Display was removed in "
-                        + "the meantime.", ex);
-                mCanvasPresentation = null;
+                        + "the meantime.");
+                mMediaPlayerPresentation = null;
             }
         });
     }
@@ -114,15 +128,28 @@ public class ExternalDisplayService extends DConnectService {
             mMediaPlayerPresentation.dismiss();
             mMediaPlayerPresentation = null;
         }
+        CapabilityUtil.checkCapability(getContext(), new Handler(Looper.getMainLooper()), new CapabilityUtil.Callback() {
 
-        mMainHandler.post(() -> {
-            mMediaPlayerPresentation = new ExternalDisplayMediaPlayerPresentation(getContext(), mPresentationDisplay, this, uri);
-            mMediaPlayerPresentation.setOnDismissListener(mOnDismissListener);
-            try {
-                mMediaPlayerPresentation.show();
-            } catch (WindowManager.InvalidDisplayException ex) {
+            @Override
+            public void onSuccess() {
+                mMainHandler.post(() -> {
+                    try {
+                        mMediaPlayerPresentation = new ExternalDisplayMediaPlayerPresentation(getContext(),
+                                mPresentationDisplay, ExternalDisplayService.this, uri);
+                        mMediaPlayerPresentation.setOnDismissListener(mOnDismissListener);
+                        mMediaPlayerPresentation.show();
+                    } catch (IllegalArgumentException | WindowManager.InvalidDisplayException ex) {
+                        Log.w(TAG, "Couldn't show presentation!  Display was removed in "
+                                + "the meantime.", ex);
+                        mMediaPlayerPresentation = null;
+                    }
+                });
+            }
+
+            @Override
+            public void onFail() {
                 Log.w(TAG, "Couldn't show presentation!  Display was removed in "
-                        + "the meantime.", ex);
+                        + "the meantime.");
                 mMediaPlayerPresentation = null;
             }
         });
