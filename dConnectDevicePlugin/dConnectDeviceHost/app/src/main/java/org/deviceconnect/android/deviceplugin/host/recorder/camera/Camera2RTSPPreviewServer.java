@@ -30,6 +30,9 @@ import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperException;
 import org.deviceconnect.android.deviceplugin.host.recorder.AbstractPreviewServerProvider;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
+import org.deviceconnect.android.streaming.opus.OpusAudioQuality;
+import org.deviceconnect.android.streaming.opus.OpusStream;
+import org.deviceconnect.opuscodec.OpusEncoder;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -65,8 +68,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private volatile boolean mIsRecording;
     private boolean requestDraw;
     private DrawTask mScreenCaptureTask;
-    private AACStream mAac;
-
+//    private AACStream mAac;
+    private OpusStream mOpus;
     Camera2RTSPPreviewServer(final Context context,
                              final AbstractPreviewServerProvider serverProvider,
                              final Camera2Recorder recorder) {
@@ -83,8 +86,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void mute() {
         super.mute();
-        if (mAac != null) {
-            mAac.mute();
+        if (mOpus != null) {
+            mOpus.mute();
         }
     }
 
@@ -93,8 +96,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void unMute() {
         super.unMute();
-        if (mAac != null) {
-            mAac.unMute();
+        if (mOpus != null) {
+            mOpus.unMute();
         }
     }
     @Override
@@ -219,13 +222,20 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         builder.setVideoStream(mVideoStream);
-        mAac = new AACStream();
+        OpusAudioQuality quality = new OpusAudioQuality();
+
+        quality.samplingRate = 16000;
+        quality.frameSize = 50;
+        quality.bitRate = OpusEncoder.BITRATE_MAX;
+        quality.application = OpusEncoder.Application.E_AUDIO;
+
+        mOpus = new OpusStream(quality);
         if (isMuted()) {
-            mAac.mute();
+            mOpus.mute();
         } else {
-            mAac.unMute();
+            mOpus.unMute();
         }
-        builder.setAudioStream(mAac);
+        builder.setAudioStream(mOpus);
         builder.setVideoQuality(videoQuality);
 
         Session session = builder.build();
