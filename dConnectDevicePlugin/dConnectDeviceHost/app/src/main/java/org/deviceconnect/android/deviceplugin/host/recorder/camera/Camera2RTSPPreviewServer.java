@@ -49,7 +49,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
     static final String MIME_TYPE = "video/x-rtp";
 
-    private static final String SERVER_NAME = "Android Host Screen RTSP Server";
+    private static final String SERVER_NAME = "Android Host Camera2 RTSP Server";
 
     private final Object mLockObj = new Object();
 
@@ -68,8 +68,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private volatile boolean mIsRecording;
     private boolean requestDraw;
     private DrawTask mScreenCaptureTask;
-//    private AACStream mAac;
-    private OpusStream mOpus;
+    private AACStream mAac;
     Camera2RTSPPreviewServer(final Context context,
                              final AbstractPreviewServerProvider serverProvider,
                              final Camera2Recorder recorder) {
@@ -86,8 +85,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void mute() {
         super.mute();
-        if (mOpus != null) {
-            mOpus.mute();
+        if (mAac != null) {
+            mAac.mute();
         }
     }
 
@@ -96,8 +95,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void unMute() {
         super.unMute();
-        if (mOpus != null) {
-            mOpus.unMute();
+        if (mAac != null) {
+            mAac.unMute();
         }
     }
     @Override
@@ -107,13 +106,17 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 mRtspServer = new RtspServerImpl(SERVER_NAME);
                 mRtspServer.setPort(20000);
                 mRtspServer.setDelegate(Camera2RTSPPreviewServer.this);
+                Log.d("ABC", "camera1");
+
                 if (!mRtspServer.start()) {
+                    Log.d("ABC", "camera2");
                     callback.onFail();
                     return;
                 }
             }
+            Log.d("ABC", "camera3");
             if (mHandler == null) {
-                HandlerThread thread = new HandlerThread("ScreenCastRTSPPreviewServer");
+                HandlerThread thread = new HandlerThread("Camera2RTSPPreviewServer");
                 thread.start();
                 mHandler = new Handler(thread.getLooper());
             }
@@ -173,7 +176,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     }
 
     @Override
-    public Session generateSession(final String uri, final Socket clientSocket) {
+    public Session generateSession(final String uri, final String redirectUri,  final Socket clientSocket) {
         try {
             if (mRecorder.isStartedPreview()) {
                 return null;
@@ -222,20 +225,14 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         builder.setVideoStream(mVideoStream);
-        OpusAudioQuality quality = new OpusAudioQuality();
 
-        quality.samplingRate = 16000;
-        quality.frameSize = 50;
-        quality.bitRate = OpusEncoder.BITRATE_MAX;
-        quality.application = OpusEncoder.Application.E_AUDIO;
-
-        mOpus = new OpusStream(quality);
+        mAac = new AACStream();
         if (isMuted()) {
-            mOpus.mute();
+            mAac.mute();
         } else {
-            mOpus.unMute();
+            mAac.unMute();
         }
-        builder.setAudioStream(mOpus);
+        builder.setAudioStream(mAac);
         builder.setVideoQuality(videoQuality);
 
         Session session = builder.build();

@@ -13,14 +13,13 @@ public class OpusStream extends AudioStream {
     private boolean muted = true;
 
     public OpusStream(OpusAudioQuality quality) {
-        super();
         mQuality = quality;
     }
     @Override
     public synchronized void start() throws IllegalStateException, IOException {
         if (!mStreaming) {
             configure();
-            super.start();
+            encodeWithMediaCodec();
         }
     }
     /** Stops the stream. */
@@ -32,17 +31,18 @@ public class OpusStream extends AudioStream {
                     mThread.interrupt();
                 }
             }
-            super.stop();
+            mPacketizer.stop();
+            mStreaming = false;
         }
     }
     public synchronized void configure() throws IllegalStateException, IOException {
         super.configure();
-        mSessionDescription = "m=audio "+getDestinationPorts()[0]+" RTP/AVP 109\r\n" +
-                "a=rtpmap:109 opus/"+mQuality.samplingRate+"/1\r\n"+
-                "a=fmtp:109 maxplaybackrate=16000; sprop-maxcapturerate=16000; maxaveragebitrate=20000; stereo=1; useinbandfec=1; usedtx=0\r\n";
-//                "a=fmtp:109 minptime=10; useinbandfec=1; maxaveragebitrate=131072; stereo=1; sprop-stereo=1; cbr=1;\r\n";
+        mSessionDescription = "m=audio "+getDestinationPorts()[0]+" RTP/AVP 111\r\n" +
+                "a=rtpmap:111 opus/"+mQuality.samplingRate+"/1\r\n"+
+                "a=fmtp:111 maxplaybackrate=16000; sprop-maxcapturerate=16000; maxaveragebitrate=20000; stereo=1; useinbandfec=1; usedtx=0\r\n";
         mPacketizer = new OpusPacketizer(mQuality);
         mPacketizer.setDestination(mDestination, mRtpPort, mRtcpPort);
+
         if (isMuted()) {
             ((OpusPacketizer) mPacketizer).mute();
         } else {

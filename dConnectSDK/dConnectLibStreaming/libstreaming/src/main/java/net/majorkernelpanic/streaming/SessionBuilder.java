@@ -46,6 +46,8 @@ public class SessionBuilder {
 	private String mOrigin = null;
 	private String mDestination = null;
 	private Session.Callback mCallback = null;
+	private int mVideoDestinationPorts = 5006;
+	private int mAudioDestinationPorts = 5004;
 
 	/**
 	 * Creates a new {@link Session}.
@@ -94,13 +96,13 @@ public class SessionBuilder {
 			    video.setSurfaceView(mSurfaceView);
             }
 			video.setPreviewOrientation(mOrientation);
-			video.setDestinationPorts(5006);
+			video.setDestinationPorts(mVideoDestinationPorts);
 		}
 
 		if (session.getAudioTrack() != null) {
 			AudioStream audio = session.getAudioTrack();
 			audio.setAudioQuality(mAudioQuality);
-			audio.setDestinationPorts(5004);
+			audio.setDestinationPorts(mAudioDestinationPorts);
 		}
 
 		return session;
@@ -151,6 +153,15 @@ public class SessionBuilder {
 
 	public SessionBuilder setTimeToLive(int ttl) {
 		mTimeToLive = ttl;
+		return this;
+	}
+
+	public SessionBuilder setVideoDestinationPorts(int ports) {
+		mVideoDestinationPorts = ports;
+		return this;
+	}
+	public SessionBuilder setAudioDestinationPorts(int ports) {
+		mAudioDestinationPorts = ports;
 		return this;
 	}
 
@@ -210,6 +221,15 @@ public class SessionBuilder {
 	public int getTimeToLive() {
 		return mTimeToLive;
 	}
+	/** Returns the VideoQuality set with {@link #setVideoQuality(VideoQuality)}. */
+	public int getVideoDestinationPorts() {
+		return mVideoDestinationPorts;
+	}
+
+	/** Returns the AudioQuality set with {@link #setAudioQuality(AudioQuality)}. */
+	public int getAudioDestinationPorts() {
+		return mAudioDestinationPorts;
+	}
 
 	/** Returns a new {@link SessionBuilder} with the same configuration. */
 	public SessionBuilder clone() {
@@ -224,7 +244,10 @@ public class SessionBuilder {
 		.setAudioStream(mAudioStream)
 		.setAudioQuality(mAudioQuality)
 		.setContext(mContext)
-		.setCallback(mCallback);
+		.setCallback(mCallback)
+		.setAudioDestinationPorts(mAudioDestinationPorts)
+		.setVideoDestinationPorts(mVideoDestinationPorts);
+
 	}
 
 }
