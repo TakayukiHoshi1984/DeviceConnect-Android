@@ -42,7 +42,6 @@ public class OpusStream extends AudioStream {
                 "a=fmtp:111 maxplaybackrate=16000; sprop-maxcapturerate=16000; maxaveragebitrate=20000; stereo=1; useinbandfec=1; usedtx=0\r\n";
         mPacketizer = new OpusPacketizer(mQuality);
         mPacketizer.setDestination(mDestination, mRtpPort, mRtcpPort);
-
         if (isMuted()) {
             ((OpusPacketizer) mPacketizer).mute();
         } else {

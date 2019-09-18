@@ -1,6 +1,5 @@
 package org.deviceconnect.android.streaming.opus;
 
-import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -16,58 +15,29 @@ import org.deviceconnect.opuscodec.OpusUdpSender;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Arrays;
 import java.util.Random;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 import static net.majorkernelpanic.streaming.rtp.RtpSocket.MTU;
 
-public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecorder.AudioRecordCallback, Runnable {
+public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecorder.AudioRecordCallback {
     private final static String TAG = "OpusPacketizer";
     private OpusAudioQuality mQuality;
-    private long mOldts;
     private MicAudioRecorder mMicAudioRecorder;
     /** Opus Udp Sender. */
     private OpusUdpSender mUdpSender;
     private boolean muted = false;
-    private byte[][] mBuffers;
 
     private SenderReport mReport;
 
-    private Semaphore mBufferRequested;
-    private Semaphore mBufferCommitted;
-    private Thread mThread;
-
-    private int mTransport;
-    private long mCacheSize;
-    private int mBufferCount, mBufferIn, mBufferOut;
-    private int mCount = 0;
-
     public OpusPacketizer(final OpusAudioQuality quality) {
         mQuality = quality;
-        mCacheSize = 0;
-        mBufferCount = 300; // TODO: readjust that when the FIFO is full
-        mBuffers = new byte[mBufferCount][];
-//        mUdpSender = new OpusUdpSender[mBufferCount];
         mReport = new SenderReport();
-        resetFifo();
-    }
-    private void resetFifo() {
-        mCount = 0;
-        mBufferIn = 0;
-        mBufferOut = 0;
-        mBufferRequested = new Semaphore(mBufferCount);
-        mBufferCommitted = new Semaphore(0);
-        mReport.reset();
     }
     @Override
     public void setDestination(InetAddress dest, int rtpPort, int rtcpPort) {
         try {
             String ip = dest != null ? dest.getHostAddress() : "127.0.0.1";
-//            for (int i = 0; i < mBufferCount; i++) {
-                mUdpSender = new OpusUdpSender(ip, rtpPort);
-//            }
+            mUdpSender = new OpusUdpSender(ip, rtpPort);
             mReport.setDestination(dest, rtcpPort);
             mReport.setSSRC(new Random().nextInt());
 
@@ -145,23 +115,12 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
     @Override
     public void onPeriodicNotification(final byte[] opusFrameBuffer, final int opusFrameBufferLength) {
         if (!isMuted()) {
-//            try {
-//                mBufferRequested.acquire();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//
-//            mBuffers[mBufferIn] = Arrays.copyOf(opusFrameBuffer, opusFrameBufferLength);
-//            if (++mBufferIn >= mBufferCount) {
-//                mBufferIn = 0;
-//            }
-//            mBufferCommitted.release();
-//
-//            if (mThread == null) {
-//                mThread = new Thread(this);
-//                mThread.setPriority(Thread.MAX_PRIORITY);
-//                mThread.start();
-//            }
+            try {
+                mReport.update(MTU, (SystemClock.elapsedRealtime() / 100L) * (16000 / 1000L) / 10000L);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             mUdpSender.send(opusFrameBuffer, opusFrameBufferLength);
         }
     }
@@ -178,37 +137,5 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
     }
     public boolean isMuted() {
         return muted;
-    }
-
-    @Override
-    public void run() {
-        Process.setThreadPriority(Process.THREAD_PRIORITY_MORE_FAVORABLE);
-
-        try {
-            // Caches mCacheSize milliseconds of the stream in the FIFO.
-            if (mCacheSize > 0) {
-                Thread.sleep(mCacheSize);
-            }
-
-            while (mBufferCommitted.tryAcquire(4, TimeUnit.SECONDS)) {
-                final int offset = mBufferOut;
-//                final OpusUdpSender packet = mUdpSender[offset];
-                final byte[] buffer = mBuffers[mBufferOut];
-
-                mReport.update(MTU, (SystemClock.elapsedRealtime() / 100L) * (16000 / 1000L) / 10000L);
-
-                if (mCount++ > 30) {
-//                    packet.send(buffer, buffer.length);
-                }
-                if (++mBufferOut >= mBufferCount) {
-                    mBufferOut = 0;
-                }
-                mBufferRequested.release();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        mThread = null;
-        resetFifo();
     }
 }
