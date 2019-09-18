@@ -31,7 +31,7 @@ public class RtspServerImpl implements RtspServer {
     private String mName;
     private final Delegate mDefaultDelegate = new Delegate() {
         @Override
-        public Session generateSession(final String uri, final String redirectUri, final Socket client) {
+        public Session generateSession(final String uri, final Socket client) {
             return null;
         }
 
@@ -310,9 +310,8 @@ public class RtspServerImpl implements RtspServer {
             /* ********************************* Method DESCRIBE ******************************** */
             /* ********************************************************************************** */
             if (method.equalsIgnoreCase("DESCRIBE")) {
-                String redirectUri = request.getHeader("location");
                 // Parse the requested URI and configure the session
-                mSession = getDelegate().generateSession(request.getUri(), redirectUri, mClient);
+                mSession = getDelegate().generateSession(request.getUri(), mClient);
                 if (mSession == null) {
                     // セッションの作成に失敗
                     response.status = RtspResponse.STATUS_INTERNAL_SERVER_ERROR;

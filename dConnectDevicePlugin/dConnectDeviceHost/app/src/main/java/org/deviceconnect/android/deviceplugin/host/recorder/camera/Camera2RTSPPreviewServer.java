@@ -176,7 +176,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     }
 
     @Override
-    public Session generateSession(final String uri, final String redirectUri,  final Socket clientSocket) {
+    public Session generateSession(final String uri, final Socket clientSocket) {
         try {
             if (mRecorder.isStartedPreview()) {
                 return null;

@@ -149,7 +149,7 @@ class ScreenCastRTSPPreviewServer extends ScreenCastPreviewServer implements Rts
     }
 
     @Override
-    public Session generateSession(final String uri, final String redirectUri, final Socket clientSocket) {
+    public Session generateSession(final String uri, final Socket clientSocket) {
         try {
             return startScreenCast(clientSocket);
         } catch (IOException e) {

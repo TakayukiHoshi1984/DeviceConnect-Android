@@ -40,7 +40,7 @@ public interface RtspServer {
          * @param client 接続元のクライアント
          * @return 作成したセッション
          */
-        Session generateSession(String uri, String redirectUri, Socket client);
+        Session generateSession(String uri, Socket client);
 
         /**
          * セッション削除時に呼び出されるメソッド.

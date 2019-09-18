@@ -64,7 +64,7 @@ class OpusRtspServer extends AbstractRTSPPreviewServer implements RtspServer.Del
     }
 
     @Override
-    public Session generateSession(String uri, String redirectUri, Socket client) {
+    public Session generateSession(String uri, Socket client) {
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         OpusAudioQuality quality = new OpusAudioQuality();
