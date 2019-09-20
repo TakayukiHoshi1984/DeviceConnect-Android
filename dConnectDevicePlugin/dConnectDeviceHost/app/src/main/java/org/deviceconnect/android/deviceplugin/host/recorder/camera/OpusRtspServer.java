@@ -64,7 +64,7 @@ class OpusRtspServer extends AbstractRTSPPreviewServer implements RtspServer.Del
     }
 
     @Override
-    public Session generateSession(String uri, Socket client) {
+    public Session generateSession(String uri,Socket client) {
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         OpusAudioQuality quality = new OpusAudioQuality();
@@ -107,14 +107,11 @@ class OpusRtspServer extends AbstractRTSPPreviewServer implements RtspServer.Del
                 mRtspServer = new RtspServerImpl(SERVER_NAME);
                 mRtspServer.setPort(OPUS_RTSP_SERVER_PORT);
                 mRtspServer.setDelegate(this);
-                Log.d("ABC", "opus1");
                 if (!mRtspServer.start()) {
-                    Log.d("ABC", "opus2");
                     callback.onFail();
                     return;
                 }
             }
-            Log.d("ABC", "opus3");
             if (mHandler == null) {
                 HandlerThread thread = new HandlerThread("OpusRtspServer");
                 thread.start();

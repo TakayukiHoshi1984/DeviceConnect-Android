@@ -3,6 +3,7 @@ package org.deviceconnect.android.deviceplugin.host.recorder.camera;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.SurfaceTexture;
+import android.net.Uri;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Build;
@@ -69,6 +70,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private boolean requestDraw;
     private DrawTask mScreenCaptureTask;
     private AACStream mAac;
+    private OpusStream mOpus;
     Camera2RTSPPreviewServer(final Context context,
                              final AbstractPreviewServerProvider serverProvider,
                              final Camera2Recorder recorder) {
@@ -85,8 +87,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void mute() {
         super.mute();
-        if (mAac != null) {
-            mAac.mute();
+        if (mOpus != null) {
+            mOpus.mute();
         }
     }
 
@@ -95,8 +97,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void unMute() {
         super.unMute();
-        if (mAac != null) {
-            mAac.unMute();
+        if (mOpus != null) {
+            mOpus.unMute();
         }
     }
     @Override
@@ -106,15 +108,11 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 mRtspServer = new RtspServerImpl(SERVER_NAME);
                 mRtspServer.setPort(20000);
                 mRtspServer.setDelegate(Camera2RTSPPreviewServer.this);
-                Log.d("ABC", "camera1");
-
                 if (!mRtspServer.start()) {
-                    Log.d("ABC", "camera2");
                     callback.onFail();
                     return;
                 }
             }
-            Log.d("ABC", "camera3");
             if (mHandler == null) {
                 HandlerThread thread = new HandlerThread("Camera2RTSPPreviewServer");
                 thread.start();
@@ -219,20 +217,29 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             mVideoStream = new SurfaceH264Stream(prefs, videoQuality);
             mScreenCaptureTask = new DrawTask(null, 0, videoQuality);
             mIsRecording = true;
-            new Thread(mScreenCaptureTask, "ScreenCaptureThread").start();
+            new Thread(mScreenCaptureTask, "Camera2CaptureThread").start();
         }
+        OpusAudioQuality quality = new OpusAudioQuality();
+        quality.samplingRate = 16000;
+        quality.frameSize = 200;
+        quality.bitRate = OpusEncoder.BITRATE_MAX;
+        quality.application = OpusEncoder.Application.E_AUDIO;
+        OpusStream opus = new OpusStream(quality);
+        // ミュートを解除する
+        // Hostプラグイン側と辻褄を合わせるためにこのようにしている。
+        opus.unMute();
 
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         builder.setVideoStream(mVideoStream);
-
-        mAac = new AACStream();
-        if (isMuted()) {
-            mAac.mute();
-        } else {
-            mAac.unMute();
-        }
-        builder.setAudioStream(mAac);
+        builder.setAudioStream(opus);
+//        mAac = new AACStream();
+//        if (isMuted()) {
+//            mAac.mute();
+//        } else {
+//            mAac.unMute();
+//        }
+//        builder.setAudioStream(mAac);
         builder.setVideoQuality(videoQuality);
 
         Session session = builder.build();

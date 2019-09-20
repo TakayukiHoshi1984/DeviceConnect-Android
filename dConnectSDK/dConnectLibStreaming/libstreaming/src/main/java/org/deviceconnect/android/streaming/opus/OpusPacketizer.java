@@ -1,10 +1,8 @@
 package org.deviceconnect.android.streaming.opus;
 
-import android.os.SystemClock;
 import android.util.Log;
 
 import net.majorkernelpanic.streaming.BuildConfig;
-import net.majorkernelpanic.streaming.rtcp.SenderReport;
 import net.majorkernelpanic.streaming.rtp.AbstractPacketizer;
 
 import org.deviceconnect.opuscodec.MicAudioRecorder;
@@ -12,35 +10,51 @@ import org.deviceconnect.opuscodec.NativeInterfaceFailure;
 import org.deviceconnect.opuscodec.OpusEncoder;
 import org.deviceconnect.opuscodec.OpusUdpSender;
 
-
-import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.Random;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
-import static net.majorkernelpanic.streaming.rtp.RtpSocket.MTU;
-
-public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecorder.AudioRecordCallback {
+public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecorder.AudioRecordCallback, Runnable {
     private final static String TAG = "OpusPacketizer";
     private OpusAudioQuality mQuality;
     private MicAudioRecorder mMicAudioRecorder;
     /** Opus Udp Sender. */
     private OpusUdpSender mUdpSender;
     private boolean muted = false;
+    private Thread mThread;
+    private DatagramPacket[] mPackets;
+    private byte[] mBuf = new byte[4096];
 
-    private SenderReport mReport;
+    private Semaphore mBufferRequested;
+    private Semaphore mBufferCommitted;
+
+    private int mBufferCount, mBufferIn, mBufferOut;
+    private int mCount = 0;
 
     public OpusPacketizer(final OpusAudioQuality quality) {
         mQuality = quality;
-        mReport = new SenderReport();
+        mBufferCount = 300; // TODO: readjust that when the FIFO is full
+        mPackets = new DatagramPacket[mBufferCount];
+        for (int i = 0; i < mBufferCount; i++) {
+            mPackets[i] = new DatagramPacket(mBuf, mBuf.length);
+        }
+        resetFifo();
+
     }
+    private void resetFifo() {
+        mCount = 0;
+        mBufferIn = 0;
+        mBufferOut = 0;
+        mBufferRequested = new Semaphore(mBufferCount);
+        mBufferCommitted = new Semaphore(0);
+    }
+
     @Override
     public void setDestination(InetAddress dest, int rtpPort, int rtcpPort) {
         try {
             String ip = dest != null ? dest.getHostAddress() : "127.0.0.1";
             mUdpSender = new OpusUdpSender(ip, rtpPort);
-            mReport.setDestination(dest, rtcpPort);
-            mReport.setSSRC(new Random().nextInt());
-
         } catch (Exception e) {
             if (BuildConfig.DEBUG) {
                 Log.e(TAG, "sender init error", e);
@@ -53,6 +67,7 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
         if (isMuted()) {
             return;
         }
+
         OpusEncoder.SamplingRate samplingRate = convertSamplingRate(mQuality.samplingRate);
         OpusEncoder.FrameSize frameSize = convertFrameSize(mQuality.frameSize);
         try {
@@ -68,6 +83,7 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
                 Log.e(TAG, "Opus Rtsp Server init error", nativeInterfaceFailure);
             }
         }
+
     }
 
     @Override
@@ -116,12 +132,22 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
     public void onPeriodicNotification(final byte[] opusFrameBuffer, final int opusFrameBufferLength) {
         if (!isMuted()) {
             try {
-                mReport.update(MTU, (SystemClock.elapsedRealtime() / 100L) * (16000 / 1000L) / 10000L);
-            } catch (IOException e) {
+                mBufferRequested.acquire();
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            if (++mBufferIn >= mBufferCount) {
+                mBufferIn = 0;
+            }
+            mBufferCommitted.release();
+            mPackets[mBufferIn].setData(opusFrameBuffer);
+            mPackets[mBufferIn].setLength(opusFrameBufferLength);
+            if (mThread == null) {
+                mThread = new Thread(this);
+                mThread.setPriority(Thread.MAX_PRIORITY);
+                mThread.start();
+            }
 
-            mUdpSender.send(opusFrameBuffer, opusFrameBufferLength);
         }
     }
 
@@ -137,5 +163,25 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
     }
     public boolean isMuted() {
         return muted;
+    }
+
+    @Override
+    public void run() {
+        try {
+            while (mBufferCommitted.tryAcquire(4, TimeUnit.SECONDS)) {
+                final DatagramPacket packet = mPackets[mBufferOut];
+                if (mCount++ > 30) {
+                    mUdpSender.send(packet.getData(), packet.getLength());
+                }
+                if (++mBufferOut >= mBufferCount) {
+                    mBufferOut = 0;
+                }
+                mBufferRequested.release();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        mThread = null;
+        resetFifo();
     }
 }
