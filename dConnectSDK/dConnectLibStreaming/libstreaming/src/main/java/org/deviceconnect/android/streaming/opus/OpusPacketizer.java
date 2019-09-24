@@ -3,6 +3,7 @@ package org.deviceconnect.android.streaming.opus;
 import android.util.Log;
 
 import net.majorkernelpanic.streaming.BuildConfig;
+import net.majorkernelpanic.streaming.rtcp.SenderReport;
 import net.majorkernelpanic.streaming.rtp.AbstractPacketizer;
 
 import org.deviceconnect.opuscodec.MicAudioRecorder;
@@ -26,6 +27,7 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
     private DatagramPacket[] mPackets;
     private byte[] mBuf = new byte[4096];
 
+    private SenderReport mReport;
     private Semaphore mBufferRequested;
     private Semaphore mBufferCommitted;
 
@@ -34,6 +36,8 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
 
     public OpusPacketizer(final OpusAudioQuality quality) {
         mQuality = quality;
+        mReport = new SenderReport();
+
         mBufferCount = 300; // TODO: readjust that when the FIFO is full
         mPackets = new DatagramPacket[mBufferCount];
         for (int i = 0; i < mBufferCount; i++) {
@@ -48,6 +52,7 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
         mBufferOut = 0;
         mBufferRequested = new Semaphore(mBufferCount);
         mBufferCommitted = new Semaphore(0);
+        mReport.reset();
     }
 
     @Override
@@ -55,6 +60,9 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
         try {
             String ip = dest != null ? dest.getHostAddress() : "127.0.0.1";
             mUdpSender = new OpusUdpSender(ip, rtpPort);
+            mReport.setDestination(dest, rtcpPort);
+            mReport.setSSRC(mUdpSender.getSSRC());
+
         } catch (Exception e) {
             if (BuildConfig.DEBUG) {
                 Log.e(TAG, "sender init error", e);
@@ -170,8 +178,10 @@ public class OpusPacketizer extends AbstractPacketizer implements MicAudioRecord
         try {
             while (mBufferCommitted.tryAcquire(4, TimeUnit.SECONDS)) {
                 final DatagramPacket packet = mPackets[mBufferOut];
+
                 if (mCount++ > 30) {
                     mUdpSender.send(packet.getData(), packet.getLength());
+                    mReport.update(packet.getLength(), mUdpSender.getTimeStamp());
                 }
                 if (++mBufferOut >= mBufferCount) {
                     mBufferOut = 0;

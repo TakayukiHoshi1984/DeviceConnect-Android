@@ -178,10 +178,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         mjpegServer.setQuality(RecorderSettingData.getInstance(getContext())
                 .readPreviewQuality(camera.getId()));
         Camera2RTSPPreviewServer rtspServer = new Camera2RTSPPreviewServer(getContext(), this, this);
-        OpusRtspServer opusRtspServer = new OpusRtspServer(getContext(), this, 16000, 50);  //TODO 動的に変更する
         mPreviewServers.add(mjpegServer);
         mPreviewServers.add(rtspServer);
-        mPreviewServers.add(opusRtspServer);
     }
 
     CameraWrapper getCameraWrapper() {
