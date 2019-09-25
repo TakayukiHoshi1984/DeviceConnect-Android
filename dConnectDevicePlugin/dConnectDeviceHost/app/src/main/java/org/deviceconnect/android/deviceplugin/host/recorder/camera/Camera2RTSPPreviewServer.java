@@ -225,21 +225,10 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         quality.bitRate = OpusEncoder.BITRATE_MAX;
         quality.application = OpusEncoder.Application.E_AUDIO;
         OpusStream opus = new OpusStream(quality);
-        // ミュートを解除する
-        // Hostプラグイン側と辻褄を合わせるためにこのようにしている。
-        opus.unMute();
-
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         builder.setVideoStream(mVideoStream);
         builder.setAudioStream(opus);
-//        mAac = new AACStream();
-//        if (isMuted()) {
-//            mAac.mute();
-//        } else {
-//            mAac.unMute();
-//        }
-//        builder.setAudioStream(mAac);
         builder.setVideoQuality(videoQuality);
 
         Session session = builder.build();
