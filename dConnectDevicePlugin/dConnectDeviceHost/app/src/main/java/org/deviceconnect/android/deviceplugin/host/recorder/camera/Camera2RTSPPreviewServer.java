@@ -224,11 +224,12 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         quality.frameSize = 200;
         quality.bitRate = OpusEncoder.BITRATE_MAX;
         quality.application = OpusEncoder.Application.E_AUDIO;
-        OpusStream opus = new OpusStream(quality);
+        mOpus = new OpusStream(quality);
+
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
         builder.setVideoStream(mVideoStream);
-        builder.setAudioStream(opus);
+        builder.setAudioStream(mOpus);
         builder.setVideoQuality(videoQuality);
 
         Session session = builder.build();
