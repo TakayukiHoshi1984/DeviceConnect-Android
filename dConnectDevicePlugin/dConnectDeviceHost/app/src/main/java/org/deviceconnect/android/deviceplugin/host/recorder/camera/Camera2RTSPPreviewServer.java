@@ -32,6 +32,7 @@ import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperException
 import org.deviceconnect.android.deviceplugin.host.recorder.AbstractPreviewServerProvider;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 import org.deviceconnect.android.streaming.opus.OpusAudioQuality;
+import org.deviceconnect.android.streaming.opus.OpusPacketizer;
 import org.deviceconnect.android.streaming.opus.OpusStream;
 import org.deviceconnect.opuscodec.OpusEncoder;
 
@@ -71,6 +72,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private DrawTask mScreenCaptureTask;
     private AACStream mAac;
     private OpusStream mOpus;
+    private volatile static boolean muted = true;
     Camera2RTSPPreviewServer(final Context context,
                              final AbstractPreviewServerProvider serverProvider,
                              final Camera2Recorder recorder) {
@@ -87,6 +89,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void mute() {
         super.mute();
+        muted = true;
         if (mOpus != null) {
             mOpus.mute();
         }
@@ -97,6 +100,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
      */
     public void unMute() {
         super.unMute();
+        muted = false;
         if (mOpus != null) {
             mOpus.unMute();
         }
@@ -225,6 +229,11 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         quality.bitRate = OpusEncoder.BITRATE_MAX;
         quality.application = OpusEncoder.Application.E_AUDIO;
         mOpus = new OpusStream(quality);
+        if (muted) {
+            mOpus.mute();
+        } else {
+            mOpus.unMute();
+        }
 
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
