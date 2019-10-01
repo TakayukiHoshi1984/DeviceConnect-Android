@@ -11,15 +11,30 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 
 public class RedirectAudioStream extends AudioStream {
     private byte[] mRtpBuf = new byte[4096];
+    private byte[] mRtpRtcpBuf = new byte[4096];
     /** RTSPのリソースデータをGatewayに転送するためのSocket. */
-    private  DatagramSocket mRTPSocket;
+    protected  DatagramSocket mRTPSocket;
+    protected  DatagramSocket mRTPRtcpSocket;
     /** RTSPのリソースデータを詰め込むPacket. */
-    private  DatagramPacket mRTPPacket;
+    protected DatagramPacket mRTPPacket;
+    protected DatagramPacket mRTPRtcpPacket;
 
     public RedirectAudioStream() {
+        try {
+            mRTPSocket = new DatagramSocket();
+            mRTPRtcpSocket = new DatagramSocket();
+        } catch (SocketException e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "sender init error", e);
+            }
+        }
+        mRTPPacket = new DatagramPacket(mRtpBuf, mRtpBuf.length);
+        mRTPRtcpPacket = new DatagramPacket(mRtpRtcpBuf, mRtpRtcpBuf.length);
+
     }
     @Override
     protected void encodeWithMediaCodec() throws IOException {
@@ -42,19 +57,13 @@ public class RedirectAudioStream extends AudioStream {
     @Override
     public synchronized void start() throws IllegalStateException, IOException {
         if (!mStreaming) {
-            try {
-                mRTPSocket = new DatagramSocket();
-                mRTPPacket = new DatagramPacket(mRtpBuf, mRtpBuf.length);
-                String ip = mDestination != null ? mDestination.getHostAddress() : "127.0.0.1";
-                mRTPPacket.setAddress(InetAddress.getByName(ip));
-                mRTPPacket.setPort(mRtpPort);
-                mRTPSocket.setReceiveBufferSize(mRTPSocket.getReceiveBufferSize() * 5000);
-
-            } catch (Exception e) {
-//            if (BuildConfig.DEBUG) {
-                Log.e("ABC", "sender init error", e);
-//            }
-            }
+            String ip = mDestination != null ? mDestination.getHostAddress() : "127.0.0.1";
+            mRTPPacket.setAddress(InetAddress.getByName(ip));
+            mRTPPacket.setPort(mRtpPort);
+            mRTPSocket.setReceiveBufferSize(4096);
+            mRTPRtcpPacket.setAddress(InetAddress.getByName(ip));
+            mRTPRtcpPacket.setPort(mRtcpPort);
+            mRTPRtcpSocket.setReceiveBufferSize(4096);
         }
     }
     /** Stops the stream. */
@@ -64,6 +73,10 @@ public class RedirectAudioStream extends AudioStream {
             if (mRTPSocket != null) {
                 mRTPSocket.close();
                 mRTPSocket = null;
+            }
+            if (mRTPRtcpSocket != null) {
+                mRTPRtcpSocket.close();
+                mRTPRtcpSocket = null;
             }
             mPacketizer.stop();
             mStreaming = false;
@@ -79,9 +92,25 @@ public class RedirectAudioStream extends AudioStream {
         mRTPPacket.setLength(data.length);
         try {
             mRTPSocket.send(mRTPPacket);
-        } catch (IOException e) {
+        } catch (Exception e) {
             if (BuildConfig.DEBUG) {
-                Log.e("ABC", "UDP wrote packet: error", e);
+                Log.e(TAG, "UDP wrote packet: error", e);
+            }
+
+        }
+    }
+    public void sendRtcpFrame(byte[] data) {
+        if (mRTPRtcpSocket == null || mRTPRtcpPacket == null || data == null) {
+            return;
+        }
+
+        mRTPRtcpPacket.setData(data);
+        mRTPRtcpPacket.setLength(data.length);
+        try {
+            mRTPRtcpSocket.send(mRTPRtcpPacket);
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "UDP wrote packet: error", e);
             }
 
         }
