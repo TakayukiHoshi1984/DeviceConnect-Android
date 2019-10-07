@@ -37,6 +37,11 @@ import java.util.UUID;
 final class DConnectHttpUtil {
 
     /**
+     * 部分的にコンテンツを返却する最大サイズを定義.
+     */
+    private static final int MAX_PARTIAL_LENGTH = 200 * 1024;
+
+    /**
      * HTTPリクエストのセグメント数(APIのみ) {@value}.
      */
     private static final int SEGMENT_API = 1;
@@ -282,6 +287,10 @@ final class DConnectHttpUtil {
                         newLen = 0;
                     }
 
+                    if (newLen > MAX_PARTIAL_LENGTH) {
+                        newLen = MAX_PARTIAL_LENGTH;
+                    }
+
                     in = new TempInputStream(in, newLen);
                     if (startFrom > 0) {
                         in.skip(startFrom);
@@ -315,6 +324,11 @@ final class DConnectHttpUtil {
                     response.setCode(HttpResponse.StatusCode.NOT_MODIFIED);
                     response.addHeader("ETag", etag);
                 } else {
+                    in = new TempInputStream(in, fileLen);
+                    if (startFrom > 0) {
+                        in.skip(startFrom);
+                    }
+
                     // supply the file
                     response.setBody(in);
                     response.setCode(HttpResponse.StatusCode.OK);
@@ -329,34 +343,58 @@ final class DConnectHttpUtil {
         }
     }
 
+    /**
+     * 読み込みサイズなどの管理を行うための InputStream のラッパー.
+     */
     private static class TempInputStream extends InputStream {
-
+        /**
+         * 実際の InputStream.
+         */
         private InputStream mInputStream;
+
+        /**
+         * InputStream のデータサイズ.
+         */
         private int mFileSize;
 
+        /**
+         * InputStream の読み込み位置.
+         */
+        private int mOffset;
+
+        /**
+         * コンストラクタ.
+         *
+         * @param in ストリーム
+         * @param fileSize ファイルサイズ
+         */
         TempInputStream(InputStream in, int fileSize) {
             mInputStream = in;
+            mOffset = 0;
             mFileSize = fileSize;
         }
 
         @Override
         public int read(@NonNull byte[] b) throws IOException {
+            mOffset += b.length;
             return mInputStream.read(b);
         }
 
         @Override
         public int read(@NonNull byte[] b, int off, int len) throws IOException {
+            mOffset += len;
             return mInputStream.read(b, off, len);
         }
 
         @Override
         public long skip(long n) throws IOException {
+            mOffset += n;
             return mInputStream.skip(n);
         }
 
         @Override
-        public int available() throws IOException {
-            return mFileSize;
+        public int available() {
+            return mFileSize - mOffset;
         }
 
         @Override
@@ -366,6 +404,7 @@ final class DConnectHttpUtil {
 
         @Override
         public int read() throws IOException {
+            mOffset++;
             return mInputStream.read();
         }
     }

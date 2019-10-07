@@ -31,6 +31,7 @@ import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -520,30 +521,33 @@ public class MixedReplaceMediaServer {
 
                             while (!mStopFlag && !isInterrupted()) {
                                 long t = System.currentTimeMillis();
-                                Buffer media = mMediaQueue.take();
-                                if (mSocket.isClosed()) {
+                                Buffer media = mMediaQueue.poll(5, TimeUnit.SECONDS);
+                                if (media != null) {
+                                    if (media.getLength() > 0) {
+                                        sendMedia(media.getBuffer(), media.getLength());
+                                    }
                                     media.release();
-                                    break;
-                                }
-                                if (media.getLength() > 0) {
-                                    sendMedia(media.getBuffer(), media.getLength());
-                                }
-                                media.release();
 
-                                long n = System.currentTimeMillis() - t;
-                                if (n < mInterval) {
-                                    Thread.sleep(mInterval - n);
+                                    long n = System.currentTimeMillis() - t;
+                                    if (n < mInterval) {
+                                        Thread.sleep(mInterval - n);
+                                    }
+                                }
+                                if (mSocket.isClosed()) {
+                                    break;
                                 }
                             }
                             break;
                         case JPEG:
-                            Buffer media = mMediaQueue.take();
-                            mStream.write(generateHttpHeaderJPEG(media.getLength()).getBytes());
-                            if (media.getLength() > 0) {
-                                mStream.write(media.getBuffer());
+                            Buffer media = mMediaQueue.poll(5, TimeUnit.SECONDS);
+                            if (media != null) {
+                                mStream.write(generateHttpHeaderJPEG(media.getLength()).getBytes());
+                                if (media.getLength() > 0) {
+                                    mStream.write(media.getBuffer());
+                                }
+                                mStream.flush();
+                                media.release();
                             }
-                            mStream.flush();
-                            media.release();
                             break;
                     }
                 }
