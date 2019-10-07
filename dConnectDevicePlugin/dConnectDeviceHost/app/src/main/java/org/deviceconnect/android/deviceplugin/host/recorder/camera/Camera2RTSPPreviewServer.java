@@ -224,7 +224,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             new Thread(mScreenCaptureTask, "Camera2CaptureThread").start();
         }
         OpusAudioQuality quality = new OpusAudioQuality();
-        quality.samplingRate = 16000;
+        quality.samplingRate = 48000;
         quality.frameSize = 200;
         quality.bitRate = OpusEncoder.BITRATE_MAX;
         quality.application = OpusEncoder.Application.E_AUDIO;
