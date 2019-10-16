@@ -23,8 +23,8 @@ public class CalleeRedirectVideoStream extends RedirectVideoStream implements Ru
     private HandlerThread mVCThread;
     private final Handler mVCHandler;
     /** RTSPの映像リソースを受信するためのSocket. */
-    private MulticastSocket mVideoSocket;
-    private MulticastSocket mVideoRtcpSocket;
+    private DatagramSocket mVideoSocket;
+    private DatagramSocket mVideoRtcpSocket;
     /** RTSPの映像リソースが詰め込むPacket. */
     private DatagramPacket mVideoPacket;
     private DatagramPacket mVideoRtcpPacket;
@@ -62,13 +62,8 @@ public class CalleeRedirectVideoStream extends RedirectVideoStream implements Ru
         if (!mRedirecdting) {
             mRedirecdting = true;
             try {
-                mVideoSocket = new MulticastSocket(mRTPPort);
-                mVideoSocket.setTimeToLive(64);
-                mVideoSocket.setSoTimeout(5000);
-
-                mVideoRtcpSocket = new MulticastSocket(mRTCPPort);
-                mVideoRtcpSocket.setTimeToLive(64);
-                mVideoRtcpSocket.setSoTimeout(5000);
+                mVideoSocket = new DatagramSocket(mRTPPort);
+                mVideoRtcpSocket = new DatagramSocket(mRTCPPort);
             } catch (SocketException e) {
                 if (BuildConfig.DEBUG) {
                     Log.e(TAG, "sender init error", e);
@@ -110,11 +105,11 @@ public class CalleeRedirectVideoStream extends RedirectVideoStream implements Ru
     public synchronized void stop() {
         super.stop();
         if (mRedirecdting) {
-            mVHandler.removeCallbacks(this);
-            mVThread.quit();
-            mVCHandler.removeCallbacks(this);
-            mVCThread.quit();
             mRedirecdting = false;
+//            mVHandler.removeCallbacks(null);
+            mVThread.quit();
+//            mVCHandler.removeCallbacks(null);
+            mVCThread.quit();
         }
     }
 

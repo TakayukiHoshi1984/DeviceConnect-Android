@@ -93,11 +93,11 @@ public class CalleeRedirectAudioStream extends RedirectAudioStream implements Ru
     public synchronized void stop() {
         super.stop();
         if (mRedirecdting) {
-            mAHandler.removeCallbacks(this);
-            mAThread.quit();
-            mACHandler.removeCallbacks(this);
-            mACThread.quit();
             mRedirecdting = false;
+//            mAHandler.removeCallbacks(null);
+            mAThread.quit();
+//            mACHandler.removeCallbacks(null);
+            mACThread.quit();
         }
 
     }

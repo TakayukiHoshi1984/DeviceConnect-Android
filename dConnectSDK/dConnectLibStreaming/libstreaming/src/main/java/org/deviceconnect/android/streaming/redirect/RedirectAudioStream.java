@@ -87,9 +87,9 @@ public class RedirectAudioStream extends AudioStream {
         if (mRTPSocket == null || mRTPPacket == null || data == null) {
             return;
         }
-        if (mRTPSocket.getInetAddress() == null) {
-            return;
-        }
+//        if (mRTPSocket.getInetAddress() == null) {
+//            return;
+//        }
 
         mRTPPacket.setData(data);
         mRTPPacket.setLength(data.length);
@@ -106,9 +106,9 @@ public class RedirectAudioStream extends AudioStream {
         if (mRTPRtcpSocket == null || mRTPRtcpPacket == null || data == null) {
             return;
         }
-        if (mRTPSocket.getInetAddress() == null) {
-            return;
-        }
+//        if (mRTPSocket.getInetAddress() == null) {
+//            return;
+//        }
 
         mRTPRtcpPacket.setData(data);
         mRTPRtcpPacket.setLength(data.length);
