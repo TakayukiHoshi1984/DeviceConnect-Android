@@ -291,7 +291,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         private float mDeltaX;
         private float mDeltaY;
 
-        public DrawTask() {
+        DrawTask() {
             super(null, 0);
         }
 
