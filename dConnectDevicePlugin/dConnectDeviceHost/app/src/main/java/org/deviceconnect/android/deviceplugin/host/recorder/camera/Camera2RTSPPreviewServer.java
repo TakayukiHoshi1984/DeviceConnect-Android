@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.preference.PreferenceManager;
 import androidx.annotation.RequiresApi;
+
 import android.util.Log;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -33,6 +34,8 @@ import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -48,13 +51,10 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
     private final Object mLockObj = new Object();
 
-    private Socket mClientSocket;
-
     private SurfaceH264Stream mVideoStream;
 
     private RtspServer mRtspServer;
 
-    private VideoQuality mQuality;
 
     private final Camera2Recorder mRecorder;
 
@@ -65,6 +65,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private DrawTask mCameraCaptureTask;
     private AACStream mAac;
 
+    private VideoQuality mVideoQuality;
     Camera2RTSPPreviewServer(final Context context,
                              final AbstractPreviewServerProvider serverProvider,
                              final Camera2Recorder recorder) {
@@ -112,8 +113,27 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 thread.start();
                 mHandler = new Handler(thread.getLooper());
             }
-            String uri = "rtsp://localhost:" + mRtspServer.getPort();
-            callback.onStart(uri);
+            mRecorder.show(new Camera2Recorder.Callback() {
+                @Override
+                public void onSuccess() {
+                    if (!mIsRecording) {
+                        try {
+                            initRTSPStream();
+                        } catch (IOException e) {
+                            if (DEBUG) {
+                                Log.e(TAG, "showPreviewOverlay", e);
+                            }
+                        }
+                    }
+                    mRecorder.sendNotification();
+                    String uri = "rtsp://localhost:" + mRtspServer.getPort();
+                    callback.onStart(uri);
+                }
+
+                @Override
+                public void onFail() {
+                }
+            });
         }
     }
 
@@ -126,8 +146,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                     mRtspServer.stop();
                     mRtspServer = null;
                 }
+                mRecorder.hide(true);
                 stopPreviewStreaming();
-                mClientSocket = null;
             }
             stopDrawTask();
         } catch (Throwable e) {
@@ -170,9 +190,9 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     @Override
     public Session generateSession(final String uri, final Socket clientSocket) {
         try {
-            if (mRecorder.isStartedPreview()) {
-                return null;
-            }
+//            if (mRecorder.isStartedPreview()) {
+//                return null;
+//            }
             return startPreviewStreaming(clientSocket);
         } catch (Exception e) {
             e.printStackTrace();
@@ -182,7 +202,6 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
     @Override
     public void eraseSession(final Session session) {
-        stopPreviewStreaming();
     }
 
     @Override
@@ -196,35 +215,14 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     }
 
     private Session startPreviewStreaming(final Socket clientSocket) throws IOException {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-        HostDeviceRecorder.PictureSize previewSize = getRotatedPreviewSize();
-
-        VideoQuality videoQuality = new VideoQuality();
-
-        videoQuality.resX = previewSize.getHeight();
-        videoQuality.resY = previewSize.getWidth();
-        videoQuality.bitrate = mServerProvider.getPreviewBitRate();
-        videoQuality.framerate = (int) mServerProvider.getMaxFrameRate();
-
-        synchronized (mLockObj) {
-            mClientSocket = clientSocket;
-            mVideoStream = new SurfaceH264Stream(prefs, videoQuality);
-            mCameraCaptureTask = new DrawTask(null, 0, videoQuality);
-            mIsRecording = true;
-            new Thread(mCameraCaptureTask, "CameraCaptureThread").start();
-        }
-
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
-        builder.setVideoStream(mVideoStream);
-        mAac = new AACStream(mContext);
-        if (isMuted()) {
-            mAac.mute();
-        } else {
-            mAac.unMute();
+        if (!mIsRecording) {
+            initRTSPStream();
         }
+        builder.setVideoStream(mVideoStream);
         builder.setAudioStream(mAac);
-        builder.setVideoQuality(videoQuality);
+        builder.setVideoQuality(mVideoQuality);
 
         Session session = builder.build();
         session.setOrigin(clientSocket.getLocalAddress().getHostAddress());
@@ -232,8 +230,32 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             session.setDestination(clientSocket.getInetAddress().getHostAddress());
         }
 
-        mRecorder.sendNotification();
         return session;
+    }
+
+    private void initRTSPStream() throws IOException {
+        mVideoQuality = new VideoQuality();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+        HostDeviceRecorder.PictureSize previewSize = getRotatedPreviewSize();
+
+        mVideoQuality.resX = previewSize.getHeight();
+        mVideoQuality.resY = previewSize.getWidth();
+        mVideoQuality.bitrate = mServerProvider.getPreviewBitRate();
+        mVideoQuality.framerate = (int) mServerProvider.getMaxFrameRate();
+
+        synchronized (mLockObj) {
+            mIsRecording = true;
+            mVideoStream = new SurfaceH264Stream(prefs, mVideoQuality);
+            mCameraCaptureTask = new DrawTask();
+            new Thread(mCameraCaptureTask, "CameraCaptureThread").start();
+        }
+
+        mAac = new AACStream(mContext);
+        if (isMuted()) {
+            mAac.mute();
+        } else {
+            mAac.unMute();
+        }
     }
 
     private void stopPreviewStreaming() {
@@ -270,9 +292,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
         private float mDeltaX;
         private float mDeltaY;
 
-        public DrawTask(final EGLBase.IContext sharedContext, final int flags, final VideoQuality quality) {
-            super(sharedContext, flags);
-            mQuality = quality;
+        public DrawTask() {
+            super(null, 0);
         }
 
         @Override
@@ -284,14 +305,15 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
             mSourceTexture = new SurfaceTexture(mTexId);
             // スマートフォンの傾きによって縦横のサイズを変える
-            setDefaultBufferSize(getCurrentRotation(), mQuality.resX, mQuality.resY);
+            setDefaultBufferSize(getCurrentRotation(), mVideoQuality.resX, mVideoQuality.resY);
             mSourceSurface = new Surface(mSourceTexture);
             mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mHandler);
             mEncoderSurface = getEgl().createFromSurface(mVideoStream.getInputSurface());
-            intervals = (long)(1000f / mQuality.framerate);
+            intervals = (long)(1000f / mVideoQuality.framerate);
 
             try {
-                mRecorder.startPreview(mSourceSurface);
+                mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
+                mRecorder.hide(false);
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");
                 }
@@ -389,6 +411,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                         makeCurrent();
                         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
                         GLES20.glFlush();
+
                         queueEvent(this);
                     }
                 } else {
@@ -462,6 +485,5 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             }
             mPreviewSize = mRecorder.getRotatedPreviewSize();
         }
-
     }
 }

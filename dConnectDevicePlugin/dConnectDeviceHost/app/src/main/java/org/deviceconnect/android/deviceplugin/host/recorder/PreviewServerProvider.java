@@ -12,6 +12,11 @@ import java.util.List;
 public interface PreviewServerProvider {
 
     /**
+     * Preview状態を停止するアクションを定義.
+     */
+    String STOP_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.STOP_PREVIEW";
+
+    /**
      * オーバーレイ削除用アクションを定義.
      */
     String DELETE_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.DELETE_PREVIEW";
@@ -33,5 +38,7 @@ public interface PreviewServerProvider {
     PreviewServer getServerForMimeType(String mimeType);
 
     void stopWebServers();
+
+    void toggleShowOverlay();
 
 }

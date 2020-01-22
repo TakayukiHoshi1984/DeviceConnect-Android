@@ -137,8 +137,10 @@ public class HostDevicePlugin extends DevicePluginContext {
             } else if (BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 onChangedBluetoothStatus();
-            } else if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
+            } else if (PreviewServerProvider.STOP_PREVIEW_ACTION.equals(action)) {
                 stopWebServer(intent);
+            } else if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
+                toggleShowPreview(intent);
             }
         }
     };
@@ -166,7 +168,6 @@ public class HostDevicePlugin extends DevicePluginContext {
 
         // Manager同梱のため、LocalOAuthを無効化
         setUseLocalOAuth(false);
-
         mFileMgr = new FileManager(context, HostFileProvider.class.getName());
         mFileDataManager = new FileDataManager(mFileMgr);
         mDemoInstaller = new HostDemoInstaller(getContext());
@@ -235,6 +236,7 @@ public class HostDevicePlugin extends DevicePluginContext {
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(PreviewServerProvider.STOP_PREVIEW_ACTION);
         filter.addAction(PreviewServerProvider.DELETE_PREVIEW_ACTION);
         getContext().registerReceiver(mHostConnectionReceiver, filter);
 
@@ -387,6 +389,9 @@ public class HostDevicePlugin extends DevicePluginContext {
 
     private void stopWebServer(final Intent intent) {
         mRecorderMgr.stopWebServer(intent.getStringExtra(PreviewServerProvider.EXTRA_CAMERA_ID));
+    }
+    private void toggleShowPreview(final Intent intent) {
+        mRecorderMgr.toggleShowPreview(intent.getStringExtra(PreviewServerProvider.EXTRA_CAMERA_ID));
     }
 
     private void onChangedBluetoothStatus() {

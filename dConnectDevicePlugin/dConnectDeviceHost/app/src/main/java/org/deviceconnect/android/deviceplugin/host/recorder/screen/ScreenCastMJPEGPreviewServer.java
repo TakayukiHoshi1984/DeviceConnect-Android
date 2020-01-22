@@ -119,6 +119,7 @@ class ScreenCastMJPEGPreviewServer extends ScreenCastPreviewServer {
         }
     }
 
+
     @Override
     protected void onConfigChange() {
         synchronized (mLockObj) {

@@ -6,29 +6,36 @@
  */
 package org.deviceconnect.android.deviceplugin.host.recorder.camera;
 
-import android.content.ContentResolver;
-import android.content.ContentValues;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
 import android.media.ImageReader;
-import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.provider.MediaStore;
 import androidx.annotation.NonNull;
 
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
+import android.view.Display;
 import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -54,9 +61,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 
 
-public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevicePhotoRecorder, HostDeviceStreamRecorder {
+public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevicePhotoRecorder,
+                                                            HostDeviceStreamRecorder,
+                                                            SurfaceHolder.Callback {
 
     /**
      * ログ出力用タグ.
@@ -122,6 +132,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         }
     };
 
+
+
     /**
      * ファイルマネージャ.
      */
@@ -144,6 +156,30 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     private final HandlerThread mPhotoThread = new HandlerThread("photo");
 
     private final Handler mRequestHandler;
+
+    private Size mOverlayViewSize;
+    /** プレビューを表示するSurfaceView. */
+    private SurfaceView mSurfaceView;
+
+    /** SurfaceViewを一時的に保持するホルダー. */
+    private SurfaceHolder mHolder;
+    private Handler mOverlayHandler;
+    private volatile boolean mIsOverlay;
+
+    /**
+     * 画面回転のイベントを受け付けるレシーバー.
+     */
+    private final BroadcastReceiver mOrientReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            if (Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())) {
+                updatePosition(mSurfaceView);
+            }
+        }
+    };
+
+    /** ウィンドウ管理クラス. */
+    private final WindowManager mWinMgr;
 
     /**
      * 現在の端末の回転方向.
@@ -170,12 +206,19 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         super(context, camera.getId());
         mCameraWrapper = camera;
         camera.setCameraEventListener(this::notifyEventToUser, new Handler(Looper.getMainLooper()));
+        mWinMgr = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 
         mPreviewThread.start();
         mPhotoThread.start();
         HandlerThread requestThread = new HandlerThread("request");
         requestThread.start();
         mRequestHandler = new Handler(requestThread.getLooper());
+        HandlerThread overlayThread = new HandlerThread("overlay");
+        overlayThread.start();
+        mOverlayHandler = new Handler(overlayThread.getLooper());
+        Point size = getDisplaySize();
+        mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+
         mFileManager = fileManager;
 
         Camera2MJPEGPreviewServer mjpegServer = new Camera2MJPEGPreviewServer(this);
@@ -184,6 +227,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         Camera2RTSPPreviewServer rtspServer = new Camera2RTSPPreviewServer(getContext(), this, this);
         mPreviewServers.add(mjpegServer);
         mPreviewServers.add(rtspServer);
+
     }
 
     CameraWrapper getCameraWrapper() {
@@ -426,15 +470,19 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         return camera.isPreview();
     }
 
-    void startPreview(final Surface previewSurface) throws CameraWrapperException {
+    void startPreview(final List<Surface> previewSurfaces) throws CameraWrapperException {
         CameraWrapper camera = getCameraWrapper();
-        camera.startPreview(previewSurface, false);
+        camera.startPreview(previewSurfaces, false);
     }
+
+
 
     void stopPreview() throws CameraWrapperException {
         CameraWrapper camera = getCameraWrapper();
         camera.stopPreview();
     }
+
+
 
     @Override
     public boolean canPauseRecording() {
@@ -629,6 +677,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         mPreviewThread.quit();
         mPhotoThread.quit();
         mRequestHandler.getLooper().quit();
+        mOverlayHandler.getLooper().quit();
+
     }
 
     @Override
@@ -756,7 +806,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     public String getWhiteBalance() {
         return getCameraWrapper().getOptions().getWhiteBalance();
     }
-
     @Override
     public void requestPermission(final PermissionCallback callback) {
         CapabilityUtil.requestPermissions(getContext(), new PermissionUtility.PermissionRequestCallback() {
@@ -788,10 +837,212 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     }
 
     @Override
+    public void toggleShowOverlay() {
+        if (!mIsOverlay) {
+            Point size = getDisplaySize();
+            mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+            show(new Callback() {
+                @Override
+                public void onSuccess() {
+                    mIsOverlay = true;
+                }
+
+                @Override
+                public void onFail() {
+                }
+            });
+        } else {
+            hide(true);
+            mIsOverlay = false;
+        }
+    }
+
+    @Override
     public void onDisplayRotation(final int degree) {
         mCurrentRotation = degree;
         for (PreviewServer server : getServers()) {
             server.onDisplayRotation(degree);
         }
     }
+
+    /**
+     * Overlayを表示する.
+     * @param callback Overlayの表示結果を通知するコールバック
+     */
+    public void show(final Callback callback) {
+        Executors.newSingleThreadExecutor().submit(() -> {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                CapabilityUtil.checkCapability(getContext(), mOverlayHandler, new CapabilityUtil.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        try {
+                            showInternal(callback);
+                        } catch (IOException e) {
+                            if (BuildConfig.DEBUG) {
+                                Log.w(TAG, "ShowInternal error", e);
+                            }
+                            callback.onFail();
+                        }
+                    }
+
+                    @Override
+                    public void onFail() {
+                        callback.onFail();
+                    }
+                });
+            } else {
+                try {
+                    showInternal(callback);
+                } catch (IOException e) {
+                    if (BuildConfig.DEBUG) {
+                        Log.w(TAG, "", e);
+                    }
+                }
+            }
+        });
+    }
+
+    private void showInternal(final Callback callback) throws IOException {
+        mOverlayHandler.post(() -> {
+
+            try {
+                WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
+                if (mSurfaceView == null) {
+                    mSurfaceView = new SurfaceView(getContext());
+                    mHolder = mSurfaceView.getHolder();
+                    mHolder.addCallback(this);
+                    mWinMgr.addView(mSurfaceView, l);
+                } else {
+                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                }
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
+                getContext().registerReceiver(mOrientReceiver, filter);
+                callback.onSuccess();
+            } catch (Throwable t) {
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "", t);
+                }
+                callback.onFail();
+            }
+        });
+    }
+
+    private WindowManager.LayoutParams getLayoutParams(final int viewSizeX, final int viewSizeY) {
+        Point size = getDisplaySize();
+        int type = WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        }
+        WindowManager.LayoutParams l = new WindowManager.LayoutParams( (int) (viewSizeX * getScaledDensity()),
+                (int) (viewSizeY * getScaledDensity()),
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                        | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                PixelFormat.TRANSLUCENT);
+        l.x = -size.x / 2;
+        l.y = -size.y / 2;
+        return l;
+    }
+
+    /**
+     * Overlayを非表示にする.
+     */
+    public void hide(final boolean isUnregisterReceiver) {
+        mOverlayHandler.post(() -> {
+
+            try {
+                if (mSurfaceView != null) {
+                    WindowManager.LayoutParams l = getLayoutParams(1, 1);
+                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                }
+                if (isUnregisterReceiver) {
+                    getContext().unregisterReceiver(mOrientReceiver);
+                }
+            } catch (Throwable t) {
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "", t);
+                }
+            }
+        });
+    }
+
+    public Surface getSurface() {
+        return mSurfaceView.getHolder().getSurface();
+    }
+    @Override
+    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
+    }
+
+    /**
+     * Displayの密度を取得する.
+     *
+     * @return 密度
+     */
+    private float getScaledDensity() {
+        DisplayMetrics metrics = new DisplayMetrics();
+        mWinMgr.getDefaultDisplay().getMetrics(metrics);
+        return metrics.scaledDensity;
+    }
+
+    /**
+     * Displayのサイズを取得する.
+     *
+     * @return サイズ
+     */
+    private Point getDisplaySize() {
+        Display disp = mWinMgr.getDefaultDisplay();
+        Point size = new Point();
+        disp.getSize(size);
+        return size;
+    }
+    /**
+     * Viewの座標を画面の左上に移動する.
+     *
+     * @param view 座標を移動するView
+     */
+    private void updatePosition(final View view) {
+        if (view == null) {
+            return;
+        }
+        Point size = getDisplaySize();
+        final WindowManager.LayoutParams lp = (WindowManager.LayoutParams) view.getLayoutParams();
+        lp.x = -size.x / 2;
+        lp.y = -size.y / 2;
+        view.post(() -> {
+            mWinMgr.updateViewLayout(view, lp);
+        });
+    }
+
+    /**
+     * Overlayの表示結果を通知するコールバック.
+     */
+    public interface Callback {
+        /**
+         * 表示できたことを通知します.
+         *
+         */
+        void onSuccess();
+
+        /**
+         * 表示できなかったことを通知します.
+         */
+        void onFail();
+    }
+
 }

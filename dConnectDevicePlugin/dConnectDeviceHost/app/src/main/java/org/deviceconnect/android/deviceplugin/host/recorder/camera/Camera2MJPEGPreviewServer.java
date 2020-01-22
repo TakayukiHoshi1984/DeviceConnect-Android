@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Build;
 import android.os.Handler;
@@ -17,6 +18,7 @@ import android.os.HandlerThread;
 import androidx.annotation.RequiresApi;
 import android.util.Log;
 import android.view.Surface;
+import android.view.TextureView;
 import android.view.WindowManager;
 
 import com.serenegiant.glutils.EGLBase;
@@ -32,8 +34,10 @@ import org.deviceconnect.android.deviceplugin.host.recorder.util.MixedReplaceMed
 import org.deviceconnect.android.deviceplugin.host.recorder.util.RecorderSettingData;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Array;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 
 /**
@@ -78,9 +82,9 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 if (DEBUG) {
                     Log.d(TAG, "MediaServerCallback.onAccept: recorder=" + mRecorder.getName());
                 }
-                if (mRecorder.isStartedPreview()) {
-                    return false;
-                }
+//                if (mRecorder.isStartedPreview()) {
+//                    return false;
+//                }
                 return startDrawTask();
             } catch (Exception e) {
                 if (DEBUG) {
@@ -96,6 +100,13 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 Log.d(TAG, "MediaServerCallback.onClosed: recorder=" + mRecorder.getName());
             }
             stopDrawTask();
+            try {
+                mRecorder.stopPreview();
+            } catch (CameraWrapperException e) {
+                if (DEBUG) {
+                    Log.e(TAG, "Failed to stop camera preview.", e);
+                }
+            }
         }
     };
 
@@ -236,50 +247,23 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
         private Surface mSourceSurface;
 
         private HostDeviceRecorder.PictureSize mPreviewSize;
-        private Bitmap mBitmap;
-        private ByteBuffer mByteBuffer;
-        private ByteArrayOutputStream mOutput;
-        private int mJpegQuality;
 
         private final Object mDrawSync = new Object();
         private int mRotationDegree;
         private float mDeltaX;
         private float mDeltaY;
 
+        private Bitmap mBitmap;
+        private ByteBuffer mByteBuffer;
+        private ByteArrayOutputStream mOutput;
+        private int mJpegQuality;
+        private long mLastTime = 0;
+
+
         DrawTask() {
             super(null, 0);
         }
 
-        private void createSurface(final HostDeviceRecorder.PictureSize size) {
-            int w = size.getWidth();
-            int h = size.getHeight();
-            mBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            mByteBuffer = ByteBuffer.allocateDirect(w * h * 4);
-            mOutput = new ByteArrayOutputStream();
-            mSourceTexture = new SurfaceTexture(mTexId);
-            setDefaultBufferSize(getCurrentRotation(), w, h);
-            mSourceSurface = new Surface(mSourceTexture);
-            mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mPreviewHandler);
-            mEncoderSurface = getEgl().createOffscreen(w, h);
-        }
-
-        private void releaseSurface() {
-            if (mSourceSurface != null) {
-                mSourceSurface.release();
-                mSourceSurface = null;
-            }
-            if (mSourceTexture != null) {
-                mSourceTexture.release();
-                mSourceTexture = null;
-            }
-            if (mEncoderSurface != null) {
-                mEncoderSurface.release();
-                mEncoderSurface = null;
-            }
-            if (mBitmap != null && !mBitmap.isRecycled()) {
-                mBitmap.recycle();
-            }
-        }
 
         @Override
         protected void onStart() {
@@ -293,7 +277,8 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
             mJpegQuality = getQuality();
 
             try {
-                mRecorder.startPreview(mSourceSurface);
+                mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
+                mRecorder.hide(false);
                 mRecorder.sendNotification();
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");
@@ -350,7 +335,6 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
             }
         };
 
-        private long mLastTime = 0;
 
         private final Runnable mSurfaceDrawTask = new Runnable() {
             @Override
@@ -392,7 +376,6 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                             Matrix.rotateM(mTexMatrix, 0, mRotationDegree, 0, 0, 1);
                             Matrix.translateM(mTexMatrix, 0, mDeltaX, mDeltaY, 0);
                         }
-
                         // SurfaceTextureで受け取った画像をMediaCodecの入力用Surfaceへ描画する
                         mEncoderSurface.makeCurrent();
                         mDrawer.draw(mTexId, mTexMatrix, 0);
@@ -418,6 +401,37 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
             MixedReplaceMediaServer server = mServer;
             if (server != null) {
                 server.offerMedia(jpeg);
+            }
+        }
+        private void createSurface(final HostDeviceRecorder.PictureSize size) {
+            int w = size.getWidth();
+            int h = size.getHeight();
+            mBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            mByteBuffer = ByteBuffer.allocateDirect(w * h * 4);
+            mOutput = new ByteArrayOutputStream();
+            mSourceTexture = new SurfaceTexture(mTexId);
+            setDefaultBufferSize(getCurrentRotation(), w, h);
+            mSourceSurface = new Surface(mSourceTexture);
+
+            mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mPreviewHandler);
+            mEncoderSurface = getEgl().createOffscreen(w, h);
+        }
+
+        private void releaseSurface() {
+            if (mSourceSurface != null) {
+                mSourceSurface.release();
+                mSourceSurface = null;
+            }
+            if (mSourceTexture != null) {
+                mSourceTexture.release();
+                mSourceTexture = null;
+            }
+            if (mEncoderSurface != null) {
+                mEncoderSurface.release();
+                mEncoderSurface = null;
+            }
+            if (mBitmap != null && !mBitmap.isRecycled()) {
+                mBitmap.recycle();
             }
         }
 

@@ -81,7 +81,7 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
      * Notificationを送信する.
      */
     public void sendNotification() {
-        PendingIntent contentIntent = createPendingIntent();
+        PendingIntent contentIntent = createPreviewStopPendingIntent();
         Notification notification = createNotification(contentIntent, null);
         NotificationManager manager = (NotificationManager) mContext
                 .getSystemService(Service.NOTIFICATION_SERVICE);
@@ -105,46 +105,45 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
      * @return Notification
      */
     private Notification createNotification(final PendingIntent pendingIntent, final String channelId) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext.getApplicationContext());
-            builder.setContentIntent(pendingIntent);
-            builder.setTicker(mContext.getString(R.string.overlay_preview_ticker));
-            builder.setSmallIcon(R.drawable.dconnect_icon);
-            builder.setContentTitle(mContext.getString(R.string.overlay_preview_content_title) + " (" + getName() + ")");
-            builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));
-            builder.setWhen(System.currentTimeMillis());
-            builder.setAutoCancel(true);
-            builder.setOngoing(true);
-            return builder.build();
-        } else {
-            Notification.Builder builder = new Notification.Builder(mContext.getApplicationContext());
-            builder.setContentIntent(pendingIntent);
-            builder.setTicker(mContext.getString(R.string.overlay_preview_ticker));
-            int iconType = Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ?
-                    R.drawable.dconnect_icon : R.drawable.dconnect_icon_lollipop;
-            builder.setSmallIcon(iconType);
-            builder.setContentTitle(mContext.getString(R.string.overlay_preview_content_title) + " (" + getName() + ")");
-            builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));
-            builder.setWhen(System.currentTimeMillis());
-            builder.setAutoCancel(true);
-            builder.setOngoing(true);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && channelId != null) {
-                builder.setChannelId(channelId);
-            }
-            return builder.build();
-        }
+        int iconType = Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ?
+                R.drawable.dconnect_icon : R.drawable.dconnect_icon_lollipop;
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext.getApplicationContext(), channelId);
+        NotificationCompat.Action actionStop = new NotificationCompat.Action(iconType, "終了", createPreviewStopPendingIntent());
+        NotificationCompat.Action actionShowOverlay = new NotificationCompat.Action(iconType, "表示・非表示", createPreviewOverlayShowPendingIntent());
+        builder.setTicker(mContext.getString(R.string.overlay_preview_ticker));
+        builder.setSmallIcon(iconType);
+        builder.setContentTitle(mContext.getString(R.string.overlay_preview_content_title) + " (" + getName() + ")");
+        builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));
+        builder.setWhen(System.currentTimeMillis());
+        builder.setAutoCancel(true);
+        builder.setOngoing(true);
+        builder.addAction(actionStop);
+        builder.addAction(actionShowOverlay);
+        return builder.build();
     }
 
     /**
-     * PendingIntentを作成する.
+     * Previewを削除するPendingIntentを作成する.
      * @return PendingIntent
      */
-    private PendingIntent createPendingIntent() {
+    private PendingIntent createPreviewStopPendingIntent() {
+        Intent intent = new Intent();
+        intent.setAction(STOP_PREVIEW_ACTION);
+        intent.putExtra(EXTRA_CAMERA_ID, getId());
+        return PendingIntent.getBroadcast(mContext, getNotificationId(), intent, 0);
+    }
+
+    /**
+     * Previewを削除するPendingIntentを作成する.
+     * @return PendingIntent
+     */
+    private PendingIntent createPreviewOverlayShowPendingIntent() {
         Intent intent = new Intent();
         intent.setAction(DELETE_PREVIEW_ACTION);
         intent.putExtra(EXTRA_CAMERA_ID, getId());
         return PendingIntent.getBroadcast(mContext, getNotificationId(), intent, 0);
     }
+
 
     public Context getContext() {
         return mContext;

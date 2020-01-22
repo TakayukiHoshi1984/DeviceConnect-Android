@@ -192,6 +192,15 @@ public class HostDeviceRecorderManager {
             ((PreviewServerProvider) recorder).stopWebServers();
         }
     }
+    public void toggleShowPreview(final String id) {
+        if (id == null) {
+            return;
+        }
+        HostDeviceRecorder recorder = getRecorder(id);
+        if (recorder instanceof PreviewServerProvider) {
+            ((PreviewServerProvider) recorder).toggleShowOverlay();
+        }
+    }
 
     @SuppressWarnings("deprecation")
     public void sendEventForRecordingChange(final String serviceId, final HostDeviceRecorder.RecorderState state,
