@@ -1021,7 +1021,9 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
             return;
         }
         Point size = getDisplaySize();
-        final WindowManager.LayoutParams lp = (WindowManager.LayoutParams) view.getLayoutParams();
+        mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+        final WindowManager.LayoutParams lp = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
+
         lp.x = -size.x / 2;
         lp.y = -size.y / 2;
         view.post(() -> {
