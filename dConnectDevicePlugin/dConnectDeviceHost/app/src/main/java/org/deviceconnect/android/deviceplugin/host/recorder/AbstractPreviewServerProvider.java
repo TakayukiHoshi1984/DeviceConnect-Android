@@ -108,8 +108,8 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
         int iconType = Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ?
                 R.drawable.dconnect_icon : R.drawable.dconnect_icon_lollipop;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext.getApplicationContext(), channelId);
-        NotificationCompat.Action actionStop = new NotificationCompat.Action(iconType, "終了", createPreviewStopPendingIntent());
-        NotificationCompat.Action actionShowOverlay = new NotificationCompat.Action(iconType, "表示・非表示", createPreviewOverlayShowPendingIntent());
+        NotificationCompat.Action actionStop = new NotificationCompat.Action(iconType, mContext.getString(R.string.overlay_preview_content_button_finish), createPreviewStopPendingIntent());
+        NotificationCompat.Action actionShowOverlay = new NotificationCompat.Action(iconType, mContext.getString(R.string.overlay_preview_content_button_show), createPreviewOverlayShowPendingIntent());
         builder.setTicker(mContext.getString(R.string.overlay_preview_ticker));
         builder.setSmallIcon(iconType);
         builder.setContentTitle(mContext.getString(R.string.overlay_preview_content_title) + " (" + getName() + ")");
