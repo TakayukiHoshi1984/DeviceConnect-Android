@@ -119,7 +119,7 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
         builder.setOngoing(true);
         builder.addAction(actionStop);
         builder.addAction(actionShowOverlay);
-        return builder.build();
+         return builder.build();
     }
 
     /**

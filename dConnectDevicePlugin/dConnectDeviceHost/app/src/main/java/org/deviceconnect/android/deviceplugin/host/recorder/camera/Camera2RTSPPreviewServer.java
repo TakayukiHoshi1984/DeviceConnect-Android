@@ -34,7 +34,6 @@ import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceRecorder;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 
@@ -305,11 +304,11 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
             mSourceTexture = new SurfaceTexture(mTexId);
             // スマートフォンの傾きによって縦横のサイズを変える
-            setDefaultBufferSize(getCurrentRotation(), mVideoQuality.resX, mVideoQuality.resY);
+            setDefaultBufferSize(getCurrentRotation(), mPreviewSize.getWidth(), mPreviewSize.getHeight());
             mSourceSurface = new Surface(mSourceTexture);
             mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mHandler);
             mEncoderSurface = getEgl().createFromSurface(mVideoStream.getInputSurface());
-            intervals = (long)(1000f / mVideoQuality.framerate);
+            intervals = (long)(1000f / mRecorder.getMaxFrameRate());
 
             try {
                 mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
@@ -324,7 +323,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             }
 
             // 録画タスクを起床
-            queueEvent(mDrawTask);
+            queueEvent(mSurfaceDrawTask);
         }
 
         @Override
@@ -345,6 +344,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 mEncoderSurface.release();
                 mEncoderSurface = null;
             }
+
             try {
                 mRecorder.stopPreview();
             } catch (CameraWrapperException e) {
@@ -376,7 +376,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
             }
         };
 
-        private final Runnable mDrawTask =  new Runnable() {
+        private final Runnable mSurfaceDrawTask =  new Runnable() {
             @Override
             public void run() {
                 boolean localRequestDraw;

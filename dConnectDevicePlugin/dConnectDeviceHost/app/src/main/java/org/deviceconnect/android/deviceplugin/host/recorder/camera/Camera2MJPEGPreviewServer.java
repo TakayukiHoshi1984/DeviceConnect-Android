@@ -85,6 +85,7 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
 //                if (mRecorder.isStartedPreview()) {
 //                    return false;
 //                }
+
                 return startDrawTask();
             } catch (Exception e) {
                 if (DEBUG) {
@@ -199,6 +200,7 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 mDrawTask = new DrawTask();
                 mDrawTaskThread = new Thread(mDrawTask);
                 mDrawTaskThread.start();
+
                 return true;
             } else {
                 return false;
@@ -271,18 +273,26 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
             mTexId = mDrawer.initTex();
 
             detectDisplayRotation(getCurrentRotation());
+
             createSurface(mPreviewSize);
+            mSourceTexture = new SurfaceTexture(mTexId);
+            setDefaultBufferSize(getCurrentRotation(), mPreviewSize.getWidth(), mPreviewSize.getHeight());
+            mSourceSurface = new Surface(mSourceTexture);
+
+            mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mPreviewHandler);
+            mEncoderSurface = getEgl().createOffscreen(mPreviewSize.getWidth(), mPreviewSize.getHeight());
 
             intervals = (long)(1000f / mRecorder.getMaxFrameRate());
-            mJpegQuality = getQuality();
+
 
             try {
-                mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
+                mRecorder.startPreview(Arrays.asList(mSourceSurface));
                 mRecorder.hide(false);
-                mRecorder.sendNotification();
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");
                 }
+
+                mRecorder.sendNotification();
             } catch (CameraWrapperException e) {
                 if (DEBUG) {
                     Log.e(TAG, "Failed to start camera preview.", e);
@@ -300,6 +310,18 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 mDrawer = null;
             }
             mDrawTask = null;
+            if (mSourceSurface != null) {
+                mSourceSurface.release();
+                mSourceSurface = null;
+            }
+            if (mSourceTexture != null) {
+                mSourceTexture.release();
+                mSourceTexture = null;
+            }
+            if (mEncoderSurface != null) {
+                mEncoderSurface.release();
+                mEncoderSurface = null;
+            }
             releaseSurface();
             try {
                 mRecorder.stopPreview();
@@ -409,27 +431,11 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
             mBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             mByteBuffer = ByteBuffer.allocateDirect(w * h * 4);
             mOutput = new ByteArrayOutputStream();
-            mSourceTexture = new SurfaceTexture(mTexId);
-            setDefaultBufferSize(getCurrentRotation(), w, h);
-            mSourceSurface = new Surface(mSourceTexture);
-
-            mSourceTexture.setOnFrameAvailableListener(mOnFrameAvailableListener, mPreviewHandler);
-            mEncoderSurface = getEgl().createOffscreen(w, h);
+            mJpegQuality = getQuality();
         }
 
         private void releaseSurface() {
-            if (mSourceSurface != null) {
-                mSourceSurface.release();
-                mSourceSurface = null;
-            }
-            if (mSourceTexture != null) {
-                mSourceTexture.release();
-                mSourceTexture = null;
-            }
-            if (mEncoderSurface != null) {
-                mEncoderSurface.release();
-                mEncoderSurface = null;
-            }
+
             if (mBitmap != null && !mBitmap.isRecycled()) {
                 mBitmap.recycle();
             }

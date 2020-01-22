@@ -414,8 +414,8 @@ public class CameraWrapper {
 
     public synchronized void startPreview(final List<Surface> previewSurfaces, final boolean isResume) throws CameraWrapperException {
         if (mIsPreview && !isResume) {
-            throw new CameraWrapperException("preview is started already.");
-//            stopPreview();  // TODO
+//            throw new CameraWrapperException("preview is started already.");
+            stopPreview();  // TODO MJPEGが開かれた後にRTSP側のPreviewもとまってしまうため処理を統一する必要がある
         }
         mIsPreview = true;
         mPreviewSurfaces.addAll(previewSurfaces);
@@ -447,7 +447,6 @@ public class CameraWrapper {
             return;
         }
         mIsPreview = false;
-//        mPreviewSurface = null;
         mPreviewSurfaces.clear();
         if (mCaptureSession != null) {
             mCaptureSession.close();
@@ -476,7 +475,6 @@ public class CameraWrapper {
             CameraCaptureSession captureSession = createCaptureSession(cameraDevice);
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             if (mIsPreview) {
-//                request.addTarget(mPreviewSurface);
                 for (Surface surface : mPreviewSurfaces) {
                     request.addTarget(surface);
                 }
@@ -514,7 +512,6 @@ public class CameraWrapper {
 
         close();
         if (mIsPreview) {
-//            startPreview(mPreviewSurface, null,true);
             startPreview(mPreviewSurfaces,  true);
         }
         notifyCameraEvent(CameraEvent.STOPPED_VIDEO_RECORDING);
@@ -598,7 +595,6 @@ public class CameraWrapper {
             if (mIsRecording) {
                 startRecording(mRecordingSurface, true);
             } else if (mIsPreview) {
-//                startPreview(mPreviewSurface, null,true);
                 startPreview(mPreviewSurfaces, true);
             }
         } catch (CameraWrapperException e) {
@@ -653,7 +649,6 @@ public class CameraWrapper {
             final AtomicReference<CaptureResult> resultRef = new AtomicReference<>();
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             if (mIsPreview) {
-//                request.addTarget(mPreviewSurface);
                 for (Surface surface : mPreviewSurfaces) {
                     request.addTarget(surface);
                 }
@@ -755,7 +750,6 @@ public class CameraWrapper {
             mCaptureSession = createCaptureSession(cameraDevice);
             final CaptureRequest.Builder requestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             if (mIsPreview) {
-//                requestBuilder.addTarget(mPreviewSurface);
                 for (Surface surface : mPreviewSurfaces) {
                     requestBuilder.addTarget(surface);
                 }
@@ -797,7 +791,6 @@ public class CameraWrapper {
                 mCaptureSession = createCaptureSession(cameraDevice);
                 final CaptureRequest.Builder requestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 if (mIsPreview) {
-//                    requestBuilder.addTarget(mPreviewSurface);
                     for (Surface surface : mPreviewSurfaces) {
                         requestBuilder.addTarget(surface);
                     }
