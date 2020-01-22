@@ -23,6 +23,7 @@
     <string name="overlay_preview_channel_title">Device Connect Preview</string>
     <string name="overlay_preview_channel_message">DeviceConnectでのプレビュー</string>
     <string name="overlay_preview_content_title">カメラ撮影中</string>
+    <string name="overlay_preview_content_message_lollipop">タップして撮影を停止します。</string>
     <string name="overlay_preview_content_message">終了ボタンで停止、表示・非表示ボタンでプレビュー映像をスマートフォンに表示します。</string>
     <string name="overlay_preview_content_button_finish">終了</string>
     <string name="overlay_preview_content_button_show">表示・非表示</string>

@@ -113,12 +113,18 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
         builder.setTicker(mContext.getString(R.string.overlay_preview_ticker));
         builder.setSmallIcon(iconType);
         builder.setContentTitle(mContext.getString(R.string.overlay_preview_content_title) + " (" + getName() + ")");
-        builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));
         builder.setWhen(System.currentTimeMillis());
         builder.setAutoCancel(true);
         builder.setOngoing(true);
-        builder.addAction(actionStop);
-        builder.addAction(actionShowOverlay);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.addAction(actionStop);
+            builder.addAction(actionShowOverlay);
+            builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));
+        } else {
+            builder.setContentIntent(pendingIntent);
+            builder.setContentText(mContext.getString(R.string.overlay_preview_content_message_lollipop));
+        }
+
          return builder.build();
     }
 
