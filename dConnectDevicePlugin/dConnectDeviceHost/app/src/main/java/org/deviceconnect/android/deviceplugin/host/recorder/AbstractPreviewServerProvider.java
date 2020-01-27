@@ -116,7 +116,7 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
         builder.setWhen(System.currentTimeMillis());
         builder.setAutoCancel(true);
         builder.setOngoing(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             builder.addAction(actionStop);
             builder.addAction(actionShowOverlay);
             builder.setContentText(mContext.getString(R.string.overlay_preview_content_message));

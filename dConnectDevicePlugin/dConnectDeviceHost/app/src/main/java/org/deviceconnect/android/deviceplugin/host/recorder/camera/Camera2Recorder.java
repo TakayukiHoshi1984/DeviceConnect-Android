@@ -32,11 +32,13 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Display;
+import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import org.deviceconnect.android.activity.PermissionUtility;
@@ -160,7 +162,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     private Size mOverlayViewSize;
     /** プレビューを表示するSurfaceView. */
     private SurfaceView mSurfaceView;
-
+    private RelativeLayout mRelativeLayout;
     /** SurfaceViewを一時的に保持するホルダー. */
     private SurfaceHolder mHolder;
     private Handler mOverlayHandler;
@@ -173,7 +175,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         @Override
         public void onReceive(final Context context, final Intent intent) {
             if (Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())) {
-                updatePosition(mSurfaceView);
+                updatePosition(mRelativeLayout);
             }
         }
     };
@@ -480,6 +482,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     void stopPreview() throws CameraWrapperException {
         CameraWrapper camera = getCameraWrapper();
         camera.stopPreview();
+        mWinMgr.removeView(mRelativeLayout);
+        mRelativeLayout = null;
     }
 
 
@@ -853,7 +857,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
             });
         } else {
             hide(true);
-            mIsOverlay = false;
         }
     }
 
@@ -908,13 +911,14 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
             try {
                 WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
-                if (mSurfaceView == null) {
-                    mSurfaceView = new SurfaceView(getContext());
+                if (mRelativeLayout == null) {
+                    mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.overlay_camera, null);
+                    mSurfaceView = mRelativeLayout.findViewById(R.id.surface_view);
                     mHolder = mSurfaceView.getHolder();
                     mHolder.addCallback(this);
-                    mWinMgr.addView(mSurfaceView, l);
+                    mWinMgr.addView(mRelativeLayout, l);
                 } else {
-                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                    mWinMgr.updateViewLayout(mRelativeLayout, l);
                 }
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
@@ -931,7 +935,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
     private WindowManager.LayoutParams getLayoutParams(final int viewSizeX, final int viewSizeY) {
         Point size = getDisplaySize();
-        int type = WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
+        int type = WindowManager.LayoutParams.TYPE_PHONE;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         }
@@ -956,13 +960,15 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         mOverlayHandler.post(() -> {
 
             try {
-                if (mSurfaceView != null) {
+                if (mRelativeLayout != null) {
                     WindowManager.LayoutParams l = getLayoutParams(1, 1);
-                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                    mWinMgr.updateViewLayout(mRelativeLayout, l);
                 }
                 if (isUnregisterReceiver) {
                     getContext().unregisterReceiver(mOrientReceiver);
                 }
+                mIsOverlay = false;
+
             } catch (Throwable t) {
                 if (BuildConfig.DEBUG) {
                     Log.w(TAG, "", t);
@@ -986,7 +992,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
     @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-
     }
 
     /**
