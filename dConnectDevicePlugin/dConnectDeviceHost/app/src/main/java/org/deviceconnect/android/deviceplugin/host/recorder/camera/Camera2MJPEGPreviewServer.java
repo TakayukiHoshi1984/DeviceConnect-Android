@@ -286,7 +286,7 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
 
 
             try {
-                mRecorder.startPreview(Arrays.asList(mSourceSurface));
+                mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
                 mRecorder.hide(false);
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");

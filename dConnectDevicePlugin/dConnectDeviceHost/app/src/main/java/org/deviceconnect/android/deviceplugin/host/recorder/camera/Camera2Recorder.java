@@ -67,8 +67,7 @@ import java.util.concurrent.Executors;
 
 
 public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevicePhotoRecorder,
-                                                            HostDeviceStreamRecorder,
-                                                            SurfaceHolder.Callback {
+                                                            HostDeviceStreamRecorder {
 
     /**
      * ログ出力用タグ.
@@ -163,8 +162,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     /** プレビューを表示するSurfaceView. */
     private SurfaceView mSurfaceView;
     private RelativeLayout mRelativeLayout;
-    /** SurfaceViewを一時的に保持するホルダー. */
-    private SurfaceHolder mHolder;
     private Handler mOverlayHandler;
     private volatile boolean mIsOverlay;
 
@@ -174,7 +171,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     private final BroadcastReceiver mOrientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(final Context context, final Intent intent) {
-            if (Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())) {
+            if (mIsOverlay && Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())) {
                 updatePosition(mRelativeLayout);
             }
         }
@@ -482,8 +479,10 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     void stopPreview() throws CameraWrapperException {
         CameraWrapper camera = getCameraWrapper();
         camera.stopPreview();
-        mWinMgr.removeView(mRelativeLayout);
-        mRelativeLayout = null;
+        if (mRelativeLayout != null) {
+            mWinMgr.removeView(mRelativeLayout);
+            mRelativeLayout = null;
+        }
     }
 
 
@@ -914,8 +913,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                 if (mRelativeLayout == null) {
                     mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.overlay_camera, null);
                     mSurfaceView = mRelativeLayout.findViewById(R.id.surface_view);
-                    mHolder = mSurfaceView.getHolder();
-                    mHolder.addCallback(this);
+                    mSurfaceView.getHolder().setFixedSize(l.width, l.height);
                     mWinMgr.addView(mRelativeLayout, l);
                 } else {
                     mWinMgr.updateViewLayout(mRelativeLayout, l);
@@ -962,6 +960,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
             try {
                 if (mRelativeLayout != null) {
                     WindowManager.LayoutParams l = getLayoutParams(1, 1);
+
                     mWinMgr.updateViewLayout(mRelativeLayout, l);
                 }
                 if (isUnregisterReceiver) {
@@ -979,19 +978,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
     public Surface getSurface() {
         return mSurfaceView.getHolder().getSurface();
-    }
-    @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
-
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
-
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
     }
 
     /**

@@ -112,6 +112,10 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 thread.start();
                 mHandler = new Handler(thread.getLooper());
             }
+            mRecorder.sendNotification();
+            String uri = "rtsp://localhost:" + mRtspServer.getPort();
+            callback.onStart(uri);
+
             mRecorder.show(new Camera2Recorder.Callback() {
                 @Override
                 public void onSuccess() {
@@ -124,10 +128,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                             }
                         }
                     }
-                    mRecorder.sendNotification();
-                    String uri = "rtsp://localhost:" + mRtspServer.getPort();
-                    callback.onStart(uri);
-                }
+               }
 
                 @Override
                 public void onFail() {
@@ -201,6 +202,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
     @Override
     public void eraseSession(final Session session) {
+        stopPreviewStreaming();
     }
 
     @Override
