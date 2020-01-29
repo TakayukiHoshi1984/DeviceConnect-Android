@@ -216,7 +216,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         overlayThread.start();
         mOverlayHandler = new Handler(overlayThread.getLooper());
         Point size = getDisplaySize();
-        mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+        mOverlayViewSize = new Size(size.x, size.y);
 
         mFileManager = fileManager;
 
@@ -843,7 +843,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     public void toggleShowOverlay() {
         if (!mIsOverlay) {
             Point size = getDisplaySize();
-            mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+            mOverlayViewSize = new Size(size.x, size.y);
             show(new Callback() {
                 @Override
                 public void onSuccess() {
@@ -937,8 +937,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         }
-        WindowManager.LayoutParams l = new WindowManager.LayoutParams( (int) (viewSizeX * getScaledDensity()),
-                (int) (viewSizeY * getScaledDensity()),
+        WindowManager.LayoutParams l = new WindowManager.LayoutParams( (int) (viewSizeX ),
+                (int) (viewSizeY ),
                 type,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
@@ -1012,7 +1012,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
             return;
         }
         Point size = getDisplaySize();
-        mOverlayViewSize = new Size(size.x / 2, size.y / 2);
+        mOverlayViewSize = new Size(size.x, size.y);
         final WindowManager.LayoutParams lp = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
 
         lp.x = -size.x / 2;
