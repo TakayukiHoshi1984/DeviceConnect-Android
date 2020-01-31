@@ -112,28 +112,8 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 thread.start();
                 mHandler = new Handler(thread.getLooper());
             }
-            mRecorder.sendNotification();
             String uri = "rtsp://localhost:" + mRtspServer.getPort();
             callback.onStart(uri);
-
-            mRecorder.show(new Camera2Recorder.Callback() {
-                @Override
-                public void onSuccess() {
-                    if (!mIsRecording) {
-                        try {
-                            initRTSPStream();
-                        } catch (IOException e) {
-                            if (DEBUG) {
-                                Log.e(TAG, "showPreviewOverlay", e);
-                            }
-                        }
-                    }
-               }
-
-                @Override
-                public void onFail() {
-                }
-            });
         }
     }
 
@@ -146,7 +126,6 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                     mRtspServer.stop();
                     mRtspServer = null;
                 }
-                mRecorder.hide(true);
                 stopPreviewStreaming();
             }
             stopDrawTask();
@@ -265,8 +244,9 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 mVideoStream.stop();
                 mVideoStream = null;
                 mIsRecording = false;
-
                 mRecorder.hideNotification();
+                mRecorder.hide(true);
+
             }
         }
     }
@@ -314,7 +294,6 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
             try {
                 mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
-                mRecorder.hide(false);
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");
                 }

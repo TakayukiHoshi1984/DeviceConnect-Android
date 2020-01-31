@@ -327,9 +327,7 @@ public class CameraWrapper {
     private List<Surface> createSurfaceList() {
         List<Surface> surfaceList = new LinkedList<>();
         if (mIsPreview) {
-            for (Surface surface : mPreviewSurfaces) {
-                surfaceList.add(surface);
-            }
+            surfaceList.addAll(mPreviewSurfaces);
         } else {
             surfaceList.add(mDummyPreviewReader.getSurface());
         }
@@ -416,7 +414,7 @@ public class CameraWrapper {
         if (mIsPreview && !isResume) {
 //            throw new CameraWrapperException("preview is started already.");
             stopPreview();  // TODO MJPEGが開かれた後にRTSP側のPreviewもとまってしまうため処理を統一する必要がある
-        }
+       }
         mIsPreview = true;
         mPreviewSurfaces.addAll(previewSurfaces);
         try {

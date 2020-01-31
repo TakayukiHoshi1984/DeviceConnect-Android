@@ -34,6 +34,7 @@ import org.deviceconnect.android.deviceplugin.host.recorder.util.MixedReplaceMed
 import org.deviceconnect.android.deviceplugin.host.recorder.util.RecorderSettingData;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -82,11 +83,7 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 if (DEBUG) {
                     Log.d(TAG, "MediaServerCallback.onAccept: recorder=" + mRecorder.getName());
                 }
-//                if (mRecorder.isStartedPreview()) {
-//                    return false;
-//                }
-
-                return startDrawTask();
+                return true;
             } catch (Exception e) {
                 if (DEBUG) {
                     Log.e(TAG, "Failed to start preview.", e);
@@ -99,14 +96,6 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
         public void onClosed(final Socket socket) {
             if (DEBUG) {
                 Log.d(TAG, "MediaServerCallback.onClosed: recorder=" + mRecorder.getName());
-            }
-            stopDrawTask();
-            try {
-                mRecorder.stopPreview();
-            } catch (CameraWrapperException e) {
-                if (DEBUG) {
-                    Log.e(TAG, "Failed to stop camera preview.", e);
-                }
             }
         }
     };
@@ -160,6 +149,18 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
                 uri = mServer.getUrl();
             }
             callback.onStart(uri);
+            mRecorder.show(new Camera2Recorder.Callback() {
+                @Override
+                public void onSuccess() {
+                    startDrawTask();
+                    mRecorder.sendNotification();
+                    mRecorder.hide(false);
+                }
+
+                @Override
+                public void onFail() {
+                }
+            });
         }
     }
 
@@ -287,12 +288,9 @@ class Camera2MJPEGPreviewServer implements PreviewServer {
 
             try {
                 mRecorder.startPreview(Arrays.asList(mRecorder.getSurface(), mSourceSurface));
-                mRecorder.hide(false);
                 if (DEBUG) {
                     Log.d(TAG, "Started camera preview.");
                 }
-
-                mRecorder.sendNotification();
             } catch (CameraWrapperException e) {
                 if (DEBUG) {
                     Log.e(TAG, "Failed to start camera preview.", e);

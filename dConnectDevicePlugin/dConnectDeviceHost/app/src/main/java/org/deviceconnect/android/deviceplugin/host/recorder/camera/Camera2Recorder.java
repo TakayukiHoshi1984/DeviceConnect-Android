@@ -37,6 +37,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -159,6 +160,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     private final Handler mRequestHandler;
 
     private Size mOverlayViewSize;
+    private RelativeLayout mRelativeLayout;
     /** プレビューを表示するSurfaceView. */
     private SurfaceView mSurfaceView;
     private Handler mOverlayHandler;
@@ -171,7 +173,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         @Override
         public void onReceive(final Context context, final Intent intent) {
             if (mIsOverlay && Intent.ACTION_CONFIGURATION_CHANGED.equals(intent.getAction())) {
-                updatePosition(mSurfaceView);
+                updatePosition(mRelativeLayout);
             }
         }
     };
@@ -478,9 +480,9 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     void stopPreview() throws CameraWrapperException {
         CameraWrapper camera = getCameraWrapper();
         camera.stopPreview();
-        if (mSurfaceView != null) {
-            mWinMgr.removeView(mSurfaceView);
-            mSurfaceView = null;
+        if (mRelativeLayout != null) {
+            mWinMgr.removeView(mRelativeLayout);
+            mRelativeLayout = null;
         }
     }
 
@@ -909,12 +911,15 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
             try {
                 WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
-                if (mSurfaceView == null) {
-                    mSurfaceView = new SurfaceView(getContext());
-                    mSurfaceView.getHolder().setFixedSize(l.width, l.height);
-                    mWinMgr.addView(mSurfaceView, l);
+                if (mRelativeLayout == null) {
+                    mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.camera_overlay, null);
+                    mSurfaceView = new SurfaceView(getContext());//mRelativeLayout.findViewById(R.id.surface_view);
+                    PictureSize picture = this.getRotatedPreviewSize();
+                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
+                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
+                    mWinMgr.addView(mRelativeLayout, l);
                 } else {
-                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                    mWinMgr.updateViewLayout(mRelativeLayout, l);
                 }
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
@@ -935,8 +940,9 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         }
-        WindowManager.LayoutParams l = new WindowManager.LayoutParams( (int) (viewSizeX ),
-                (int) (viewSizeY ),
+
+        WindowManager.LayoutParams l = new WindowManager.LayoutParams((int) (viewSizeX * getScaledDensity()),
+                (int) (viewSizeY * getScaledDensity()),
                 type,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
@@ -956,10 +962,9 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         mOverlayHandler.post(() -> {
 
             try {
-                if (mSurfaceView != null) {
+                if (mRelativeLayout != null) {
                     WindowManager.LayoutParams l = getLayoutParams(1, 1);
-
-                    mWinMgr.updateViewLayout(mSurfaceView, l);
+                    mWinMgr.updateViewLayout(mRelativeLayout, l);
                 }
                 if (isUnregisterReceiver) {
                     getContext().unregisterReceiver(mOrientReceiver);
@@ -1011,11 +1016,18 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         }
         Point size = getDisplaySize();
         mOverlayViewSize = new Size(size.x, size.y);
+
         final WindowManager.LayoutParams lp = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
 
         lp.x = -size.x / 2;
         lp.y = -size.y / 2;
         view.post(() -> {
+            PictureSize picture = this.getRotatedPreviewSize();
+            Size newSize = new Size((int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
+
+            mSurfaceView.getHolder().setFixedSize(newSize.getWidth(), newSize.getHeight());
+            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams(newSize.getWidth(), newSize.getHeight()));
+
             mWinMgr.updateViewLayout(view, lp);
         });
     }
