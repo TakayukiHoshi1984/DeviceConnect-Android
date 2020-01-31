@@ -913,10 +913,12 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                 WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
                 if (mRelativeLayout == null) {
                     mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.camera_overlay, null);
-                    mSurfaceView = new SurfaceView(getContext());//mRelativeLayout.findViewById(R.id.surface_view);
+                    mSurfaceView = new SurfaceView(getContext());
                     PictureSize picture = this.getRotatedPreviewSize();
-                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
-                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
+                    float scaleX = mOverlayViewSize.getWidth() / picture.getWidth();
+                    float scaleY = mOverlayViewSize.getHeight() / picture.getHeight();
+                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
+                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
                     mWinMgr.addView(mRelativeLayout, l);
                 } else {
                     mWinMgr.updateViewLayout(mRelativeLayout, l);
@@ -1023,10 +1025,11 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         lp.y = -size.y / 2;
         view.post(() -> {
             PictureSize picture = this.getRotatedPreviewSize();
-            Size newSize = new Size((int) (picture.getWidth() * getScaledDensity()), (int) (picture.getHeight() * getScaledDensity()));
 
-            mSurfaceView.getHolder().setFixedSize(newSize.getWidth(), newSize.getHeight());
-            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams(newSize.getWidth(), newSize.getHeight()));
+            float scaleX = size.x / picture.getWidth();
+            float scaleY = size.y/ picture.getHeight();
+            mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
+            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY)));
 
             mWinMgr.updateViewLayout(view, lp);
         });
