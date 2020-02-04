@@ -917,8 +917,16 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                     PictureSize picture = this.getRotatedPreviewSize();
                     float scaleX = mOverlayViewSize.getWidth() / picture.getWidth();
                     float scaleY = mOverlayViewSize.getHeight() / picture.getHeight();
-                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
-                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
+                    float aspect = scaleX;
+                    // アスペクト比に合わせてCameraのSurfaceViewのサイズを調整する
+                    if (scaleX < scaleY) {
+                        aspect = scaleY;
+                    }
+                    if (aspect < getScaledDensity()) {
+                        aspect = getScaledDensity();
+                    }
+                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
+                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
                     mWinMgr.addView(mRelativeLayout, l);
                 } else {
                     mWinMgr.updateViewLayout(mRelativeLayout, l);
@@ -1028,8 +1036,16 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
             float scaleX = size.x / picture.getWidth();
             float scaleY = size.y/ picture.getHeight();
-            mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY));
-            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams((int) (picture.getWidth() * scaleX), (int) (picture.getHeight() * scaleY)));
+            float aspect = scaleX;
+            if (scaleX < scaleY) {
+                aspect = scaleY;
+            }
+            if (aspect < getScaledDensity()) {
+                aspect = getScaledDensity();
+            }
+
+            mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
+            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect)));
 
             mWinMgr.updateViewLayout(view, lp);
         });

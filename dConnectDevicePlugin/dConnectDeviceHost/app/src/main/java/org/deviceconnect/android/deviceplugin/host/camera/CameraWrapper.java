@@ -12,6 +12,7 @@ import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraConstrainedHighSpeedCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
@@ -353,9 +354,9 @@ public class CameraWrapper {
 
     private synchronized CameraCaptureSession createCaptureSession(final List<Surface> targets, final CameraDevice cameraDevice) throws CameraWrapperException {
         try {
-            if (mCaptureSession != null) {
-                mCaptureSession.close();
-                mCaptureSession = null;
+            // 重複しているSurfaceを削除する
+            while (targets.size() > 2) {
+                targets.remove(0);
             }
             final CountDownLatch lock = new CountDownLatch(1);
             final AtomicReference<CameraCaptureSession> sessionRef = new AtomicReference<>();
@@ -424,6 +425,7 @@ public class CameraWrapper {
             for (Surface surface : mPreviewSurfaces) {
                 request.addTarget(surface);
             }
+
             request.set(CaptureRequest.JPEG_QUALITY, mPreviewJpegQuality);
             setDefaultCaptureRequest(request);
             captureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
@@ -473,9 +475,7 @@ public class CameraWrapper {
             CameraCaptureSession captureSession = createCaptureSession(cameraDevice);
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             if (mIsPreview) {
-                for (Surface surface : mPreviewSurfaces) {
-                    request.addTarget(surface);
-                }
+                request.addTarget(mPreviewSurfaces.get(mPreviewSurfaces.size() - 1));
             }
             request.addTarget(mRecordingSurface);
             setDefaultCaptureRequest(request);
@@ -488,10 +488,12 @@ public class CameraWrapper {
                     if (!mStarted && !isResume) {
                         mStarted = true;
                         notifyCameraEvent(CameraEvent.STARTED_VIDEO_RECORDING);
+
                     }
                 }
             }, mBackgroundHandler);
             mCaptureSession = captureSession;
+
         } catch (CameraAccessException e) {
             throw new CameraWrapperException(e);
         }
@@ -537,8 +539,9 @@ public class CameraWrapper {
                 prepareCapture(cameraDevice);
             }
 
-            int template = mIsRecording ? CameraDevice.TEMPLATE_VIDEO_SNAPSHOT : CameraDevice.TEMPLATE_STILL_CAPTURE;
+            int template = mIsRecording || mIsPreview ? CameraDevice.TEMPLATE_VIDEO_SNAPSHOT : CameraDevice.TEMPLATE_STILL_CAPTURE;
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(template);
+
             request.addTarget(stillImageSurface);
             setDefaultCaptureRequest(request);
             request.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
@@ -646,14 +649,7 @@ public class CameraWrapper {
             final CountDownLatch lock = new CountDownLatch(1);
             final AtomicReference<CaptureResult> resultRef = new AtomicReference<>();
             CaptureRequest.Builder request = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            if (mIsPreview) {
-                for (Surface surface : mPreviewSurfaces) {
-                    request.addTarget(surface);
-                }
-
-            } else {
-                request.addTarget(mDummyPreviewReader.getSurface());
-            }
+            request.addTarget(mDummyPreviewReader.getSurface());
             setDefaultCaptureRequest(request, true);
             mCaptureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
 
@@ -751,7 +747,6 @@ public class CameraWrapper {
                 for (Surface surface : mPreviewSurfaces) {
                     requestBuilder.addTarget(surface);
                 }
-
             } else {
                 requestBuilder.addTarget(mDummyPreviewReader.getSurface());
             }
@@ -792,7 +787,6 @@ public class CameraWrapper {
                     for (Surface surface : mPreviewSurfaces) {
                         requestBuilder.addTarget(surface);
                     }
-
                 } else {
                     requestBuilder.addTarget(mDummyPreviewReader.getSurface());
                 }
