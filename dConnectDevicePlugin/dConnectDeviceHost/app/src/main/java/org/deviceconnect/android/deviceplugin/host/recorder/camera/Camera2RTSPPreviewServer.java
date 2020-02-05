@@ -181,7 +181,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
 
     @Override
     public void eraseSession(final Session session) {
-        stopPreviewStreaming();
+//        stopPreviewStreaming();
     }
 
     @Override
