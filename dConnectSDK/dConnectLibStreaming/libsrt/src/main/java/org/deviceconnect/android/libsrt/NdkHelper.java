@@ -16,6 +16,8 @@ class NdkHelper {
     public static native void closeSrtSocket(long nativePtr);
 
     public static native void accept(long nativePtr, SRTSocket socket);
+    public static native long epollWait(long nativePtr, SRTSocket socket);
+
     public static native int sendMessage(long nativePtr, byte[] data, int offset, int length);
     public static native int recvMessage(long nativePtr, byte[] data, int length);
 

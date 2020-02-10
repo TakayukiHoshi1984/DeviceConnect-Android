@@ -48,7 +48,7 @@ JNIEXPORT jlong JNICALL
 JNI_METHOD_NAME(createSrtSocket)(JNIEnv *env, jclass clazz, jstring address, jint port, jint backlog) {
     LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_createSrtSocket()");
 
-    int yes = 1;
+    int syn = 0;
     int st;
     int ss = srt_create_socket();
     if (ss == SRT_ERROR) {
@@ -67,7 +67,8 @@ JNI_METHOD_NAME(createSrtSocket)(JNIEnv *env, jclass clazz, jstring address, jin
     }
     env->ReleaseStringUTFChars(address, addressString);
 
-    srt_setsockflag(ss, SRTO_RCVSYN, &yes, sizeof yes);
+    srt_setsockflag(ss, SRTO_SNDSYN, &syn, sizeof syn);
+    srt_setsockflag(ss, SRTO_RCVSYN, &syn, sizeof syn);
 
     st = srt_bind(ss, (struct sockaddr*)&sa, sizeof sa);
     if (st == SRT_ERROR) {
@@ -119,6 +120,63 @@ JNI_METHOD_NAME(accept)(JNIEnv *env, jclass clazz, jlong ptr, jobject socket) {
     jstring address = env->NewStringUTF(buf);
     jfieldID addressField = env->GetFieldID(socketCls, "mSocketAddress", "Ljava/lang/String;");
     env->SetObjectField(socket, addressField, address);
+}
+
+JNIEXPORT jlong JNICALL
+JNI_METHOD_NAME(epollWait)(JNIEnv *env, jclass clazz, jlong ptr, jobject socket) {
+    LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_epollWait()");
+
+    int ret;
+    int events = SRT_EPOLL_OUT;
+    int eid = srt_epoll_create();
+    int len = 1;
+    SRTSOCKET ready[1];
+
+    if (eid == SRT_ERROR) {
+        LOGE("epollWait: srt_epoll_create: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+
+    ret = srt_epoll_add_usock(eid, (int) ptr, &events);
+    if (ret == SRT_ERROR) {
+        LOGE("epollWait: srt_epoll_add_usock: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+
+    LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_epollWait(): connecting... pointer: %d", ret, ready[0]);
+    ret = srt_epoll_wait(eid, 0, 0, ready, &len, 60 * 1000, 0, 0, 0, 0);
+    if (ret == SRT_ERROR) {
+        LOGE("epollWait: srt_epoll_wait: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+
+
+    ret = srt_epoll_remove_usock(eid, (int) ptr);
+    if (ret == SRT_ERROR) {
+        LOGE("epollWait: srt_epoll_remove_usock: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+
+    SRT_SOCKSTATUS status = srt_getsockstate(ready[0]);
+    LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_epollWait(): srt_getsockstate: %d", status);
+
+    sockaddr addr;
+    int addrlen;
+    ret = srt_getpeername(ready[0], &addr, &addrlen);
+    if (ret == SRT_ERROR) {
+        LOGE("epollWait: srt_getpeername: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+    char format[] = "%d.%d.%d.%d";
+    char buf[15];
+    sprintf(buf, format, addr.sa_data[2], addr.sa_data[3], addr.sa_data[4], addr.sa_data[5]);
+    LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_epollWait(): addr = %s", buf);
+
+    jclass socketCls = env->FindClass("org/deviceconnect/android/libsrt/SRTSocket");
+    jfieldID socketPtr = env->GetFieldID(socketCls, "mNativePtr", "J");
+    env->SetLongField(socket, socketPtr, ready[0]);
+
+    return ret;
 }
 
 JNIEXPORT int JNICALL

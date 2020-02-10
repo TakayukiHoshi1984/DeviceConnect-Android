@@ -68,7 +68,10 @@ public class SRTServerSocket {
 
     public SRTSocket accept() throws IOException {
         SRTSocket socket = new SRTSocket();
-        NdkHelper.accept(mNativeSocket, socket);
+        long ret = NdkHelper.epollWait(mNativeSocket, socket);
+        if (ret < 0) {
+            throw new IOException("Internal error");
+        }
         if (!mIsOpen) {
             throw new IOException("already closed");
         }
