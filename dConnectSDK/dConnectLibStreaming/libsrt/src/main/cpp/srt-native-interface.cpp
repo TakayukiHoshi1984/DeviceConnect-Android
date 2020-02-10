@@ -102,9 +102,17 @@ JNI_METHOD_NAME(accept)(JNIEnv *env, jclass clazz, jlong ptr, jobject socket) {
 
     struct sockaddr addr;
     int addrlen;
+    int ret;
+    int no = 0;
     int st = srt_accept((int) ptr, &addr, &addrlen);
     if (st == SRT_ERROR) {
         LOGE("srt_accept: %s\n", srt_getlasterror_str());
+        return;
+    }
+
+    ret = srt_setsockflag(st, SRTO_SNDSYN, &no, sizeof no);
+    if (ret == SRT_ERROR) {
+        LOGE("srt_setsockflag: %s\n", srt_getlasterror_str());
         return;
     }
 
