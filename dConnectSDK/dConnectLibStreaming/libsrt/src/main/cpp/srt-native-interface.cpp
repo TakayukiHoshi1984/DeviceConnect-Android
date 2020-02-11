@@ -152,15 +152,26 @@ JNI_METHOD_NAME(epollWait)(JNIEnv *env, jclass clazz, jlong ptr, jobject socket)
     }
 
     LOGI("Java_org_deviceconnect_android_libsrt_NdkHelper_epollWait(): connecting... pointer: %d", ret, ready[0]);
-    ret = srt_epoll_wait(eid, 0, 0, ready, &len, 300 * 1000, 0, 0, 0, 0);
-    if (ret == SRT_ERROR) {
-        LOGE("epollWait: srt_epoll_wait: %s\n", srt_getlasterror_str());
-        return -1;
+    while (1) {
+        ret = srt_epoll_wait(eid, 0, 0, ready, &len, 100, 0, 0, 0, 0);
+        if (ret == SRT_ERROR) {
+            if (srt_getlasterror(nullptr) == SRT_ETIMEOUT) {
+                continue;
+            }
+            return -1;
+        }
+        break;
     }
 
     ret = srt_epoll_remove_usock(eid, (int) ptr);
     if (ret == SRT_ERROR) {
         LOGE("epollWait: srt_epoll_remove_usock: %s\n", srt_getlasterror_str());
+        return -1;
+    }
+
+    ret = srt_epoll_release(eid);
+    if (ret == SRT_ERROR) {
+        LOGE("epollWait: srt_epoll_release: %s\n", srt_getlasterror_str());
         return -1;
     }
 

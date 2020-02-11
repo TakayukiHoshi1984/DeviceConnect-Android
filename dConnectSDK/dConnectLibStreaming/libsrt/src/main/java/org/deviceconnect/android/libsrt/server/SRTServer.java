@@ -146,7 +146,7 @@ public class SRTServer {
                         Log.d(TAG, "Waiting for SRT client...");
                     }
 
-                    SRTSocket socket = mServerSocket.accept();
+                    SRTSocket socket = mServerSocket.accept(false);
 
                     if (isMaxClientNum()) {
                         socket.close();
