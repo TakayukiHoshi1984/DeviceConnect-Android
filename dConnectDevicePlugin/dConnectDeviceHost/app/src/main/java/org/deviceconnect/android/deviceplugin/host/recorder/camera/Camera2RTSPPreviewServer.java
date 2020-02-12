@@ -245,7 +245,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
                 mVideoStream = null;
                 mIsRecording = false;
                 mRecorder.hideNotification();
-                mRecorder.hide(true);
+                mRecorder.hide(false);
 
             }
         }

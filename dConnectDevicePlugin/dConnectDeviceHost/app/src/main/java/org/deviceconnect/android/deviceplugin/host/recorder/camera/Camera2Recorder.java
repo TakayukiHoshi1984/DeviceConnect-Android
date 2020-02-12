@@ -478,12 +478,12 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
 
     void stopPreview() throws CameraWrapperException {
-        CameraWrapper camera = getCameraWrapper();
-        camera.stopPreview();
         if (mRelativeLayout != null) {
             mWinMgr.removeView(mRelativeLayout);
             mRelativeLayout = null;
         }
+        CameraWrapper camera = getCameraWrapper();
+        camera.stopPreview();
     }
 
 
@@ -856,7 +856,7 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                 }
             });
         } else {
-            hide(true);
+            hide(false);
         }
     }
 
@@ -911,25 +911,33 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
             try {
                 WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
+                float desiredWidth;
+                float desiredHeight;
+
+                float aspect;
+                if (mOverlayViewSize.getWidth() >= mOverlayViewSize.getHeight()) {
+                    desiredWidth = 1024.0f;
+                    desiredHeight = 768.0f;
+                    aspect = Math.abs((float)mOverlayViewSize.getWidth() / desiredWidth);
+                } else {
+                    desiredWidth = 768.0f;
+                    desiredHeight = 1024.0f;
+                    aspect = Math.abs((float)mOverlayViewSize.getHeight() / desiredHeight);
+                }
+
+                int scaledWidth = (int)(desiredWidth * aspect);
+                int scaledHeight = (int)(desiredHeight * aspect);
                 if (mRelativeLayout == null) {
                     mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.camera_overlay, null);
                     mSurfaceView = new SurfaceView(getContext());
-                    PictureSize picture = this.getRotatedPreviewSize();
-                    float scaleX = mOverlayViewSize.getWidth() / picture.getWidth();
-                    float scaleY = mOverlayViewSize.getHeight() / picture.getHeight();
-                    float aspect = scaleX;
-                    // アスペクト比に合わせてCameraのSurfaceViewのサイズを調整する
-                    if (scaleX < scaleY) {
-                        aspect = scaleY;
-                    }
-                    if (aspect < getScaledDensity()) {
-                        aspect = getScaledDensity();
-                    }
-                    mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
-                    mRelativeLayout.addView(mSurfaceView, (int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
+
+                    mSurfaceView.getHolder().setFixedSize(scaledWidth, scaledHeight);
+                    mRelativeLayout.addView(mSurfaceView,  scaledWidth, scaledHeight);
                     mWinMgr.addView(mRelativeLayout, l);
                 } else {
                     mWinMgr.updateViewLayout(mRelativeLayout, l);
+                    mSurfaceView.getHolder().setFixedSize(scaledWidth, scaledHeight);
+                    mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams(scaledWidth,scaledHeight));
                 }
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
@@ -943,7 +951,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
             }
         });
     }
-
     private WindowManager.LayoutParams getLayoutParams(final int viewSizeX, final int viewSizeY) {
         Point size = getDisplaySize();
         int type = WindowManager.LayoutParams.TYPE_PHONE;
@@ -1032,20 +1039,26 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         lp.x = -size.x / 2;
         lp.y = -size.y / 2;
         view.post(() -> {
-            PictureSize picture = this.getRotatedPreviewSize();
+            float desiredWidth;
+            float desiredHeight;
 
-            float scaleX = size.x / picture.getWidth();
-            float scaleY = size.y/ picture.getHeight();
-            float aspect = scaleX;
-            if (scaleX < scaleY) {
-                aspect = scaleY;
-            }
-            if (aspect < getScaledDensity()) {
-                aspect = getScaledDensity();
+            float aspect;
+            int rotation = getRotation();
+            if (mOverlayViewSize.getWidth() >= mOverlayViewSize.getHeight()) {
+                desiredWidth = 1024.0f;
+                desiredHeight = 768.0f;
+                aspect = Math.abs((float)mOverlayViewSize.getWidth() / desiredWidth);
+            } else {
+                desiredWidth = 768.0f;
+                desiredHeight = 1024.0f;
+                aspect = Math.abs((float)mOverlayViewSize.getHeight() / desiredHeight);
             }
 
-            mSurfaceView.getHolder().setFixedSize((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect));
-            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams((int) (picture.getWidth() * aspect), (int) (picture.getHeight() * aspect)));
+            int scaledWidth = (int)(desiredWidth * aspect);
+            int scaledHeight = (int)(desiredHeight * aspect);
+            mSurfaceView.getHolder().setFixedSize(scaledWidth, scaledHeight);
+            mSurfaceView.setLayoutParams(new RelativeLayout.LayoutParams(scaledWidth,scaledHeight));
+
 
             mWinMgr.updateViewLayout(view, lp);
         });
