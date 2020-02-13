@@ -239,7 +239,7 @@ public class AACStream extends AudioStream {
 								Log.e(TAG, "An error occured with the AudioRecord API !");
 							}
 							if (isMuted()) {
-								inputBuffers[bufferIndex].put(pcmBufferMuted, 0, pcmBufferMuted.length);
+								inputBuffers[bufferIndex].put(pcmBufferMuted, 0, bufferSize);
 							}
 							//Log.v(TAG,"Pushing raw audio to the decoder: len="+len+" bs: "+inputBuffers[bufferIndex].capacity());
 							mMediaCodec.queueInputBuffer(bufferIndex, 0, len, System.nanoTime() / 1000, 0);

@@ -197,9 +197,7 @@ class Camera2RTSPPreviewServer extends AbstractRTSPPreviewServer implements Rtsp
     private Session startPreviewStreaming(final Socket clientSocket) throws IOException {
         SessionBuilder builder = new SessionBuilder();
         builder.setContext(mContext);
-        if (!mIsRecording) {
-            initRTSPStream();
-        }
+        initRTSPStream();
         builder.setVideoStream(mVideoStream);
         builder.setAudioStream(mAac);
         builder.setVideoQuality(mVideoQuality);

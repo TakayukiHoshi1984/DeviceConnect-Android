@@ -192,6 +192,8 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
     private int mCurrentRotation;
 
     private final MediaSharing mMediaSharing = MediaSharing.getInstance();
+    private static final float DEFAULT_WIDTH = 320.0f;
+    private static final float DEFAULT_HEIGHT = 240.0f;
 
     /**
      * コンストラクタ.
@@ -911,17 +913,15 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
 
             try {
                 WindowManager.LayoutParams l = getLayoutParams(mOverlayViewSize.getWidth(), mOverlayViewSize.getHeight());
-                float desiredWidth;
-                float desiredHeight;
-
                 float aspect;
+                float desiredWidth = DEFAULT_WIDTH;
+                float desiredHeight = DEFAULT_HEIGHT;
                 if (mOverlayViewSize.getWidth() >= mOverlayViewSize.getHeight()) {
-                    desiredWidth = 1024.0f;
-                    desiredHeight = 768.0f;
                     aspect = Math.abs((float)mOverlayViewSize.getWidth() / desiredWidth);
                 } else {
-                    desiredWidth = 768.0f;
-                    desiredHeight = 1024.0f;
+                    float temp = desiredWidth;
+                    desiredWidth = desiredHeight;
+                    desiredHeight = temp;
                     aspect = Math.abs((float)mOverlayViewSize.getHeight() / desiredHeight);
                 }
 
@@ -930,7 +930,6 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                 if (mRelativeLayout == null) {
                     mRelativeLayout = (RelativeLayout) LayoutInflater.from(getContext()).inflate(R.layout.camera_overlay, null);
                     mSurfaceView = new SurfaceView(getContext());
-
                     mSurfaceView.getHolder().setFixedSize(scaledWidth, scaledHeight);
                     mRelativeLayout.addView(mSurfaceView,  scaledWidth, scaledHeight);
                     mWinMgr.addView(mRelativeLayout, l);
@@ -950,6 +949,15 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
                 callback.onFail();
             }
         });
+    }
+    private int gcd(int w, int h) {
+        if(w < h) return gcd(h, w);
+        if(h == 0) return w;
+        return gcd(h, w % h);
+    }
+    private int divided(int aspect, int gcd) {
+        if (aspect / 10 < 0) return aspect;
+        return divided(aspect / gcd, gcd);
     }
     private WindowManager.LayoutParams getLayoutParams(final int viewSizeX, final int viewSizeY) {
         Point size = getDisplaySize();
@@ -1039,21 +1047,18 @@ public class Camera2Recorder extends AbstractCamera2Recorder implements HostDevi
         lp.x = -size.x / 2;
         lp.y = -size.y / 2;
         view.post(() -> {
-            float desiredWidth;
-            float desiredHeight;
-
             float aspect;
-            int rotation = getRotation();
-            if (mOverlayViewSize.getWidth() >= mOverlayViewSize.getHeight()) {
-                desiredWidth = 1024.0f;
-                desiredHeight = 768.0f;
-                aspect = Math.abs((float)mOverlayViewSize.getWidth() / desiredWidth);
-            } else {
-                desiredWidth = 768.0f;
-                desiredHeight = 1024.0f;
-                aspect = Math.abs((float)mOverlayViewSize.getHeight() / desiredHeight);
-            }
+            float desiredWidth = DEFAULT_WIDTH;
+            float desiredHeight = DEFAULT_HEIGHT;
 
+            if (mOverlayViewSize.getWidth() >= mOverlayViewSize.getHeight()) {
+                aspect = (float)mOverlayViewSize.getWidth() / desiredWidth;
+            } else {
+                float temp = desiredWidth;
+                desiredWidth = desiredHeight;
+                desiredHeight = temp;
+                aspect = (float)mOverlayViewSize.getHeight() / desiredHeight;
+            }
             int scaledWidth = (int)(desiredWidth * aspect);
             int scaledHeight = (int)(desiredHeight * aspect);
             mSurfaceView.getHolder().setFixedSize(scaledWidth, scaledHeight);
