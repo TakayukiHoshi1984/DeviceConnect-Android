@@ -320,9 +320,7 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
                                                                 .checkAccessToken(accessToken,
                                                                     profile.getProfileName().toLowerCase(),
                                                                     profile.getPluginContext().getIgnoredProfiles());
-            if (result.checkResult()) {
-                return profile.onRequest(request, response);
-            } else {
+            if (!result.checkResult()) {
                 if (accessToken == null) {
                     MessageUtils.setEmptyAccessTokenError(response);
                 } else if (!result.isExistAccessToken()) {
@@ -336,9 +334,10 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
                 } else {
                     MessageUtils.setAuthorizationError(response);
                 }
+                return true;
             }
         }
-        return true;
+        return profile.onRequest(request, response);
     }
 
     /**
