@@ -9,8 +9,10 @@ package org.deviceconnect.android.service;
 import android.content.Context;
 import android.content.Intent;
 
+import org.deviceconnect.android.localoauth.CheckAccessTokenResult;
 import org.deviceconnect.android.message.DevicePluginContext;
 import org.deviceconnect.android.message.MessageUtils;
+import org.deviceconnect.android.profile.AuthorizationProfile;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.android.profile.DConnectProfileProvider;
 import org.deviceconnect.android.profile.ServiceInformationProfile;
@@ -311,7 +313,32 @@ public class DConnectService implements DConnectProfileProvider, ServiceDiscover
             MessageUtils.setNotSupportProfileError(response);
             return true;
         }
-        return profile.onRequest(request, response);
+        if (profile.getPluginContext().isUseLocalOAuth()) {
+
+            String accessToken = request.getStringExtra(AuthorizationProfile.PARAM_ACCESS_TOKEN);
+            CheckAccessTokenResult result = profile.getPluginContext().getLocalOAuth2Main()
+                                                                .checkAccessToken(accessToken,
+                                                                    profile.getProfileName().toLowerCase(),
+                                                                    profile.getPluginContext().getIgnoredProfiles());
+            if (result.checkResult()) {
+                return profile.onRequest(request, response);
+            } else {
+                if (accessToken == null) {
+                    MessageUtils.setEmptyAccessTokenError(response);
+                } else if (!result.isExistAccessToken()) {
+                    MessageUtils.setNotFoundClientId(response);
+                } else if (!result.isExistClientId()) {
+                    MessageUtils.setNotFoundClientId(response);
+                } else if (!result.isExistScope()) {
+                    MessageUtils.setScopeError(response);
+                } else if (!result.isNotExpired()) {
+                    MessageUtils.setExpiredAccessTokenError(response);
+                } else {
+                    MessageUtils.setAuthorizationError(response);
+                }
+            }
+        }
+        return true;
     }
 
     /**

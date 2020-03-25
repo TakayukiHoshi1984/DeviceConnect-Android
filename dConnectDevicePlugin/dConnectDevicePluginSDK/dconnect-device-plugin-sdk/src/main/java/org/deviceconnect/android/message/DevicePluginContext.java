@@ -510,33 +510,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
             sendResponse(response);
             return;
         }
-
-        boolean send = true;
-        if (isUseLocalOAuth()) {
-            String accessToken = request.getStringExtra(AuthorizationProfile.PARAM_ACCESS_TOKEN);
-            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken,
-                    profileName.toLowerCase(), getIgnoredProfiles());
-            if (result.checkResult()) {
-                send = executeRequest(profileName, request, response);
-            } else {
-                if (accessToken == null) {
-                    MessageUtils.setEmptyAccessTokenError(response);
-                } else if (!result.isExistAccessToken()) {
-                    MessageUtils.setNotFoundClientId(response);
-                } else if (!result.isExistClientId()) {
-                    MessageUtils.setNotFoundClientId(response);
-                } else if (!result.isExistScope()) {
-                    MessageUtils.setScopeError(response);
-                } else if (!result.isNotExpired()) {
-                    MessageUtils.setExpiredAccessTokenError(response);
-                } else {
-                    MessageUtils.setAuthorizationError(response);
-                }
-            }
-        } else {
-            send = executeRequest(profileName, request, response);
-        }
-
+        boolean send = executeRequest(profileName, request, response);
         if (send) {
             sendResponse(response);
         }
