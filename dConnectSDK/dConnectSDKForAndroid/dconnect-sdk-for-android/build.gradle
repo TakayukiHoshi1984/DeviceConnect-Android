@@ -7,7 +7,9 @@ repositories {
 
 dependencies {
     implementation fileTree(include: '*.jar', dir: 'libs')
+    testImplementation 'org.robolectric:robolectric:4.3.1'
     testImplementation 'junit:junit:4.12'
+    testImplementation 'org.nanohttpd:nanohttpd-websocket:2.3.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     androidTestImplementation 'org.nanohttpd:nanohttpd-websocket:2.3.0'
@@ -34,6 +36,16 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
         }
     }
 }
