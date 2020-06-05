@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -408,7 +409,111 @@ public class DConnectMessageTest {
         assertThat(obj.getList(booleanArrayKey), equalTo(asList(booleanArrayValue)));
     }
 
+    /**
+     * JSONではない文字列がコンストラクタに設定された場合にJSONExceptionが発生すること。
+     * <pre>
+     * 【期待する動作】
+     * ・JSONExceptionが発生されること。
+     * </pre>
+     */
+    @Test(expected = JSONException.class)
+    public void BasicDConnectMessage_not_json_text() throws Exception {
+        new BasicDConnectMessage("not json text");
+    }
+    /**
+     * 数字文字列がコンストラクタに設定された場合にJSONExceptionが発生すること。
+     * <pre>
+     * 【期待する動作】
+     * ・JSONExceptionが発生されること。
+     * </pre>
+     */
+    @Test(expected = JSONException.class)
+    public void BasicDConnectMessage_not_json_number() throws Exception {
+        new BasicDConnectMessage("1234567890");
+    }
 
+    /**
+     * 記号文字列がコンストラクタに設定された場合にJSONExceptionが発生すること。
+     * <pre>
+     * 【期待する動作】
+     * ・JSONExceptionが発生されること。
+     * </pre>
+     */
+    @Test(expected = JSONException.class)
+    public void BasicDConnectMessage_not_json_symbol() throws Exception {
+        new BasicDConnectMessage("!\"#$%&\\'()-^¥@[;:],./__?<}*+{`|~=");
+    }
+    /**
+     * 空文字列がコンストラクタに設定された場合にJSONExceptionが発生すること。
+     * <pre>
+     * 【期待する動作】
+     * ・JSONExceptionが発生されること。
+     * </pre>
+     */
+    @Test(expected = JSONException.class)
+    public void BasicDConnectMessage_empty_text() throws Exception {
+        new BasicDConnectMessage("");
+    }
+    /**
+     * 空JSONオブジェクトがコンストラクタに設定された場合にJSONExceptionが発生すること。
+     * <pre>
+     * 【期待する動作】
+     * ・空のDConnectMessageオブジェクトが生成されること。
+     * ・サイズが0であること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_empty_json() throws Exception {
+        DConnectMessage message = new BasicDConnectMessage("{}");
+        assertThat(message, is(notNullValue()));
+        assertThat(message.size(), is(0));
+    }
+
+    /**
+     * 値がnullであるJSONからDConnectMessageを生成することを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・nullのDConnectMessageが返ってくること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_json_object_in_null_value_recursive() throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("nullValue", null);
+        DConnectMessage message = new BasicDConnectMessage(json);
+        DConnectMessage obj = message.getMessage("nullValue");
+        assertNull(obj);
+    }
+    /**
+     * 値が空文字であるJSONからDConnectMessageを生成することを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・nullのDConnectMessageが返ってくること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_json_object_in_empty_string_value_recursive() throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("emptyStringValue", "");
+        DConnectMessage message = new BasicDConnectMessage(json);
+        DConnectMessage obj = message.getMessage("emptyStringValue");
+        assertNull(obj);
+    }
+    /**
+     * 値が空文字であるJSONからDConnectMessageを生成することを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・nullのDConnectMessageが返ってくること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_json_object_in_empty_json_object_value_recursive() throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("emptyJSONValue", "{}");
+        DConnectMessage message = new BasicDConnectMessage(json);
+        DConnectMessage obj = message.getMessage("emptyJSONValue");
+        assertNull(obj);
+    }
     /**
      * プリミティブ型の値が格納されているIntentからDConnectMessageを生成することを確認する。
      * <pre>
@@ -616,7 +721,36 @@ public class DConnectMessageTest {
         }
         assertThat(obj.getList(booleanArrayKey), is(asList(booleanArrayValue)));
     }
-
+    /**
+     * 値が空文字であるJSONからDConnectMessageを生成することを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・nullのDConnectMessageが返ってくること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_intent_in_empty_string_value_recursive() throws Exception {
+        Intent intent = new Intent();
+        intent.putExtra("emptyStringValue", "");
+        DConnectMessage message = new BasicDConnectMessage(intent);
+        DConnectMessage obj = message.getMessage("emptyStringValue");
+        assertNull(obj);
+    }
+    /**
+     * 値が空文字であるJSONからDConnectMessageを生成することを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・nullのDConnectMessageが返ってくること。
+     * </pre>
+     */
+    @Test
+    public void BasicDConnectMessage_intent_in_empty_json_object_value_recursive() throws Exception {
+        Intent intent = new Intent();
+        intent.putExtra("emptyIntentValue", "{}");
+        DConnectMessage message = new BasicDConnectMessage(intent);
+        DConnectMessage obj = message.getMessage("emptyIntentValue");
+        assertNull(obj);
+    }
     private static JSONArray asArray(final String[] array) throws JSONException {
         JSONArray list = new JSONArray();
         for (int i = 0; i < array.length; i++) {

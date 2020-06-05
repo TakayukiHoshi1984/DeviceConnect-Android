@@ -51,6 +51,7 @@ import static android.os.Looper.getMainLooper;
 import static junit.framework.Assert.fail;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.robolectric.Shadows.shadowOf;
 import static org.robolectric.annotation.LooperMode.Mode.PAUSED;
@@ -463,6 +464,98 @@ public class IntentDConnectSDKTest {
 
         assertThat(resultClientId.get(), is(clientId));
         assertThat(resultAccessToken.get(), is(accessToken));
+    }
+    /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.INTENT);
+        DConnectResponseMessage response = sdk.authorization(null, null);
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.TIMEOUT.getCode());
+    }
+
+    /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_listener_parameter_null() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Integer> resultErrorCode = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.INTENT);
+        sdk.authorization(null, null,new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+                latch.countDown();
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+                resultErrorCode.set(errorCode);
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(60, TimeUnit.SECONDS); //リクエストタイムアウト時間
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
+        assertThat(resultErrorCode.get(), is(DConnectMessage.ErrorCode.TIMEOUT.getCode()));
+    }
+    /**
+     * パラメータに空文字が設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_parameter_empty_text() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.INTENT);
+        DConnectResponseMessage response = sdk.authorization("", new String[]{""});
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.TIMEOUT.getCode());
+    }
+
+    /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_listener_parameter_empty_text() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Integer> resultErrorCode = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.INTENT);
+        sdk.authorization("", new String[]{""},new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+                latch.countDown();
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+                resultErrorCode.set(errorCode);
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
+        assertThat(resultErrorCode.get(), is(DConnectMessage.ErrorCode.TIMEOUT.getCode()));
     }
 
     /**

@@ -54,6 +54,8 @@ import static fi.iki.elonen.NanoHTTPD.newFixedLengthResponse;
 import static junit.framework.Assert.fail;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -566,6 +568,98 @@ public class HttpDConnectSDKTest {
     }
 
     /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        DConnectResponseMessage response = sdk.authorization(null, null);
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.UNKNOWN.getCode());
+    }
+
+    /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_listener_parameter_null() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Integer> resultErrorCode = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.authorization(null, null,new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+                latch.countDown();
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+                resultErrorCode.set(errorCode);
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
+        assertThat(resultErrorCode.get(), is(DConnectMessage.ErrorCode.UNKNOWN.getCode()));
+    }
+    /**
+     * パラメータに空文字が設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_parameter_empty_text() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        DConnectResponseMessage response = sdk.authorization("", new String[]{""});
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.UNKNOWN.getCode());
+    }
+
+    /**
+     * パラメータにnullが設定された時にauthorizationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void authorization_listener_parameter_empty_text() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Integer> resultErrorCode = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.authorization("", new String[]{""},new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+                latch.countDown();
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+                resultErrorCode.set(errorCode);
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
+        assertThat(resultErrorCode.get(), is(DConnectMessage.ErrorCode.UNKNOWN.getCode()));
+    }
+    /**
      * refreshAccessToken を呼び出し、レスポンスを受け取れることを確認する。
      * <pre>
      * 【期待する動作】
@@ -835,6 +929,86 @@ public class HttpDConnectSDKTest {
         assertThat(resultErrorMessage.get(), is(errorMessage));
     }
 
+    /**
+     * パラメータにnullが設定された時にrefreshAccessTokenを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test(expected = NullPointerException.class)
+    public void refreshAccessToken_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.refreshAccessToken(null, null, null);
+    }
+
+    /**
+     * パラメータにnullが設定された時にrefreshAccessTokenを呼び出し、
+     * OnAuthorizationListenerにエラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test(expected = NullPointerException.class)
+    public void refreshAccessToken_listener_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.refreshAccessToken(null, null, null, new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+            }
+        });
+    }
+
+    /**
+     * パラメータに空文字が設定された時にrefreshAccessTokenを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void refreshAccessToken_parameter_empty_text() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        DConnectResponseMessage response = sdk.refreshAccessToken("", "", new String[]{""});
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.UNKNOWN.getCode());
+    }
+
+    /**
+     * パラメータに空文字が設定された時にrefreshAccessTokenを呼び出し、
+     * OnAuthorizationListenerにエラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void refreshAccessToken_listener_parameter_empty_text() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Integer> resultErrorCode = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.refreshAccessToken("", "", new String[]{""}, new DConnectSDK.OnAuthorizationListener() {
+            @Override
+            public void onResponse(final String clientId, final String accessToken) {
+            }
+            @Override
+            public void onError(final int errorCode, final String errorMessage) {
+                resultErrorCode.set(errorCode);
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
+        assertEquals(resultErrorCode.get().intValue(), DConnectMessage.ErrorCode.UNKNOWN.getCode());
+    }
     /**
      * serviceDiscoveryを呼び出し、レスポンスを受け取れることを確認する。
      * <pre>
@@ -1159,6 +1333,76 @@ public class HttpDConnectSDKTest {
         assertThat(response.getString(DConnectProfileConstants.PARAM_PRODUCT), is(product));
         assertThat(response.getList(ServiceInformationProfileConstants.PARAM_SUPPORTS), is(notNullValue()));
         assertThat(response.getList(ServiceInformationProfileConstants.PARAM_SUPPORT_APIS), is(notNullValue()));
+    }
+
+    /**
+     * パラメータにnullが設定された時にserviceInformationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test(expected = NullPointerException.class)
+    public void serviceInformation_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.getServiceInformation(null);
+    }
+
+    /**
+     * パラメータにnullが設定された時にserviceInformationを呼び出し、
+     * OnResponseListenerにエラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test(expected = NullPointerException.class)
+    public void serviceInformation_listener_parameter_null() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.getServiceInformation(null, new DConnectSDK.OnResponseListener() {
+            @Override
+            public void onResponse(DConnectResponseMessage response) {
+            }
+        });
+    }
+
+    /**
+     * パラメータに空文字が設定された時にserviceInformationを呼び出し、エラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void serviceInformation_parameter_empty_text() {
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        DConnectResponseMessage response = sdk.getServiceInformation("");
+        assertEquals(response.getErrorCode(), DConnectMessage.ErrorCode.UNKNOWN.getCode());
+    }
+
+    /**
+     * パラメータに空文字が設定された時にserviceInformationを呼び出し、
+     * OnResponseListenerにエラーコードが返ってくることを確認する。
+     * <pre>
+     * 【期待する動作】
+     * ・errorCodeが通知されること。
+     * </pre>
+     */
+    @Test
+    public void serviceInformation_listener_parameter_empty_text() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<DConnectResponseMessage> result = new AtomicReference<>();
+
+        DConnectSDK sdk = DConnectSDKFactory.create(InstrumentationRegistry.getInstrumentation().getContext(), DConnectSDKFactory.Type.HTTP);
+        sdk.getServiceInformation("", new DConnectSDK.OnResponseListener() {
+            @Override
+            public void onResponse(DConnectResponseMessage response) {
+                result.set(response);
+                latch.countDown();
+            }
+        });
+        DConnectResponseMessage response = result.get();
+        assertNull(response);
     }
 
     /**
