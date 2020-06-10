@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import org.deviceconnect.android.PluginSDKTestRunner;
@@ -21,12 +22,14 @@ import org.deviceconnect.message.intent.message.IntentDConnectMessage;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.robolectric.annotation.Config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.junit.Assert.assertThat;
 
 @RunWith(PluginSDKTestRunner.class)
+@Config(maxSdk = Build.VERSION_CODES.P)
 public class ServiceInformationTest {
 
     /**
