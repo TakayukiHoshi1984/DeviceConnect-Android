@@ -14,6 +14,7 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -21,6 +22,7 @@ import org.deviceconnect.message.entity.FileEntity;
 import org.deviceconnect.message.entity.MultipartEntity;
 import org.deviceconnect.message.entity.StringEntity;
 import org.deviceconnect.message.intent.message.IntentDConnectMessage;
+import org.deviceconnect.message.util.AsyncUtils;
 import org.deviceconnect.profile.AuthorizationProfileConstants;
 import org.deviceconnect.profile.AvailabilityProfileConstants;
 import org.deviceconnect.profile.DConnectProfileConstants;
@@ -29,6 +31,7 @@ import org.deviceconnect.profile.ServiceDiscoveryProfileConstants;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.android.util.concurrent.RoboExecutorService;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.LooperMode;
 
@@ -37,6 +40,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,15 +69,15 @@ import static org.robolectric.annotation.LooperMode.Mode.PAUSED;
 @Config(maxSdk = Build.VERSION_CODES.P)
 public class IntentDConnectSDKTest {
 
-    private BroadcastReceiver mReceiver;
-    private DConnectSDK getSDK() {
+
+    private DConnectSDK getSDK(BroadcastReceiver receiver) {
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
-        context.registerReceiver(mReceiver, new IntentFilter());
+        context.registerReceiver(receiver, new IntentFilter());
         String packageName = context.getPackageName();
         DConnectSDK sdk = DConnectSDKFactory.create(context, DConnectSDKFactory.Type.INTENT);
         IntentDConnectSDK intentSDK = (IntentDConnectSDK)sdk;
         intentSDK.setManagerPackageName(packageName);
-        intentSDK.setManagerClassName(mReceiver.getClass().getName());
+        intentSDK.setManagerClassName(receiver.getClass().getName());
         return intentSDK;
     }
 
@@ -120,23 +124,14 @@ public class IntentDConnectSDKTest {
         }
         return out.toByteArray();
     }
-    // 現在のスレッドをスリープさせ、新しいスレッドが実行され、実行可能なスレッドを投稿する機会を与える
-    private void waitForResponse() {
-        for (int i = 0; i < 2; i++) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                fail("timeout");
-            }
-            shadowOf(getMainLooper()).idle();
-        }
-        try {
-            Thread.sleep(800);
-        } catch (InterruptedException e) {
-            fail("timeout");
-        }
-    }
 
+    private void waitForResponseAsync(final int threadNest) {
+        new Thread(() -> {
+            for (int i = 0; i < threadNest; i++) {
+                AsyncUtils.waitForMainThreadCallback();
+            }
+        }).start();
+    }
     /**
      * availabilityを呼び出し、レスポンスを受け取れることを確認する。
      * <pre>
@@ -156,7 +151,7 @@ public class IntentDConnectSDKTest {
         final String name = "name";
         final String uuid = "uuid";
 
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -184,7 +179,7 @@ public class IntentDConnectSDKTest {
                 context.sendBroadcast(response);
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         DConnectResponseMessage response = sdk.availability();
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
         assertThat(response.getString(DConnectProfileConstants.PARAM_VERSION), is(version));
@@ -206,22 +201,20 @@ public class IntentDConnectSDKTest {
      * </pre>
      */
     @Test
-    @LooperMode(PAUSED)
     public void availability_listener() {
         final String version = "1.1";
         final String product = "test";
         final String name = "name";
         final String uuid = "uuid";
+        final CountDownLatch latch = new CountDownLatch(1);
+
         final AtomicReference<DConnectResponseMessage> result = new AtomicReference<>();
-
-        mReceiver = new BroadcastReceiver() {
-
+        BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 ComponentName cn = (ComponentName) intent.getExtras().get(IntentDConnectMessage.EXTRA_RECEIVER);
                 int requestCode = intent.getIntExtra(IntentDConnectMessage.EXTRA_REQUEST_CODE, -1);
                 String method = intent.getAction();
-
                 Intent response = new Intent();
                 response.setComponent(cn);
                 response.setAction(IntentDConnectMessage.ACTION_RESPONSE);
@@ -241,12 +234,17 @@ public class IntentDConnectSDKTest {
                 context.sendBroadcast(response);
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.availability((response) -> {
             result.set(response);
+            latch.countDown();
         });
-
-        waitForResponse();
+        waitForResponseAsync(1);
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
         DConnectResponseMessage response = result.get();
         assertThat(response, is(notNullValue()));
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
@@ -255,6 +253,8 @@ public class IntentDConnectSDKTest {
         assertThat(response.getString(AvailabilityProfileConstants.PARAM_NAME), is(name));
         assertThat(response.getString(AvailabilityProfileConstants.PARAM_UUID), is(uuid));
     }
+
+
 
     /**
      * authorizationを呼び出し、レスポンスを受け取れることを確認する。
@@ -284,7 +284,7 @@ public class IntentDConnectSDKTest {
                 "battery"
         };
 
-        mReceiver = new BroadcastReceiver() {
+        BroadcastReceiver receiver = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -346,7 +346,7 @@ public class IntentDConnectSDKTest {
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         DConnectResponseMessage response = sdk.authorization(appName, scopes);
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
         assertThat(response.getString(DConnectProfileConstants.PARAM_VERSION), is(version));
@@ -369,7 +369,6 @@ public class IntentDConnectSDKTest {
      * </pre>
      */
     @Test
-    @LooperMode(PAUSED)
     public void authorization_listener() {
         final String appName = "test";
         final String version = "1.1";
@@ -384,9 +383,11 @@ public class IntentDConnectSDKTest {
                 "serviceInformation",
                 "battery"
         };
+        final CountDownLatch latch = new CountDownLatch(1);
+
         final AtomicReference<String> resultClientId = new AtomicReference<>();
         final AtomicReference<String> resultAccessToken = new AtomicReference<>();
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -447,21 +448,26 @@ public class IntentDConnectSDKTest {
                 context.sendBroadcast(response);
             }
         };
-
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.authorization(appName, scopes, new DConnectSDK.OnAuthorizationListener() {
             @Override
             public void onResponse(String clientId, String accessToken) {
                 resultClientId.set(clientId);
                 resultAccessToken.set(accessToken);
+                latch.countDown();
             }
 
             @Override
             public void onError(int errorCode, String errorMessage) {
+                latch.countDown();
             }
         });
-        waitForResponse();
-
+        waitForResponseAsync(2);
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
         assertThat(resultClientId.get(), is(clientId));
         assertThat(resultAccessToken.get(), is(accessToken));
     }
@@ -583,7 +589,7 @@ public class IntentDConnectSDKTest {
                         "config1"
                 }
         };
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -633,7 +639,7 @@ public class IntentDConnectSDKTest {
                 context.sendBroadcast(response);
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.setAccessToken(accessToken);
 
         DConnectResponseMessage response = sdk.serviceDiscovery();
@@ -662,7 +668,6 @@ public class IntentDConnectSDKTest {
      * </pre>
      */
     @Test
-    @LooperMode(PAUSED)
     public void serviceDiscovery_listener() {
         final String version = "1.1";
         final String product = "test-manager";
@@ -676,8 +681,9 @@ public class IntentDConnectSDKTest {
                         "config1"
                 }
         };
+        final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<DConnectResponseMessage> result = new AtomicReference<>();
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -727,15 +733,19 @@ public class IntentDConnectSDKTest {
                 context.sendBroadcast(response);
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.setAccessToken(accessToken);
 
         sdk.serviceDiscovery(response -> {
             result.set(response);
+            latch.countDown();
         });
-
-        waitForResponse();
-
+        waitForResponseAsync(1);
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
         DConnectResponseMessage response = result.get();
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
         assertThat(response.getList(ServiceDiscoveryProfileConstants.PARAM_SERVICES), is(notNullValue()));
@@ -769,7 +779,7 @@ public class IntentDConnectSDKTest {
         final String name = "name";
         final String uuid = "uuid";
 
-        mReceiver = new BroadcastReceiver() {
+        BroadcastReceiver receiver = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -798,7 +808,7 @@ public class IntentDConnectSDKTest {
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         DConnectResponseMessage response = sdk.get("http://localhost:4035/gotapi/availability");
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
         assertThat(response.getString(DConnectProfileConstants.PARAM_VERSION), is(version));
@@ -816,14 +826,14 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = NullPointerException.class)
     public void get_uri_null() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.get((Uri) null);
     }
 
@@ -836,14 +846,14 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void get_uri_empty() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.get("");
     }
 
@@ -856,13 +866,13 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void get_uri_illegal() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.get("test");
     }
 
@@ -879,15 +889,15 @@ public class IntentDConnectSDKTest {
      * </pre>
      */
     @Test
-    @LooperMode(PAUSED)
     public void get_listener() {
         final String version = "1.1";
         final String product = "test-manager";
         final String name = "manager";
         final String uuid = "uuid";
         final AtomicReference<DConnectResponseMessage> result = new AtomicReference<>();
+        final CountDownLatch latch = new CountDownLatch(1);
 
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -916,16 +926,20 @@ public class IntentDConnectSDKTest {
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.get("http://localhost:4035/gotapi/availability", new DConnectSDK.OnResponseListener() {
             @Override
             public void onResponse(final DConnectResponseMessage response) {
                 result.set(response);
+                latch.countDown();
             }
         });
-
-        waitForResponse();
-
+        waitForResponseAsync(1);
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
+        }
         DConnectResponseMessage response = result.get();
         assertThat(response, is(notNullValue()));
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
@@ -964,7 +978,7 @@ public class IntentDConnectSDKTest {
         data.add(key, new StringEntity(value));
         data.add("data", new FileEntity(new File(path)));
 
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -998,7 +1012,7 @@ public class IntentDConnectSDKTest {
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         DConnectResponseMessage response = sdk.post("http://localhost:4035/gotapi/availability", data);
         assertThat(response, notNullValue());
         assertThat(response.getResult(), is(DConnectMessage.RESULT_OK));
@@ -1020,14 +1034,14 @@ public class IntentDConnectSDKTest {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicBoolean result = new AtomicBoolean();
         final String accessToken = "test-accessToken";
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.setAccessToken(accessToken);
         sdk.connectWebSocket(new DConnectSDK.OnWebSocketListener() {
             @Override
@@ -1079,8 +1093,9 @@ public class IntentDConnectSDKTest {
      * </pre>
      */
     @Test
-    @LooperMode(PAUSED)
     public void addEventListener() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final CountDownLatch latch2 = new CountDownLatch(1);
         final boolean[] result = new boolean[1];
         final DConnectEventMessage[] event = new DConnectEventMessage[1];
         final String version = "1.1";
@@ -1094,7 +1109,7 @@ public class IntentDConnectSDKTest {
         final float accelY = 1.5f;
         final float accelZ = 3.9f;
         final int interval = 1001;
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
 
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -1140,18 +1155,20 @@ public class IntentDConnectSDKTest {
 
                             context.sendBroadcast(jsonObject);
                         }
-                    }, 3000, TimeUnit.MILLISECONDS);
+                    }, 3, TimeUnit.SECONDS);
+                    waitForResponseAsync(1);
+
                 }
-                waitForResponse();
                 context.sendBroadcast(response);
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.setAccessToken(accessToken);
         sdk.connectWebSocket(new DConnectSDK.OnWebSocketListener() {
             @Override
             public void onOpen() {
                 result[0] = true;
+                latch.countDown();
             }
 
             @Override
@@ -1160,10 +1177,16 @@ public class IntentDConnectSDKTest {
 
             @Override
             public void onError(Exception e) {
+                latch.countDown();
             }
         });
-
-        waitForResponse();
+        waitForResponseAsync(1);
+        try {
+            latch.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            sdk.disconnectWebSocket();
+            fail("timeout");
+        }
 
         assertThat(result[0], is(true));
 
@@ -1176,6 +1199,7 @@ public class IntentDConnectSDKTest {
             @Override
             public void onMessage(final DConnectEventMessage message) {
                 event[0] = message;
+                latch2.countDown();
             }
 
             @Override
@@ -1186,7 +1210,10 @@ public class IntentDConnectSDKTest {
 
         // イベントからのメッセージを待つ
         try {
-            waitForResponse();
+            waitForResponseAsync(1);
+            latch2.await(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            fail("timeout");
         } finally {
             sdk.removeEventListener(builder.toASCIIString());
             sdk.disconnectWebSocket();
@@ -1218,13 +1245,13 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = NullPointerException.class)
     public void addEventListener_listener_null() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         DConnectSDK.URIBuilder builder = sdk.createURIBuilder();
         builder.setProfile("deviceOrientation");
         builder.setAttribute("onDeviceOrientation");
@@ -1241,14 +1268,14 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = NullPointerException.class)
     public void addEventListener_uri_null() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.addEventListener((Uri) null, new DConnectSDK.OnEventListener() {
             @Override
             public void onMessage(final DConnectEventMessage message) {
@@ -1268,14 +1295,14 @@ public class IntentDConnectSDKTest {
      */
     @Test(expected = NullPointerException.class)
     public void removeEventListener_uri_null() {
-        mReceiver  = new BroadcastReceiver() {
+        BroadcastReceiver receiver  = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
             }
         };
 
-        DConnectSDK sdk = getSDK();
+        DConnectSDK sdk = getSDK(receiver);
         sdk.removeEventListener((Uri) null);
     }
 }

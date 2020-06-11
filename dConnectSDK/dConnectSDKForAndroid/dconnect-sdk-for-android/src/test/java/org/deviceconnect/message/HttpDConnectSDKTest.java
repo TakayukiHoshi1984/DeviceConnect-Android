@@ -15,7 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.deviceconnect.message.entity.FileEntity;
 import org.deviceconnect.message.entity.MultipartEntity;
 import org.deviceconnect.message.entity.StringEntity;
-import org.deviceconnect.message.server.TestServer;
+import org.deviceconnect.message.util.TestServer;
 import org.deviceconnect.profile.AuthorizationProfileConstants;
 import org.deviceconnect.profile.AvailabilityProfileConstants;
 import org.deviceconnect.profile.DConnectProfileConstants;

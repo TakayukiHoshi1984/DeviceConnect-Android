@@ -1,4 +1,4 @@
-package org.deviceconnect.message.server;
+package org.deviceconnect.message.util;
 
 import java.io.IOException;
 import java.util.Map;

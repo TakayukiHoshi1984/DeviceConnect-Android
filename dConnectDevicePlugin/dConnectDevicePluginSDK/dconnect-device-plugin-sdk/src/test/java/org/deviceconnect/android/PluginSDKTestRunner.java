@@ -9,6 +9,7 @@ package org.deviceconnect.android;
 import org.junit.runners.model.InitializationError;
 import org.robolectric.RobolectricTestRunner;
 
+
 public class PluginSDKTestRunner extends RobolectricTestRunner {
     /**
      * コンストラクタ.
