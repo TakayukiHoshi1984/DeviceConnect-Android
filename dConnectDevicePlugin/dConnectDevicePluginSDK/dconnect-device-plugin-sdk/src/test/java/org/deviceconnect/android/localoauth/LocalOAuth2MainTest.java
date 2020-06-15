@@ -55,7 +55,7 @@ public class LocalOAuth2MainTest {
     @Before
     public void execBeforeClass() {
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        mLocalOAuth2Main = new LocalOAuth2Main(mContext);
+        mLocalOAuth2Main = new LocalOAuth2Main(mContext, LocalOAuthFactory.create(mContext));
     }
 
     @After

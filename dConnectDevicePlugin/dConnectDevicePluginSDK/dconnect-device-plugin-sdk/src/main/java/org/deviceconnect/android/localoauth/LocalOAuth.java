@@ -24,6 +24,7 @@ public interface LocalOAuth {
      * 認可の結果に格納される認可フラグのエクストラキーを定義します.
      */
     String EXTRA_APPROVAL = "org.deviceconnect.android.localoauth.APPROVAL";
+    String EXTRA_ACTION = "action";
     /** Notification Id */
     int NOTIFICATION_ID = 3463;
 

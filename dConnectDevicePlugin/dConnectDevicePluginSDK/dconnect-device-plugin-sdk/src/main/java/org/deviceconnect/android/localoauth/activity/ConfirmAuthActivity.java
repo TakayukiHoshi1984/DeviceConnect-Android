@@ -64,6 +64,8 @@ public class ConfirmAuthActivity extends Activity {
 
     public static final String EXTRA_AUTO_FLAG = "auto_flag";
 
+    public static final String EXTRA_RESULT_RECEIVER = "result_receiver";
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

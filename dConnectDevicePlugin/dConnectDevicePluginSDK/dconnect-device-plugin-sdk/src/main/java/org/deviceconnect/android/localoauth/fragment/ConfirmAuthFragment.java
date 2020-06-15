@@ -14,6 +14,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import android.os.ResultReceiver;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,6 +37,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import static org.deviceconnect.android.localoauth.LocalOAuth.ACTION_TOKEN_APPROVAL;
+import static org.deviceconnect.android.localoauth.LocalOAuth.EXTRA_ACTION;
 import static org.deviceconnect.android.localoauth.LocalOAuth.EXTRA_APPROVAL;
 import static org.deviceconnect.android.localoauth.LocalOAuth.EXTRA_THREAD_ID;
 
@@ -55,7 +58,7 @@ public class ConfirmAuthFragment extends Fragment {
 
     /** タイムアウト監視. */
     private Timer mTimeoutTimer;
-
+    private ResultReceiver mCallback;
     @Override
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
             final Bundle savedInstanceState) {
@@ -70,6 +73,7 @@ public class ConfirmAuthFragment extends Fragment {
             getActivity().finish();
             return null;
         }
+        mCallback = intent.getExtras().getParcelable(ConfirmAuthActivity.EXTRA_RESULT_RECEIVER);
 
         String applicationName = intent.getStringExtra(ConfirmAuthActivity.EXTRA_APPLICATION_NAME);
         String packageName = intent.getStringExtra(ConfirmAuthActivity.EXTRA_PACKAGE_NAME);
@@ -163,11 +167,12 @@ public class ConfirmAuthFragment extends Fragment {
      * @param isApproval true: 許可 / false: 拒否
      */
     private void sendMessage(final Boolean isApproval) {
-        Intent intent = new Intent();
-        intent.setAction(ACTION_TOKEN_APPROVAL);
-        intent.putExtra(EXTRA_THREAD_ID, mThreadId);
-        intent.putExtra(EXTRA_APPROVAL, isApproval);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
+        Bundle intent = new Bundle();
+        intent.putString(EXTRA_ACTION, ACTION_TOKEN_APPROVAL);
+        intent.putLong(EXTRA_THREAD_ID, mThreadId);
+        intent.putBoolean(EXTRA_APPROVAL, isApproval);
+        mCallback.send(Activity.RESULT_OK, intent);
+//        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
     }
 
     /**

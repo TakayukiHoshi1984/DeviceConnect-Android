@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ResultReceiver;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -78,18 +80,26 @@ class LocalOAuthForActivity implements LocalOAuth {
         detailIntent.setClass(params.getContext(), ConfirmAuthActivity.class);
         detailIntent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        // 許可ボタン押下時のIntent
-        Intent acceptIntent = new Intent();
-        putExtras(context, request, displayScopes, acceptIntent);
-        acceptIntent.setAction(ACTION_OAUTH_ACCEPT);
-        acceptIntent.putExtra(EXTRA_APPROVAL, true);
-
-        // 拒否ボタン押下時のIntent
-        Intent declineIntent = new Intent();
-        putExtras(context, request, displayScopes, declineIntent);
-        declineIntent.setAction(ACTION_OAUTH_DECLINE);
-        declineIntent.putExtra(EXTRA_APPROVAL, false);
-
+        detailIntent.putExtra(ConfirmAuthActivity.EXTRA_RESULT_RECEIVER, new ResultReceiver(new Handler(Looper.getMainLooper())) {
+            @Override
+            protected void onReceiveResult(final int resultCode, final Bundle resultData) {
+                String action = resultData.getString(EXTRA_ACTION);
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
+                        NotificationUtils.cancel(context, NOTIFICATION_ID);
+                    }
+                }
+                if (ACTION_TOKEN_APPROVAL.equals(action)) {
+                    long threadId = resultData.getLong(EXTRA_THREAD_ID, -1);
+                    boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
+                    processApproval(threadId, isApproval);
+                } else if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
+                    long threadId = resultData.getLong(ConfirmAuthActivity.EXTRA_THREAD_ID, -1);
+                    boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
+                    processApproval(threadId, isApproval);
+                }
+            }
+        });
         context.startActivity(detailIntent);
 
         request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {
