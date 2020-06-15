@@ -13,9 +13,9 @@ public final class LocalOAuthFactory {
 
         LocalOAuth lOauth;
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            lOauth = new LocalOAuthActivity(context);
+            lOauth = new LocalOAuthForActivity(context);
         } else {
-            lOauth = new LocalOAuthNotification(context);
+            lOauth = new LocalOAuthForNotification(context);
         }
         return lOauth;
     }

@@ -19,13 +19,13 @@ import org.restlet.ext.oauth.PackageInfoOAuth;
 
 import static org.deviceconnect.android.localoauth.LocalOAuth2Main.EXTRA_APPROVAL;
 
-public class LocalOAuthActivity implements LocalOAuth {
+public class LocalOAuthForActivity implements LocalOAuth {
 
 
     private LocalOAuth2Main mLocalOAuth2Main;
 
 
-    public LocalOAuthActivity(final Context context) {
+    public LocalOAuthForActivity(final Context context) {
         mLocalOAuth2Main = new LocalOAuth2Main(context);
         register();
     }
@@ -40,7 +40,7 @@ public class LocalOAuthActivity implements LocalOAuth {
         // ActivityがサービスがBindされていない場合には、
         // Activityを起動する。
         if (mLocalOAuth2Main.requestSize() <= 1) {
-            startConfirmAuthActivity(mLocalOAuth2Main.pickupRequest());
+            startConfirmAuthController(mLocalOAuth2Main.pickupRequest());
         }
     }
 
@@ -58,7 +58,7 @@ public class LocalOAuthActivity implements LocalOAuth {
      * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
      * @param request リクエストデータ
      */
-    public void startConfirmAuthActivity(final ConfirmAuthRequest request) {
+    protected void startConfirmAuthController(final ConfirmAuthRequest request) {
         if (request == null) {
             return;
         }
@@ -170,7 +170,7 @@ public class LocalOAuthActivity implements LocalOAuth {
                     // キューにリクエストが残っていれば、次のキューを取得してActivityを起動する
                     final ConfirmAuthRequest nextRequest = mLocalOAuth2Main.pickupRequest();
                     if (nextRequest != null) {
-                        startConfirmAuthActivity(nextRequest);
+                        startConfirmAuthController(nextRequest);
                     }
                 }
             }, 2000);

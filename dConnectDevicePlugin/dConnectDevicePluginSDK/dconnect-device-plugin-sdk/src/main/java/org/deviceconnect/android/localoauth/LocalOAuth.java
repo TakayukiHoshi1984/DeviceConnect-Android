@@ -33,13 +33,6 @@ public interface LocalOAuth {
     /** Notification Id */
     int NOTIFICATION_ID = 3463;
 
-    interface AuthCallback {
-        void callAuth(Callback callback);
-        interface Callback {
-            void ok();
-            void ng();
-        }
-    }
 
     ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException;
     void confirmPublishAccessToken(final ConfirmAuthParams params,
@@ -48,4 +41,6 @@ public interface LocalOAuth {
 
     CheckAccessTokenResult checkAccessToken(final String accessToken, final String scope,
                                             final String[] specialScopes);
+
+    void startConfirmAuthController(final ConfirmAuthRequest request);
 }

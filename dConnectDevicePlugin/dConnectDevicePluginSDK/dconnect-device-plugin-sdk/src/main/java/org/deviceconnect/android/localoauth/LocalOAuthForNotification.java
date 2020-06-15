@@ -11,8 +11,8 @@ import org.deviceconnect.android.util.NotificationUtils;
 
 import static org.deviceconnect.android.localoauth.LocalOAuth2Main.EXTRA_APPROVAL;
 
-public class LocalOAuthNotification extends LocalOAuthActivity {
-    public LocalOAuthNotification(Context context) {
+public class LocalOAuthForNotification extends LocalOAuthForActivity {
+    public LocalOAuthForNotification(Context context) {
         super(context);
     }
 
@@ -20,7 +20,7 @@ public class LocalOAuthNotification extends LocalOAuthActivity {
      * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
      * @param request リクエストデータ
      */
-    public void startConfirmAuthActivity(final ConfirmAuthRequest request) {
+    public void startConfirmAuthController(final ConfirmAuthRequest request) {
         if (request == null) {
             return;
         }
