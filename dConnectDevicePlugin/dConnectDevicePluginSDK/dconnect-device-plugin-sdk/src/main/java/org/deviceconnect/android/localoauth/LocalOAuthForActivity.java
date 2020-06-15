@@ -1,7 +1,5 @@
 package org.deviceconnect.android.localoauth;
 
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,19 +12,25 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
+import org.deviceconnect.android.localoauth.oauthserver.SampleUserManager;
+import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteClient;
+import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteToken;
 import org.deviceconnect.android.util.NotificationUtils;
 import org.restlet.ext.oauth.PackageInfoOAuth;
+import org.restlet.ext.oauth.internal.Client;
 
-import static org.deviceconnect.android.localoauth.LocalOAuth2Main.EXTRA_APPROVAL;
+class LocalOAuthForActivity implements LocalOAuth {
 
-public class LocalOAuthForActivity implements LocalOAuth {
+    /** 通知の許可ボタン押下時のアクション */
+    protected static final String ACTION_OAUTH_ACCEPT = "org.deviceconnect.android.localoauth.accept";
+
+    /** 通知の拒否ボタン押下時のアクション */
+    protected static final String ACTION_OAUTH_DECLINE = "org.deviceconnect.android.localoauth.decline";
+    protected LocalOAuth2Main mLocalOAuth2Main;
 
 
-    private LocalOAuth2Main mLocalOAuth2Main;
-
-
-    public LocalOAuthForActivity(final Context context) {
-        mLocalOAuth2Main = new LocalOAuth2Main(context);
+    LocalOAuthForActivity(final Context context) {
+        mLocalOAuth2Main = new LocalOAuth2Main(context,this);
         register();
     }
     @Override
@@ -58,7 +62,7 @@ public class LocalOAuthForActivity implements LocalOAuth {
      * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
      * @param request リクエストデータ
      */
-    protected void startConfirmAuthController(final ConfirmAuthRequest request) {
+    public void startConfirmAuthController(final ConfirmAuthRequest request) {
         if (request == null) {
             return;
         }
@@ -86,42 +90,44 @@ public class LocalOAuthForActivity implements LocalOAuth {
         declineIntent.setAction(ACTION_OAUTH_DECLINE);
         declineIntent.putExtra(EXTRA_APPROVAL, false);
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            context.startActivity(detailIntent);
+        context.startActivity(detailIntent);
 
-            request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {
-                @Override
-                public void onTimeout() {
-                    processApproval(request.getThreadId(), false);
-                }
-            });
-        } else {
-            //許可するボタン押下時のAction
-            Notification.Action acceptAction = new Notification.Action.Builder(null,
-                    ACCEPT_BUTTON_TITLE,
-                    PendingIntent.getBroadcast(context, 1, acceptIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            //拒否するボタン押下時のAction
-            Notification.Action declineAction = new Notification.Action.Builder(null,
-                    DECLINE_BUTTON_TITLE,
-                    PendingIntent.getBroadcast(context, 2, declineIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            //詳細を表示ボタン押下時のAction
-            Notification.Action detailAction = new Notification.Action.Builder(null,
-                    DETAIL_BUTTON_TITLE,
-                    PendingIntent.getActivity(context, 3, detailIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("使用するプロファイル:");
-            for (String i : displayScopes) {
-                stringBuilder.append(i);
-                stringBuilder.append(", ");
+        request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {
+            @Override
+            public void onTimeout() {
+                processApproval(request.getThreadId(), false);
             }
-            stringBuilder.setLength(stringBuilder.length() - 2);
+        });
+    }
 
-            NotificationUtils.createNotificationChannel(context);
-            NotificationUtils.notify(context, NOTIFICATION_ID, stringBuilder.toString(), acceptAction, declineAction, detailAction);
-        }
+    @Override
+    public SampleUserManager getSampleUserManager() {
+        return mLocalOAuth2Main.getSampleUserManager();
+    }
+
+    @Override
+    public SQLiteToken[] getAccessTokens() {
+        return mLocalOAuth2Main.getAccessTokens();
+    }
+
+    @Override
+    public SQLiteToken getAccessToken(Client client) {
+        return mLocalOAuth2Main.getAccessToken(client);
+    }
+
+    @Override
+    public void destroyAllAccessToken() {
+        mLocalOAuth2Main.destroyAllAccessToken();
+    }
+
+    @Override
+    public void destroyAccessToken(long tokenId) {
+        mLocalOAuth2Main.destroyAccessToken(tokenId);
+    }
+
+    @Override
+    public SQLiteClient findClientByClientId(String clientId) {
+        return mLocalOAuth2Main.findClientByClientId(clientId);
     }
 
     /**

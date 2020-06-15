@@ -9,10 +9,20 @@ import android.os.Build;
 import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
 import org.deviceconnect.android.util.NotificationUtils;
 
-import static org.deviceconnect.android.localoauth.LocalOAuth2Main.EXTRA_APPROVAL;
 
-public class LocalOAuthForNotification extends LocalOAuthForActivity {
-    public LocalOAuthForNotification(Context context) {
+class LocalOAuthForNotification extends LocalOAuthForActivity {
+
+    /** 通知の許可するボタンのタイトル */
+    private static final String ACCEPT_BUTTON_TITLE = "許可する";
+
+    /** 通知の拒否するボタンのタイトル */
+    private static final String DECLINE_BUTTON_TITLE = "拒否する";
+
+    /** 通知の詳細を表示ボタンのタイトル */
+    private static final String DETAIL_BUTTON_TITLE = "詳細を表示";
+
+
+    LocalOAuthForNotification(Context context) {
         super(context);
     }
 

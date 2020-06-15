@@ -12,8 +12,9 @@ import android.os.Bundle;
 import android.view.Window;
 
 import org.deviceconnect.android.R;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
 import org.deviceconnect.android.util.NotificationUtils;
+
+import static org.deviceconnect.android.localoauth.LocalOAuth.NOTIFICATION_ID;
 
 /**
  * 認証確認画面.
@@ -70,7 +71,7 @@ public class ConfirmAuthActivity extends Activity {
         setContentView(R.layout.activity_confirm_auth);
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            NotificationUtils.cancel(this, LocalOAuth2Main.NOTIFICATION_ID);
+            NotificationUtils.cancel(this, NOTIFICATION_ID);
         }
     }
 }

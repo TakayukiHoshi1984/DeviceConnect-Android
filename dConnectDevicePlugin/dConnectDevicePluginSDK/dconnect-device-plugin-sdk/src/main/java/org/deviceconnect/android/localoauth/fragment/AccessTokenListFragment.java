@@ -26,7 +26,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import org.deviceconnect.android.R;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
+import org.deviceconnect.android.localoauth.LocalOAuthFactory;
 import org.deviceconnect.android.localoauth.ScopeUtil;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteClient;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteToken;
@@ -45,19 +46,19 @@ public class AccessTokenListFragment extends Fragment {
     /** リストビュー用アダプタ. */
     private AccessTokenListAdapter mListAdapter;
 
-    private LocalOAuth2Main mLocalOAuth2Main;
+    private LocalOAuth mLocalOAuth;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        mLocalOAuth2Main = new LocalOAuth2Main(getActivity());
+        mLocalOAuth = LocalOAuthFactory.create(getActivity());
     }
 
     @Override
     public void onDestroy() {
-        mLocalOAuth2Main.destroy();
-        mLocalOAuth2Main = null;
+        mLocalOAuth.destroy();
+        mLocalOAuth = null;
         super.onDestroy();
     }
 
@@ -137,7 +138,7 @@ public class AccessTokenListFragment extends Fragment {
      */
     private List<SQLiteToken> loadTokens() {
         ArrayList<SQLiteToken> tokenList = new ArrayList<>();
-        SQLiteToken[] tokens = mLocalOAuth2Main.getAccessTokens();
+        SQLiteToken[] tokens = mLocalOAuth.getAccessTokens();
         if (tokens != null) {
             tokenList.addAll(Arrays.asList(tokens));
         }
@@ -230,7 +231,7 @@ public class AccessTokenListFragment extends Fragment {
          * アクセストークンをすべて削除されたことを画面に反映する.
          */
         private void deleteAll() {
-            mLocalOAuth2Main.destroyAllAccessToken();
+            mLocalOAuth.destroyAllAccessToken();
             mTokenList.clear();
             notifyDataSetChanged();
             setVisibleCommentView();
@@ -241,7 +242,7 @@ public class AccessTokenListFragment extends Fragment {
          */
         private void deleteToken(final SQLiteToken token) {
             long tokenId = token.getId();
-            mLocalOAuth2Main.destroyAccessToken(tokenId);
+            mLocalOAuth.destroyAccessToken(tokenId);
             mTokenList.remove(token);
             notifyDataSetChanged();
             setVisibleCommentView();
@@ -277,7 +278,7 @@ public class AccessTokenListFragment extends Fragment {
         Drawable icon = null;
         if (token != null) {
             String clientId = token.getClientId();
-            SQLiteClient client = mLocalOAuth2Main.findClientByClientId(clientId);
+            SQLiteClient client = mLocalOAuth.findClientByClientId(clientId);
             if (client != null) {
                 PackageInfoOAuth p = client.getPackageInfo();
                 icon = getPackageIcon(getActivity(), p.getPackageName());

@@ -16,7 +16,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import org.deviceconnect.android.R;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
+import org.deviceconnect.android.localoauth.LocalOAuthFactory;
 import org.deviceconnect.android.localoauth.ScopeUtil;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteToken;
 import org.restlet.ext.oauth.internal.Client;
@@ -41,19 +42,19 @@ public class AccessTokenDescriptionFragment extends Fragment {
     /** スコープを表示するアダプタ. */
     private ScopeListAdapter mScopeListAdapter;
 
-    private LocalOAuth2Main mLocalOAuth2Main;
+    private LocalOAuth mLocalOAuth;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        mLocalOAuth2Main = new LocalOAuth2Main(getActivity());
+        mLocalOAuth = LocalOAuthFactory.create(getActivity());
     }
 
     @Override
     public void onDestroy() {
-        mLocalOAuth2Main.destroy();
-        mLocalOAuth2Main = null;
+        mLocalOAuth.destroy();
+        mLocalOAuth = null;
         super.onDestroy();
     }
 
@@ -61,8 +62,8 @@ public class AccessTokenDescriptionFragment extends Fragment {
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
             final Bundle savedInstanceState) {
         String clientId = getArguments().getString(EXTRA_CLIENT_ID);
-        Client client = mLocalOAuth2Main.findClientByClientId(clientId);
-        mToken = mLocalOAuth2Main.getAccessToken(client);
+        Client client = mLocalOAuth.findClientByClientId(clientId);
+        mToken = mLocalOAuth.getAccessToken(client);
 
         mScopeListAdapter = new ScopeListAdapter(getActivity(), 0, getScopeList());
 

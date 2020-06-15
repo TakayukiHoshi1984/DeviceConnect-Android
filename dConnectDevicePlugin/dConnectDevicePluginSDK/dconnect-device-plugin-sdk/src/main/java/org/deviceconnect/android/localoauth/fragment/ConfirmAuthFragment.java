@@ -25,7 +25,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import org.deviceconnect.android.R;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
 import org.deviceconnect.android.localoauth.LocalOAuth2Settings;
 import org.deviceconnect.android.localoauth.ScopeUtil;
 import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
@@ -34,6 +33,10 @@ import org.restlet.ext.oauth.internal.AbstractTokenManager;
 import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import static org.deviceconnect.android.localoauth.LocalOAuth.ACTION_TOKEN_APPROVAL;
+import static org.deviceconnect.android.localoauth.LocalOAuth.EXTRA_APPROVAL;
+import static org.deviceconnect.android.localoauth.LocalOAuth.EXTRA_THREAD_ID;
 
 /**
  * 認可ダイアログ.
@@ -161,9 +164,9 @@ public class ConfirmAuthFragment extends Fragment {
      */
     private void sendMessage(final Boolean isApproval) {
         Intent intent = new Intent();
-        intent.setAction(LocalOAuth2Main.ACTION_TOKEN_APPROVAL);
-        intent.putExtra(LocalOAuth2Main.EXTRA_THREAD_ID, mThreadId);
-        intent.putExtra(LocalOAuth2Main.EXTRA_APPROVAL, isApproval);
+        intent.setAction(ACTION_TOKEN_APPROVAL);
+        intent.putExtra(EXTRA_THREAD_ID, mThreadId);
+        intent.putExtra(EXTRA_APPROVAL, isApproval);
         LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
     }
 

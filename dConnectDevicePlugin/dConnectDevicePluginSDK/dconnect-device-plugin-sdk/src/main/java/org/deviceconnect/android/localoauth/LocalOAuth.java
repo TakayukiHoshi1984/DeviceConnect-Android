@@ -1,9 +1,16 @@
 package org.deviceconnect.android.localoauth;
 
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
+import org.deviceconnect.android.localoauth.oauthserver.SampleUserManager;
+import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteClient;
+import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteToken;
 import org.restlet.ext.oauth.PackageInfoOAuth;
+import org.restlet.ext.oauth.internal.Client;
 
 public interface LocalOAuth {
+    /** ダミー値(RedirectURI). */
+    String DUMMY_REDIRECT_URI = "dummyRedirectURI";
+
     /**
      * 認可の結果を通知するアクションを定義します.
      */
@@ -13,26 +20,12 @@ public interface LocalOAuth {
      * 認可の結果に格納されるThread IDのエクストラキーを定義します.
      */
     String EXTRA_THREAD_ID = "org.deviceconnect.android.localoauth.THREAD_ID";
-
-
-    /** 通知の許可ボタン押下時のアクション */
-    String ACTION_OAUTH_ACCEPT = "org.deviceconnect.android.localoauth.accept";
-
-    /** 通知の拒否ボタン押下時のアクション */
-    String ACTION_OAUTH_DECLINE = "org.deviceconnect.android.localoauth.decline";
-
-    /** 通知の許可するボタンのタイトル */
-    String ACCEPT_BUTTON_TITLE = "許可する";
-
-    /** 通知の拒否するボタンのタイトル */
-    String DECLINE_BUTTON_TITLE = "拒否する";
-
-    /** 通知の詳細を表示ボタンのタイトル */
-    String DETAIL_BUTTON_TITLE = "詳細を表示";
-
+    /**
+     * 認可の結果に格納される認可フラグのエクストラキーを定義します.
+     */
+    String EXTRA_APPROVAL = "org.deviceconnect.android.localoauth.APPROVAL";
     /** Notification Id */
     int NOTIFICATION_ID = 3463;
-
 
     ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException;
     void confirmPublishAccessToken(final ConfirmAuthParams params,
@@ -43,4 +36,11 @@ public interface LocalOAuth {
                                             final String[] specialScopes);
 
     void startConfirmAuthController(final ConfirmAuthRequest request);
+
+    SampleUserManager getSampleUserManager();
+    SQLiteToken[] getAccessTokens();
+    SQLiteToken getAccessToken(final getAccessToken client);
+    void destroyAllAccessToken();
+    void destroyAccessToken(final long tokenId);
+    SQLiteClient findClientByClientId(final String clientId);
 }

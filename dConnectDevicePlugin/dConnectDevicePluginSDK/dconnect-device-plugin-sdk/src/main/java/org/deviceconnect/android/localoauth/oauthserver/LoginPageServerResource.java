@@ -33,7 +33,7 @@
 
 package org.deviceconnect.android.localoauth.oauthserver;
 
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
 import org.deviceconnect.android.localoauth.temp.ResultRepresentation;
 import org.restlet.ext.oauth.AuthorizationBaseServerResource;
 import org.restlet.ext.oauth.OAuthException;
@@ -66,7 +66,7 @@ public class LoginPageServerResource extends AuthorizationBaseServerResource {
      * @return 戻り値(ResultRepresentation)
      * @throws OAuthException OAuth処理の例外
      */
-    public static Representation getPage(LocalOAuth2Main main) throws OAuthException {
+    public static Representation getPage(LocalOAuth main) throws OAuthException {
         getLogger().info("Get Login");
 
         ResultRepresentation resultRepresentation = new ResultRepresentation();

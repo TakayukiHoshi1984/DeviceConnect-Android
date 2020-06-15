@@ -35,7 +35,7 @@ package org.deviceconnect.android.localoauth.oauthserver.db;
 
 import java.util.Map;
 
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
 import org.restlet.ext.oauth.GrantType;
 import org.restlet.ext.oauth.PackageInfoOAuth;
 import org.restlet.ext.oauth.ResponseType;
@@ -205,7 +205,7 @@ public class SQLiteClient implements Client {
      * @return リダイレクトURIs
      */
     public String[] getRedirectURIs() {
-        String[] redirectURIs = new String[] {LocalOAuth2Main.DUMMY_REDIRECT_URI};
+        String[] redirectURIs = new String[] { LocalOAuth.DUMMY_REDIRECT_URI};
         return redirectURIs;
     }
 

@@ -83,18 +83,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import static org.deviceconnect.android.localoauth.LocalOAuth.DUMMY_REDIRECT_URI;
+
 /**
  * Local OAuth API.
  */
-public class LocalOAuth2Main {
-
-    /**
-     * 認可の結果に格納される認可フラグのエクストラキーを定義します.
-     */
-    public static final String EXTRA_APPROVAL = "org.deviceconnect.android.localoauth.APPROVAL";
-
-    /** ダミー値(RedirectURI). */
-    public static final String DUMMY_REDIRECT_URI = "dummyRedirectURI";
+class LocalOAuth2Main {
 
     /** ダミー値(OriginalRef). */
     private static final String DUMMY_ORIGINAL_REF = "dummyOriginalRef";
@@ -133,17 +127,19 @@ public class LocalOAuth2Main {
     private final Object mLockForRequestQueue = new Object();
 
     private android.content.Context mContext;
+
+    private LocalOAuth mLocalOAuth;
     /**
      * コンストラクタ.
      */
-    public LocalOAuth2Main(final android.content.Context context) {
-        this(context, "localoauth.db");
+    LocalOAuth2Main(final android.content.Context context, final LocalOAuth localOAuth) {
+        this(context, localOAuth, "localoauth.db");
     }
 
     /**
      * コンストラクタ.
      */
-    public LocalOAuth2Main(final android.content.Context context, final String dbName) {
+    LocalOAuth2Main(final android.content.Context context,final LocalOAuth localOAuth, final String dbName) {
         // ログレベル設定
         Logger logger = sLogger;
         if (BuildConfig.DEBUG) {
@@ -157,6 +153,7 @@ public class LocalOAuth2Main {
         }
 
         mContext = context;
+        mLocalOAuth = localOAuth;
 
         // DB初期化処理
         mDbHelper = new LocalOAuthOpenHelper(context, dbName);
@@ -172,13 +169,13 @@ public class LocalOAuth2Main {
 
     }
 
-    public android.content.Context getContext() {
+    android.content.Context getContext() {
         return mContext;
     }
     /**
      * (1)-2.LocalOAuth終了処理.
      */
-    public void destroy() {
+    void destroy() {
 
         // DBをまとめてクローズ
         if (mDbHelper != null) {
@@ -197,7 +194,7 @@ public class LocalOAuth2Main {
      * SampleUserManagerを返す.
      * @return SampleUserManagerのインスタンス
      */
-    public SampleUserManager getSampleUserManager() {
+    SampleUserManager getSampleUserManager() {
         return mUserManager;
     }
 
@@ -213,7 +210,7 @@ public class LocalOAuth2Main {
      *         nullは返らない。
      * @throws AuthorizationException Authorization例外.
      */
-    public ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException {
+    ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException {
         if (packageInfo == null) {
             throw new IllegalArgumentException("packageInfo is null.");
         } else if (packageInfo.getPackageName() == null) {
@@ -283,7 +280,7 @@ public class LocalOAuth2Main {
      * @param listener アクセストークン発行リスナー(承認確認画面で承認／拒否ボタンが押されたら実行される)
      * @throws AuthorizationException Authorization例外.
      */
-    public void confirmPublishAccessToken(final ConfirmAuthParams params,
+    void confirmPublishAccessToken(final ConfirmAuthParams params,
             final PublishAccessTokenListener listener) throws AuthorizationException {
         if (params == null) {
             throw new IllegalArgumentException("confirmAuthParams is null.");
@@ -355,7 +352,7 @@ public class LocalOAuth2Main {
      * @param specialScopes 承認許可されていなくてもアクセス可能なscopes(nullなら指定無し)
      * @return チェック結果
      */
-    public CheckAccessTokenResult checkAccessToken(final String accessToken, final String scope,
+    CheckAccessTokenResult checkAccessToken(final String accessToken, final String scope,
             final String[] specialScopes) {
         if (scope == null) {
             throw new IllegalArgumentException("scope is null.");
@@ -462,7 +459,7 @@ public class LocalOAuth2Main {
      * @param accessToken アクセストークン
      * @return not null: クライアントパッケージ情報 / null:アクセストークンがないのでクライアントパッケージ情報が取得できない。
      */
-    public ClientPackageInfo findClientPackageInfoByAccessToken(final String accessToken) {
+    ClientPackageInfo findClientPackageInfoByAccessToken(final String accessToken) {
         if (accessToken == null) {
             throw new IllegalArgumentException("accessToken is null.");
         } else if (!mDb.isOpen()) {
@@ -493,7 +490,7 @@ public class LocalOAuth2Main {
      * (13)-1.アクセストークン一覧を取得する(startAccessTokenListActivity()用).
      * @return not null: アクセストークンの配列 / null: アクセストークンなし
      */
-    public SQLiteToken[] getAccessTokens() {
+    SQLiteToken[] getAccessTokens() {
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
                 throw new RuntimeException("Database is not opened.");
@@ -516,7 +513,7 @@ public class LocalOAuth2Main {
      * @param client クライアントデータ
      * @return トークンデータ
      */
-    public SQLiteToken getAccessToken(final Client client) {
+    SQLiteToken getAccessToken(final Client client) {
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
                 throw new RuntimeException("Database is not opened.");
@@ -536,7 +533,7 @@ public class LocalOAuth2Main {
      * 
      * @param tokenId トークンID
      */
-    public void destroyAccessToken(final long tokenId) {
+    void destroyAccessToken(final long tokenId) {
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
                 throw new RuntimeException("Database is not opened.");
@@ -560,7 +557,7 @@ public class LocalOAuth2Main {
      * (13)-3.DBのトークンデータを削除(startAccessTokenListActivity()用.
      * 
      */
-    public void destroyAllAccessToken() {
+    void destroyAllAccessToken() {
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
                 throw new RuntimeException("Database is not opened.");
@@ -585,7 +582,7 @@ public class LocalOAuth2Main {
      * @param clientId クライアントID
      * @return not null: クライアント / null: クライアントなし
      */
-    public SQLiteClient findClientByClientId(final String clientId) {
+    SQLiteClient findClientByClientId(final String clientId) {
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
                 throw new RuntimeException("Database is not opened.");
@@ -630,7 +627,7 @@ public class LocalOAuth2Main {
         return clientCount;
     }
 
-    public AccessTokenData refleshAccessToken(final ConfirmAuthParams params) throws AuthorizationException {
+    AccessTokenData refleshAccessToken(final ConfirmAuthParams params) throws AuthorizationException {
         AccessTokenData accessTokenData = null;
         synchronized (mLockForDbAccess) {
             if (!mDb.isOpen()) {
@@ -830,7 +827,7 @@ public class LocalOAuth2Main {
         LoginPageServerResource.init(request, response);
         ResultRepresentation resultRepresentation;
         try {
-            resultRepresentation = (ResultRepresentation) LoginPageServerResource.getPage(this);
+            resultRepresentation = (ResultRepresentation) LoginPageServerResource.getPage(mLocalOAuth);
         } catch (OAuthException e) {
             resultRepresentation = new ResultRepresentation();
             resultRepresentation.setResult(false);
@@ -986,7 +983,7 @@ public class LocalOAuth2Main {
      * 
      * @return not null: 取得したリクエスト / null: キューにデータなし
      */
-    public ConfirmAuthRequest pickupRequest() {
+    ConfirmAuthRequest pickupRequest() {
         synchronized (mLockForRequestQueue) {
             while (mRequestQueue.size() > 0) {
                 ConfirmAuthRequest request = mRequestQueue.get(0);
@@ -1006,7 +1003,7 @@ public class LocalOAuth2Main {
      * @param isDeleteRequest true: スレッドIDが一致したリクエストを返すと同時にキューから削除する。 / false: 削除しない。
      * @return not null: 取り出されたリクエスト / null: 該当するデータなし(存在しないthreadIdが渡された、またはキューにデータ無し)
      */
-    public ConfirmAuthRequest dequeueRequest(final long threadId, final boolean isDeleteRequest) {
+    ConfirmAuthRequest dequeueRequest(final long threadId, final boolean isDeleteRequest) {
         ConfirmAuthRequest request = null;
         synchronized (mLockForRequestQueue) {
             // スレッドIDが一致するリクエストデータを検索する
@@ -1027,7 +1024,7 @@ public class LocalOAuth2Main {
         }
         return request;
     }
-    public int requestSize() {
+    int requestSize() {
         return mRequestQueue.size();
     }
     /**
