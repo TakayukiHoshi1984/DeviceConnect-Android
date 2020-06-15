@@ -39,7 +39,7 @@ public interface LocalOAuth {
 
     SampleUserManager getSampleUserManager();
     SQLiteToken[] getAccessTokens();
-    SQLiteToken getAccessToken(final getAccessToken client);
+    SQLiteToken getAccessToken(final Client client);
     void destroyAllAccessToken();
     void destroyAccessToken(final long tokenId);
     SQLiteClient findClientByClientId(final String clientId);
