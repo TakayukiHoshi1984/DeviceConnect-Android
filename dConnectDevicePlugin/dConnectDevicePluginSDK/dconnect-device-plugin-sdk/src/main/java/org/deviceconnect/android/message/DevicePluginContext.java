@@ -26,7 +26,9 @@ import org.deviceconnect.android.event.cache.MemoryCacheController;
 import org.deviceconnect.android.localoauth.CheckAccessTokenResult;
 import org.deviceconnect.android.localoauth.DevicePluginXmlProfile;
 import org.deviceconnect.android.localoauth.DevicePluginXmlUtil;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
+import org.deviceconnect.android.localoauth.LocalOAuth;
+import org.deviceconnect.android.localoauth.LocalOAuthFactory;
 import org.deviceconnect.android.profile.AuthorizationProfile;
 import org.deviceconnect.android.profile.DConnectProfile;
 import org.deviceconnect.android.profile.DConnectProfileProvider;
@@ -103,7 +105,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
     /**
      * 認可クラス(Local OAuth).
      */
-    private LocalOAuth2Main mLocalOAuth2Main;
+    private LocalOAuth mLocalOAuth;
 
     /**
      * Wi-Fiの接続が切り替わった通知を受け取るレシーバ.
@@ -151,7 +153,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
         EventManager.INSTANCE.setController(createEventCacheController());
 
         // LocalOAuthの初期化
-        mLocalOAuth2Main = new LocalOAuth2Main(context);
+        mLocalOAuth = LocalOAuthFactory.create(context);
 
         // キーストア管理クラスの初期化
         mKeyStoreMgr = new EndPointKeyStoreManager(context, getKeyStoreFileName(),
@@ -167,7 +169,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
         mServiceProvider.setPluginContext(this);
 
         // プロファイルを追加
-        addProfile(new AuthorizationProfile(this, mLocalOAuth2Main));
+        addProfile(new AuthorizationProfile(this, mLocalOAuth));
         addProfile(new ServiceDiscoveryProfile(mServiceProvider));
         addProfile(getSystemProfile());
     }
@@ -183,9 +185,9 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
      * </p>
      */
     public void release() {
-        if (mLocalOAuth2Main != null) {
-            mLocalOAuth2Main.destroy();
-            mLocalOAuth2Main = null;
+        if (mLocalOAuth != null) {
+            mLocalOAuth.destroy();
+            mLocalOAuth = null;
         }
         unregisterChangeIpAddress();
     }
@@ -221,8 +223,8 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
      *
      * @return LocalOAuth
      */
-    public LocalOAuth2Main getLocalOAuth2Main() {
-        return mLocalOAuth2Main;
+    public LocalOAuth getLocalOAuth() {
+        return mLocalOAuth;
     }
 
     /**
@@ -424,7 +426,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
         }
 
         if (isUseLocalOAuth()) {
-            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken,
+            CheckAccessTokenResult result = mLocalOAuth.checkAccessToken(accessToken,
                     event.getStringExtra(DConnectMessage.EXTRA_PROFILE), getIgnoredProfiles());
             if (!result.checkResult()) {
                 return false;
@@ -514,7 +516,7 @@ public abstract class DevicePluginContext implements DConnectProfileProvider, DC
         boolean send = true;
         if (isUseLocalOAuth()) {
             String accessToken = request.getStringExtra(AuthorizationProfile.PARAM_ACCESS_TOKEN);
-            CheckAccessTokenResult result = mLocalOAuth2Main.checkAccessToken(accessToken,
+            CheckAccessTokenResult result = mLocalOAuth.checkAccessToken(accessToken,
                     profileName.toLowerCase(), getIgnoredProfiles());
             if (result.checkResult()) {
                 send = executeRequest(profileName, request, response);

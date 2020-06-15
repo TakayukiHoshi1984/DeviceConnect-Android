@@ -32,21 +32,11 @@
  */
 package org.deviceconnect.android.localoauth;
 
-import android.app.Notification;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Base64;
 
 import org.deviceconnect.android.BuildConfig;
-import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
 import org.deviceconnect.android.localoauth.oauthserver.LoginPageServerResource;
 import org.deviceconnect.android.localoauth.oauthserver.SampleUser;
@@ -59,7 +49,6 @@ import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteTokenManager;
 import org.deviceconnect.android.localoauth.temp.RedirectRepresentation;
 import org.deviceconnect.android.localoauth.temp.ResultRepresentation;
 import org.deviceconnect.android.logger.AndroidHandler;
-import org.deviceconnect.android.util.NotificationUtils;
 import org.json.JSONException;
 import org.restlet.Context;
 import org.restlet.Request;
@@ -98,16 +87,6 @@ import java.util.logging.SimpleFormatter;
  * Local OAuth API.
  */
 public class LocalOAuth2Main {
-
-    /**
-     * 認可の結果を通知するアクションを定義します.
-     */
-    public static final String ACTION_TOKEN_APPROVAL = "org.deviceconnect.android.localoauth.TOKEN_APPROVAL";
-
-    /**
-     * 認可の結果に格納されるThread IDのエクストラキーを定義します.
-     */
-    public static final String EXTRA_THREAD_ID = "org.deviceconnect.android.localoauth.THREAD_ID";
 
     /**
      * 認可の結果に格納される認可フラグのエクストラキーを定義します.
@@ -154,25 +133,6 @@ public class LocalOAuth2Main {
     private final Object mLockForRequestQueue = new Object();
 
     private android.content.Context mContext;
-
-    /** 通知の許可ボタン押下時のアクション */
-    private final static String ACTION_OAUTH_ACCEPT = "org.deviceconnect.android.localoauth.accept";
-
-    /** 通知の拒否ボタン押下時のアクション */
-    private final static String ACTION_OAUTH_DECLINE = "org.deviceconnect.android.localoauth.decline";
-
-    /** 通知の許可するボタンのタイトル */
-    private final static String ACCEPT_BUTTON_TITLE = "許可する";
-
-    /** 通知の拒否するボタンのタイトル */
-    private final static String DECLINE_BUTTON_TITLE = "拒否する";
-
-    /** 通知の詳細を表示ボタンのタイトル */
-    private final static String DETAIL_BUTTON_TITLE = "詳細を表示";
-
-    /** Notification Id */
-    public static final int NOTIFICATION_ID = 3463;
-
     /**
      * コンストラクタ.
      */
@@ -210,14 +170,15 @@ public class LocalOAuth2Main {
         // ユーザー追加
         addUserData(SampleUser.LOCALOAUTH_USER, SampleUser.LOCALOAUTH_PASS);
 
-        register(context);
     }
 
+    public android.content.Context getContext() {
+        return mContext;
+    }
     /**
      * (1)-2.LocalOAuth終了処理.
      */
     public void destroy() {
-        unregister(mContext);
 
         // DBをまとめてクローズ
         if (mDbHelper != null) {
@@ -375,14 +336,8 @@ public class LocalOAuth2Main {
             // キューにリクエストを追加
             enqueueRequest(request);
 
-            // ActivityがサービスがBindされていない場合には、
-            // Activityを起動する。
-            if (mRequestQueue.size() <= 1) {
-                startConfirmAuthActivity(pickupRequest());
-            }
         }
     }
-
     /**
      * 1分以内かチェックします.
      * @param t チェックする経過時間
@@ -675,76 +630,33 @@ public class LocalOAuth2Main {
         return clientCount;
     }
 
-    /**
-     * 認証処理を行う.
-     * @param threadId 認証用スレッドID
-     * @param isApproval 承認する場合はtrue、拒否する場合はfalse
-     */
-    private void processApproval(final long threadId, final boolean isApproval) {
-        // 承認確認画面を表示する直前に保存しておいたパラメータデータを取得する
-        ConfirmAuthRequest request = dequeueRequest(threadId, false);
-        if (request != null && !request.isDoneResponse()) {
-            request.setDoneResponse(true);
-            request.stopTimer();
-
-            PublishAccessTokenListener publishAccessTokenListener = request.getPublishAccessTokenListener();
-            ConfirmAuthParams params = request.getConfirmAuthParams();
-
-            if (isApproval) {
-                AccessTokenData accessTokenData = null;
-                AuthorizationException exception = null;
-
-                synchronized (mLockForDbAccess) {
-                    if (!mDb.isOpen()) {
-                        exception = new AuthorizationException(AuthorizationException.SQLITE_ERROR);
-                    } else {
-                        try {
-                            mDb.beginTransaction();
-
-                            // アクセストークン発行する前に古い無効なトークン
-                            // (クライアントIDが削除されて残っていたトークン)をクリーンアップする
-                            ((SQLiteTokenManager) mTokenManager).cleanup();
-
-                            // アクセストークン発行
-                            accessTokenData = publishAccessToken(params);
-
-                            mDb.setTransactionSuccessful();
-                        } catch (AuthorizationException e) {
-                            exception = e;
-                        } catch (SQLiteException e) {
-                            exception = new AuthorizationException(AuthorizationException.SQLITE_ERROR);
-                        } finally {
-                            mDb.endTransaction();
-                        }
-                    }
-                }
-
-                if (exception == null) {
-                    // リスナーを通じてアクセストークンを返す
-                    callPublishAccessTokenListener(accessTokenData, publishAccessTokenListener);
-                } else {
-                    // リスナーを通じて発生した例外を返す
-                    callExceptionListener(exception, publishAccessTokenListener);
-                }
+    public AccessTokenData refleshAccessToken(final ConfirmAuthParams params) throws AuthorizationException {
+        AccessTokenData accessTokenData = null;
+        synchronized (mLockForDbAccess) {
+            if (!mDb.isOpen()) {
+                throw new AuthorizationException(AuthorizationException.SQLITE_ERROR);
             } else {
-                // リスナーを通じて拒否通知を返す
-                callPublishAccessTokenListener(null, publishAccessTokenListener);
-            }
+                try {
+                    mDb.beginTransaction();
 
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    // Activityが終了するタイミングが取得できないので、ここでキューからリクエストを削除する
-                    dequeueRequest(threadId, true);
+                    // アクセストークン発行する前に古い無効なトークン
+                    // (クライアントIDが削除されて残っていたトークン)をクリーンアップする
+                    ((SQLiteTokenManager) mTokenManager).cleanup();
 
-                    // キューにリクエストが残っていれば、次のキューを取得してActivityを起動する
-                    final ConfirmAuthRequest nextRequest = pickupRequest();
-                    if (nextRequest != null) {
-                        startConfirmAuthActivity(nextRequest);
-                    }
+                    // アクセストークン発行
+                    accessTokenData = publishAccessToken(params);
+
+                    mDb.setTransactionSuccessful();
+                } catch (AuthorizationException e) {
+                    throw e;
+                } catch (SQLiteException e) {
+                    throw new AuthorizationException(AuthorizationException.SQLITE_ERROR);
+                } finally {
+                    mDb.endTransaction();
                 }
-            }, 2000);
+            }
         }
+        return accessTokenData;
     }
 
     /**
@@ -820,39 +732,7 @@ public class LocalOAuth2Main {
         return null;
     }
 
-    /**
-     * リスナーを通じてアクセストークンを返す.
-     * 
-     * @param accessTokenData アクセストークンデータ
-     * @param publishAccessTokenListener アクセストークン発行リスナー
-     */
-    private void callPublishAccessTokenListener(final AccessTokenData accessTokenData, final PublishAccessTokenListener publishAccessTokenListener) {
-        if (publishAccessTokenListener != null) {
-            // リスナーを実行してアクセストークンデータを返す
-            publishAccessTokenListener.onReceiveAccessToken(accessTokenData);
-        } else {
-            // リスナーが登録されていないので通知できない
-            throw new RuntimeException("publishAccessTokenListener is null.");
-        }
-    }
 
-    /**
-     * リスナーを通じてアクセストークンを返す.
-     * 
-     * @param exception 例外
-     * @param publishAccessTokenListener アクセストークン発行リスナー
-     */
-    private void callExceptionListener(final Exception exception,
-            final PublishAccessTokenListener publishAccessTokenListener) {
-        if (publishAccessTokenListener != null) {
-            // リスナーを実行して例外データを返す
-            publishAccessTokenListener.onReceiveException(exception);
-        } else {
-            // リスナーが登録されていないので通知できない
-            throw new RuntimeException("publishAccessTokenListener is null.");
-        }
-    }
-    
     /**
      * AuthorizationServerResourceを実行.
      * 
@@ -1106,7 +986,7 @@ public class LocalOAuth2Main {
      * 
      * @return not null: 取得したリクエスト / null: キューにデータなし
      */
-    private ConfirmAuthRequest pickupRequest() {
+    public ConfirmAuthRequest pickupRequest() {
         synchronized (mLockForRequestQueue) {
             while (mRequestQueue.size() > 0) {
                 ConfirmAuthRequest request = mRequestQueue.get(0);
@@ -1126,7 +1006,7 @@ public class LocalOAuth2Main {
      * @param isDeleteRequest true: スレッドIDが一致したリクエストを返すと同時にキューから削除する。 / false: 削除しない。
      * @return not null: 取り出されたリクエスト / null: 該当するデータなし(存在しないthreadIdが渡された、またはキューにデータ無し)
      */
-    private ConfirmAuthRequest dequeueRequest(final long threadId, final boolean isDeleteRequest) {
+    public ConfirmAuthRequest dequeueRequest(final long threadId, final boolean isDeleteRequest) {
         ConfirmAuthRequest request = null;
         synchronized (mLockForRequestQueue) {
             // スレッドIDが一致するリクエストデータを検索する
@@ -1147,7 +1027,9 @@ public class LocalOAuth2Main {
         }
         return request;
     }
-
+    public int requestSize() {
+        return mRequestQueue.size();
+    }
     /**
      * Scope[]からAccessTokenScope[]に変換して返す.
      * @param scopes Scope[]の値
@@ -1164,156 +1046,4 @@ public class LocalOAuth2Main {
         }
         return null;
     }
-
-    /**
-     * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
-     * @param request リクエストデータ
-     */
-    public void startConfirmAuthActivity(final ConfirmAuthRequest request) {
-        if (request == null) {
-            return;
-        }
-
-        android.content.Context context = request.getConfirmAuthParams().getContext();
-        String[] displayScopes = request.getDisplayScopes();
-        ConfirmAuthParams params = request.getConfirmAuthParams();
-        
-        // Activity起動(許可・拒否の結果は、ApprovalHandlerへ送られる)
-        // 詳細ボタン押下時のIntent
-        Intent detailIntent = new Intent();
-        putExtras(context, request, displayScopes, detailIntent);
-        detailIntent.setClass(params.getContext(), ConfirmAuthActivity.class);
-        detailIntent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        // 許可ボタン押下時のIntent
-        Intent acceptIntent = new Intent();
-        putExtras(context, request, displayScopes, acceptIntent);
-        acceptIntent.setAction(ACTION_OAUTH_ACCEPT);
-        acceptIntent.putExtra(EXTRA_APPROVAL, true);
-
-        // 拒否ボタン押下時のIntent
-        Intent declineIntent = new Intent();
-        putExtras(context, request, displayScopes, declineIntent);
-        declineIntent.setAction(ACTION_OAUTH_DECLINE);
-        declineIntent.putExtra(EXTRA_APPROVAL, false);
-
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            context.startActivity(detailIntent);
-
-            request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {
-                @Override
-                public void onTimeout() {
-                    processApproval(request.getThreadId(), false);
-                }
-            });
-        } else {
-            //許可するボタン押下時のAction
-            Notification.Action acceptAction = new Notification.Action.Builder(null,
-                    ACCEPT_BUTTON_TITLE,
-                    PendingIntent.getBroadcast(context, 1, acceptIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            //拒否するボタン押下時のAction
-            Notification.Action declineAction = new Notification.Action.Builder(null,
-                    DECLINE_BUTTON_TITLE,
-                    PendingIntent.getBroadcast(context, 2, declineIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            //詳細を表示ボタン押下時のAction
-            Notification.Action detailAction = new Notification.Action.Builder(null,
-                    DETAIL_BUTTON_TITLE,
-                    PendingIntent.getActivity(context, 3, detailIntent, PendingIntent.FLAG_UPDATE_CURRENT)).build();
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("使用するプロファイル:");
-            for (String i : displayScopes) {
-                stringBuilder.append(i);
-                stringBuilder.append(", ");
-            }
-            stringBuilder.setLength(stringBuilder.length() - 2);
-
-            NotificationUtils.createNotificationChannel(context);
-            NotificationUtils.notify(context, NOTIFICATION_ID, stringBuilder.toString(), acceptAction, declineAction, detailAction);
-        }
-    }
-
-    /**
-     * Intentの共通設定処理
-     *
-     * @param context コンテキスト
-     * @param request リクエストパラメータ
-     * @param displayScopes 要求する権限のリスト
-     * @param intent Intent
-     */
-    private void putExtras(android.content.Context context, ConfirmAuthRequest request, String[] displayScopes, Intent intent) {
-        long threadId = request.getThreadId();
-        ConfirmAuthParams params = request.getConfirmAuthParams();
-        intent.putExtra(ConfirmAuthActivity.EXTRA_THREAD_ID, threadId);
-        if (params.getServiceId() != null) {
-            intent.putExtra(ConfirmAuthActivity.EXTRA_SERVICE_ID, params.getServiceId());
-        }
-        intent.putExtra(ConfirmAuthActivity.EXTRA_APPLICATION_NAME, params.getApplicationName());
-        intent.putExtra(ConfirmAuthActivity.EXTRA_SCOPES, params.getScopes());
-        intent.putExtra(ConfirmAuthActivity.EXTRA_DISPLAY_SCOPES, displayScopes);
-        intent.putExtra(ConfirmAuthActivity.EXTRA_REQUEST_TIME, request.getRequestTime());
-        intent.putExtra(ConfirmAuthActivity.EXTRA_IS_FOR_DEVICEPLUGIN, params.isForDevicePlugin());
-        if (!params.isForDevicePlugin()) {
-            intent.putExtra(ConfirmAuthActivity.EXTRA_PACKAGE_NAME, context.getPackageName());
-            intent.putExtra(ConfirmAuthActivity.EXTRA_KEYWORD, params.getKeyword());
-        }
-        intent.putExtra(ConfirmAuthActivity.EXTRA_AUTO_FLAG, request.isAutoFlag());
-    }
-
-
-    /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverを登録します.
-     *
-     * @param context 登録するコンテキスト
-     */
-    private void register(android.content.Context context) {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_TOKEN_APPROVAL);
-        filter.addAction(ACTION_OAUTH_ACCEPT);
-        filter.addAction(ACTION_OAUTH_DECLINE);
-        LocalBroadcastManager.getInstance(context).registerReceiver(mBroadcastReceiver, filter);
-        mContext.registerReceiver(mBroadcastReceiver, filter);
-    }
-
-    /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverを解除します.
-     *
-     * @param context 解除するコンテキスト
-     */
-    private void unregister(android.content.Context context) {
-        LocalBroadcastManager.getInstance(context).unregisterReceiver(mBroadcastReceiver);
-        mContext.unregisterReceiver(mBroadcastReceiver);
-    }
-
-    /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverクラス.
-     */
-    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(android.content.Context context, Intent intent) {
-            if (intent == null) {
-                return;
-            }
-
-            String action = intent.getAction();
-
-            //通知経由の場合チャンネルを削除する
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                    NotificationUtils.cancel(context, NOTIFICATION_ID);
-                }
-            }
-            if (ACTION_TOKEN_APPROVAL.equals(action)) {
-                long threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1);
-                boolean isApproval = intent.getBooleanExtra(EXTRA_APPROVAL, false);
-                processApproval(threadId, isApproval);
-            } else if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                long threadId = intent.getLongExtra(ConfirmAuthActivity.EXTRA_THREAD_ID, -1);
-                boolean isApproval = intent.getBooleanExtra(EXTRA_APPROVAL, false);
-                processApproval(threadId, isApproval);
-            }
-        }
-    };
 }

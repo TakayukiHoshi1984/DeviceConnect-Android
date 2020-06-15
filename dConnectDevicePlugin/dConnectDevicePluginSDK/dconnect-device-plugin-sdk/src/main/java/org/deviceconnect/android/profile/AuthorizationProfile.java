@@ -17,7 +17,7 @@ import org.deviceconnect.android.localoauth.AccessTokenData;
 import org.deviceconnect.android.localoauth.AccessTokenScope;
 import org.deviceconnect.android.localoauth.ClientData;
 import org.deviceconnect.android.localoauth.ConfirmAuthParams;
-import org.deviceconnect.android.localoauth.LocalOAuth2Main;
+import org.deviceconnect.android.localoauth.LocalOAuth;
 import org.deviceconnect.android.localoauth.PublishAccessTokenListener;
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
 import org.deviceconnect.android.message.DevicePluginContext;
@@ -54,16 +54,16 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
     /**
      * LocalOAuthの処理を行うクラス.
      */
-    private final LocalOAuth2Main mLocalOAuth2Main;
+    private final LocalOAuth mLocalOAuth;
 
     /**
      * 指定されたプロファイルプロバイダーをもつAuthorizationプロファイルを生成する.
      * 
      * @param provider プロファイルプロバイダー
      */
-    public AuthorizationProfile(final DConnectProfileProvider provider, LocalOAuth2Main localOAuth2Main) {
+    public AuthorizationProfile(final DConnectProfileProvider provider, LocalOAuth localOAuth) {
         mProvider = provider;
-        mLocalOAuth2Main = localOAuth2Main;
+        mLocalOAuth = localOAuth;
         addApi(mGrantApi);
         addApi(mCreateAccessTokenApi);
     }
@@ -186,7 +186,7 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
             // Local OAuthでクライアント作成
             PackageInfoOAuth packageInfo = new PackageInfoOAuth(packageName, serviceId);
             try {
-                ClientData client = mLocalOAuth2Main.createClient(packageInfo);
+                ClientData client = mLocalOAuth.createClient(packageInfo);
                 if (client != null) {
                     response.putExtra(DConnectMessage.EXTRA_RESULT, DConnectMessage.RESULT_OK);
                     response.putExtra(AuthorizationProfile.PARAM_CLIENT_ID, client.getClientId());
@@ -237,7 +237,7 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
 
         // Local OAuthでAccessTokenを作成する。
         final AccessTokenData[] token = new AccessTokenData[1];
-        mLocalOAuth2Main.confirmPublishAccessToken(params, new PublishAccessTokenListener() {
+        mLocalOAuth.confirmPublishAccessToken(params, new PublishAccessTokenListener() {
             @Override
             public void onReceiveAccessToken(final AccessTokenData accessTokenData) {
                 token[0] = accessTokenData;
@@ -253,7 +253,6 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
                 }
             }
         });
-
         // ユーザからのレスポンスを待つ
         if (token[0] == null) {
             waitForResponse();
