@@ -12,6 +12,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.deviceconnect.android.localoauth.AccessTokenData;
 import org.deviceconnect.android.localoauth.AccessTokenScope;
@@ -252,7 +254,7 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
                     mLockObj.notifyAll();
                 }
             }
-        });
+        }, new Handler(Looper.getMainLooper()));
         // ユーザからのレスポンスを待つ
         if (token[0] == null) {
             waitForResponse();

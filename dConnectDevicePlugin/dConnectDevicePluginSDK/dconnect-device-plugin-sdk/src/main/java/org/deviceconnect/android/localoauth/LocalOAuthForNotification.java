@@ -5,6 +5,11 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.ResultReceiver;
+
+import androidx.annotation.NonNull;
 
 import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
 import org.deviceconnect.android.util.NotificationUtils;
@@ -30,11 +35,7 @@ class LocalOAuthForNotification extends LocalOAuthForActivity {
      * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
      * @param request リクエストデータ
      */
-    public void startConfirmAuthController(final ConfirmAuthRequest request) {
-        if (request == null) {
-            return;
-        }
-
+    public void startConfirmAuthController(@NonNull final ConfirmAuthRequest request, @NonNull final Handler handler) {
         android.content.Context context = request.getConfirmAuthParams().getContext();
         String[] displayScopes = request.getDisplayScopes();
         ConfirmAuthParams params = request.getConfirmAuthParams();
@@ -45,7 +46,18 @@ class LocalOAuthForNotification extends LocalOAuthForActivity {
         putExtras(context, request, displayScopes, detailIntent);
         detailIntent.setClass(params.getContext(), ConfirmAuthActivity.class);
         detailIntent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-
+        detailIntent.putExtra(ConfirmAuthActivity.EXTRA_RESULT_RECEIVER, new ResultReceiver(handler) {
+            @Override
+            protected void onReceiveResult(final int resultCode, final Bundle resultData) {
+                String action = resultData.getString(EXTRA_ACTION);
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
+                        NotificationUtils.cancel(context, NOTIFICATION_ID);
+                    }
+                }
+                LocalOAuthForNotification.super.sendResponseToProfile(resultData);
+            }
+        });
         // 許可ボタン押下時のIntent
         Intent acceptIntent = new Intent();
         putExtras(context, request, displayScopes, acceptIntent);

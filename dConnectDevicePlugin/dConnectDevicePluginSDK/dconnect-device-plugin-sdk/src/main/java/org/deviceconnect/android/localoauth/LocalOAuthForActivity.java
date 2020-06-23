@@ -1,23 +1,20 @@
 package org.deviceconnect.android.localoauth;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ResultReceiver;
 
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.annotation.NonNull;
 
 import org.deviceconnect.android.localoauth.activity.ConfirmAuthActivity;
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
 import org.deviceconnect.android.localoauth.oauthserver.SampleUserManager;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteClient;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteToken;
-import org.deviceconnect.android.util.NotificationUtils;
 import org.restlet.ext.oauth.PackageInfoOAuth;
 import org.restlet.ext.oauth.internal.Client;
 
@@ -32,43 +29,41 @@ class LocalOAuthForActivity implements LocalOAuth {
 
 
     LocalOAuthForActivity(final Context context) {
-        mLocalOAuth2Main = new LocalOAuth2Main(context,this);
-        register();
+        mLocalOAuth2Main = new LocalOAuth2Main(context);
     }
     @Override
-    public ClientData createClient(PackageInfoOAuth packageInfo) throws AuthorizationException {
+    public ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException {
         return mLocalOAuth2Main.createClient(packageInfo);
     }
 
     @Override
-    public void confirmPublishAccessToken(ConfirmAuthParams params, PublishAccessTokenListener listener) throws AuthorizationException {
+    public void confirmPublishAccessToken(final ConfirmAuthParams params,
+                                          final PublishAccessTokenListener listener,
+                                          @NonNull final Handler handler) throws AuthorizationException {
         mLocalOAuth2Main.confirmPublishAccessToken(params, listener);
         // ActivityがサービスがBindされていない場合には、
         // Activityを起動する。
         if (mLocalOAuth2Main.requestSize() <= 1) {
-            startConfirmAuthController(mLocalOAuth2Main.pickupRequest());
+            startConfirmAuthController(mLocalOAuth2Main.pickupRequest(), handler);
         }
     }
 
     @Override
     public void destroy() {
-        unregister();
         mLocalOAuth2Main.destroy();
     }
 
     @Override
-    public CheckAccessTokenResult checkAccessToken(String accessToken, String scope, String[] specialScopes) {
-        return checkAccessToken(accessToken, scope, specialScopes);
+    public CheckAccessTokenResult checkAccessToken(final String accessToken,
+                                                   final String scope,
+                                                   final String[] specialScopes) {
+        return mLocalOAuth2Main.checkAccessToken(accessToken, scope, specialScopes);
     }
     /**
      * リクエストデータを使ってアクセストークン発行承認確認画面を起動する.
      * @param request リクエストデータ
      */
-    public void startConfirmAuthController(final ConfirmAuthRequest request) {
-        if (request == null) {
-            return;
-        }
-
+    public void startConfirmAuthController(@NonNull final ConfirmAuthRequest request, @NonNull final Handler handler) {
         android.content.Context context = request.getConfirmAuthParams().getContext();
         String[] displayScopes = request.getDisplayScopes();
         ConfirmAuthParams params = request.getConfirmAuthParams();
@@ -80,24 +75,10 @@ class LocalOAuthForActivity implements LocalOAuth {
         detailIntent.setClass(params.getContext(), ConfirmAuthActivity.class);
         detailIntent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        detailIntent.putExtra(ConfirmAuthActivity.EXTRA_RESULT_RECEIVER, new ResultReceiver(new Handler(Looper.getMainLooper())) {
+        detailIntent.putExtra(ConfirmAuthActivity.EXTRA_RESULT_RECEIVER, new ResultReceiver(handler) {
             @Override
             protected void onReceiveResult(final int resultCode, final Bundle resultData) {
-                String action = resultData.getString(EXTRA_ACTION);
-                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                        NotificationUtils.cancel(context, NOTIFICATION_ID);
-                    }
-                }
-                if (ACTION_TOKEN_APPROVAL.equals(action)) {
-                    long threadId = resultData.getLong(EXTRA_THREAD_ID, -1);
-                    boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
-                    processApproval(threadId, isApproval);
-                } else if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                    long threadId = resultData.getLong(ConfirmAuthActivity.EXTRA_THREAD_ID, -1);
-                    boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
-                    processApproval(threadId, isApproval);
-                }
+                sendResponseToProfile(resultData);
             }
         });
         context.startActivity(detailIntent);
@@ -138,6 +119,11 @@ class LocalOAuthForActivity implements LocalOAuth {
     @Override
     public SQLiteClient findClientByClientId(String clientId) {
         return mLocalOAuth2Main.findClientByClientId(clientId);
+    }
+
+    @Override
+    public ClientPackageInfo findClientPackageInfoByAccessToken(String accessToken) {
+        return mLocalOAuth2Main.findClientPackageInfoByAccessToken(accessToken);
     }
 
     /**
@@ -186,7 +172,7 @@ class LocalOAuthForActivity implements LocalOAuth {
                     // キューにリクエストが残っていれば、次のキューを取得してActivityを起動する
                     final ConfirmAuthRequest nextRequest = mLocalOAuth2Main.pickupRequest();
                     if (nextRequest != null) {
-                        startConfirmAuthController(nextRequest);
+                        startConfirmAuthController(nextRequest, new Handler(Looper.getMainLooper()));
                     }
                 }
             }, 2000);
@@ -253,56 +239,21 @@ class LocalOAuthForActivity implements LocalOAuth {
         intent.putExtra(ConfirmAuthActivity.EXTRA_AUTO_FLAG, request.isAutoFlag());
     }
 
-
     /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverを登録します.
-     *
+     * Profileにレスポンスを返す.
+     * @param resultData 認証データ
      */
-    private void register() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_TOKEN_APPROVAL);
-        filter.addAction(ACTION_OAUTH_ACCEPT);
-        filter.addAction(ACTION_OAUTH_DECLINE);
-        LocalBroadcastManager.getInstance(mLocalOAuth2Main.getContext()).registerReceiver(mBroadcastReceiver, filter);
-        mLocalOAuth2Main.getContext().registerReceiver(mBroadcastReceiver, filter);
-    }
+    protected void sendResponseToProfile(final Bundle resultData) {
+        String action = resultData.getString(EXTRA_ACTION);
 
-    /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverを解除します.
-     *
-     */
-    private void unregister() {
-        LocalBroadcastManager.getInstance(mLocalOAuth2Main.getContext()).unregisterReceiver(mBroadcastReceiver);
-        mLocalOAuth2Main.getContext().unregisterReceiver(mBroadcastReceiver);
-    }
-
-    /**
-     * 認可の結果を受け取るためのLocalBroadcastReceiverクラス.
-     */
-    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(android.content.Context context, Intent intent) {
-            if (intent == null) {
-                return;
-            }
-
-            String action = intent.getAction();
-
-            //通知経由の場合チャンネルを削除する
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                    NotificationUtils.cancel(context, NOTIFICATION_ID);
-                }
-            }
-            if (ACTION_TOKEN_APPROVAL.equals(action)) {
-                long threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1);
-                boolean isApproval = intent.getBooleanExtra(EXTRA_APPROVAL, false);
-                processApproval(threadId, isApproval);
-            } else if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
-                long threadId = intent.getLongExtra(ConfirmAuthActivity.EXTRA_THREAD_ID, -1);
-                boolean isApproval = intent.getBooleanExtra(EXTRA_APPROVAL, false);
-                processApproval(threadId, isApproval);
-            }
+        if (ACTION_TOKEN_APPROVAL.equals(action)) {
+            long threadId = resultData.getLong(EXTRA_THREAD_ID, -1);
+            boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
+            processApproval(threadId, isApproval);
+        } else if (ACTION_OAUTH_ACCEPT.equals(action) || ACTION_OAUTH_DECLINE.equals(action)) {
+            long threadId = resultData.getLong(ConfirmAuthActivity.EXTRA_THREAD_ID, -1);
+            boolean isApproval = resultData.getBoolean(EXTRA_APPROVAL, false);
+            processApproval(threadId, isApproval);
         }
-    };
+    }
 }

@@ -1,5 +1,9 @@
 package org.deviceconnect.android.localoauth;
 
+import android.os.Handler;
+
+import androidx.annotation.NonNull;
+
 import org.deviceconnect.android.localoauth.exception.AuthorizationException;
 import org.deviceconnect.android.localoauth.oauthserver.SampleUserManager;
 import org.deviceconnect.android.localoauth.oauthserver.db.SQLiteClient;
@@ -30,13 +34,14 @@ public interface LocalOAuth {
 
     ClientData createClient(final PackageInfoOAuth packageInfo) throws AuthorizationException;
     void confirmPublishAccessToken(final ConfirmAuthParams params,
-                                   final PublishAccessTokenListener listener) throws AuthorizationException;
+                                   final PublishAccessTokenListener listener,
+                                   @NonNull final Handler handler) throws AuthorizationException;
     void destroy();
 
     CheckAccessTokenResult checkAccessToken(final String accessToken, final String scope,
                                             final String[] specialScopes);
 
-    void startConfirmAuthController(final ConfirmAuthRequest request);
+    void startConfirmAuthController(@NonNull final ConfirmAuthRequest request, @NonNull final Handler handler);
 
     SampleUserManager getSampleUserManager();
     SQLiteToken[] getAccessTokens();
@@ -44,4 +49,5 @@ public interface LocalOAuth {
     void destroyAllAccessToken();
     void destroyAccessToken(final long tokenId);
     SQLiteClient findClientByClientId(final String clientId);
+    ClientPackageInfo findClientPackageInfoByAccessToken(final String accessToken);
 }

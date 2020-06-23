@@ -13,7 +13,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.os.ResultReceiver;
 import android.view.KeyEvent;
@@ -167,12 +166,11 @@ public class ConfirmAuthFragment extends Fragment {
      * @param isApproval true: 許可 / false: 拒否
      */
     private void sendMessage(final Boolean isApproval) {
-        Bundle intent = new Bundle();
-        intent.putString(EXTRA_ACTION, ACTION_TOKEN_APPROVAL);
-        intent.putLong(EXTRA_THREAD_ID, mThreadId);
-        intent.putBoolean(EXTRA_APPROVAL, isApproval);
-        mCallback.send(Activity.RESULT_OK, intent);
-//        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
+        Bundle response = new Bundle();
+        response.putString(EXTRA_ACTION, ACTION_TOKEN_APPROVAL);
+        response.putLong(EXTRA_THREAD_ID, mThreadId);
+        response.putBoolean(EXTRA_APPROVAL, isApproval);
+        mCallback.send(Activity.RESULT_OK, response);
     }
 
     /**

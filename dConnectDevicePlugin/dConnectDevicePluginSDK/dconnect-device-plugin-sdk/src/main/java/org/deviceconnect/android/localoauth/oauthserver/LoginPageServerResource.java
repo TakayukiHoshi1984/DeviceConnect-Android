@@ -66,7 +66,7 @@ public class LoginPageServerResource extends AuthorizationBaseServerResource {
      * @return 戻り値(ResultRepresentation)
      * @throws OAuthException OAuth処理の例外
      */
-    public static Representation getPage(LocalOAuth main) throws OAuthException {
+    public static Representation getPage(SampleUserManager sampleUserManager) throws OAuthException {
         getLogger().info("Get Login");
 
         ResultRepresentation resultRepresentation = new ResultRepresentation();
@@ -77,7 +77,7 @@ public class LoginPageServerResource extends AuthorizationBaseServerResource {
         if (userId != null && !userId.isEmpty()) {
             String password = getQueryValue(PASSWORD);
             getLogger().info("User=" + userId + ", Pass=" + password);
-            SampleUser sampleUser = main.getSampleUserManager()
+            SampleUser sampleUser = sampleUserManager
                     .findUserById(userId);
             if (sampleUser == null) {
                 data.put("error", "Authentication failed.");

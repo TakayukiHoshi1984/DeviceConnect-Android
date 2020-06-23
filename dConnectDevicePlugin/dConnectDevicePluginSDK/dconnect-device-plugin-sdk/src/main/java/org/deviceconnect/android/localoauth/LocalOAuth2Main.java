@@ -127,19 +127,17 @@ class LocalOAuth2Main {
     private final Object mLockForRequestQueue = new Object();
 
     private android.content.Context mContext;
-
-    private LocalOAuth mLocalOAuth;
     /**
      * コンストラクタ.
      */
-    LocalOAuth2Main(final android.content.Context context, final LocalOAuth localOAuth) {
-        this(context, localOAuth, "localoauth.db");
+    LocalOAuth2Main(final android.content.Context context) {
+        this(context,"localoauth.db");
     }
 
     /**
      * コンストラクタ.
      */
-    LocalOAuth2Main(final android.content.Context context,final LocalOAuth localOAuth, final String dbName) {
+    LocalOAuth2Main(final android.content.Context context, final String dbName) {
         // ログレベル設定
         Logger logger = sLogger;
         if (BuildConfig.DEBUG) {
@@ -153,7 +151,6 @@ class LocalOAuth2Main {
         }
 
         mContext = context;
-        mLocalOAuth = localOAuth;
 
         // DB初期化処理
         mDbHelper = new LocalOAuthOpenHelper(context, dbName);
@@ -332,7 +329,6 @@ class LocalOAuth2Main {
 
             // キューにリクエストを追加
             enqueueRequest(request);
-
         }
     }
     /**
@@ -827,7 +823,7 @@ class LocalOAuth2Main {
         LoginPageServerResource.init(request, response);
         ResultRepresentation resultRepresentation;
         try {
-            resultRepresentation = (ResultRepresentation) LoginPageServerResource.getPage(mLocalOAuth);
+            resultRepresentation = (ResultRepresentation) LoginPageServerResource.getPage(mUserManager);
         } catch (OAuthException e) {
             resultRepresentation = new ResultRepresentation();
             resultRepresentation.setResult(false);
