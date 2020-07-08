@@ -86,7 +86,7 @@ public class RFC3339DateUtils {
             }
         }
 
-        String tmp = dateAddString + timeZone.replace(":", "");
+        String tmp = dateAddString + timeZone;
         try {
             SimpleDateFormat format = new SimpleDateFormat(RFC_3339, locale);
             converted = new Date(format.parse(tmp).getTime());
@@ -220,9 +220,7 @@ public class RFC3339DateUtils {
         if (dateCalendar != null) {
             SimpleDateFormat format = new SimpleDateFormat(RFC_3339, locale);
             format.setTimeZone(timezone);
-            String dateString =  format.format(dateCalendar.getTime());
-            return dateString.substring(0, dateString.length() - 2)
-                    + ":" + dateString.substring(dateString.length() - 2);
+            return format.format(dateCalendar.getTime());
         }
         return null;
     }
@@ -238,9 +236,7 @@ public class RFC3339DateUtils {
         if (date != null) {
             SimpleDateFormat format = new SimpleDateFormat(RFC_3339, locale);
             format.setTimeZone(timezone);
-            String dateString =  format.format(date);
-            return dateString.substring(0, dateString.length() - 2)
-                    + ":" + dateString.substring(dateString.length() - 2);
+            return format.format(date);
         }
         return null;
     }
@@ -255,9 +251,7 @@ public class RFC3339DateUtils {
     public static String toString(final long dateLong, final Locale locale, final TimeZone timezone) {
         SimpleDateFormat format = new SimpleDateFormat(RFC_3339, locale);
         format.setTimeZone(timezone);
-        String dateString =  format.format(new Date(dateLong));
-        return dateString.substring(0, dateString.length() - 2)
-                + ":" + dateString.substring(dateString.length() - 2);
+        return format.format(new Date(dateLong));
     }
 
     /**
