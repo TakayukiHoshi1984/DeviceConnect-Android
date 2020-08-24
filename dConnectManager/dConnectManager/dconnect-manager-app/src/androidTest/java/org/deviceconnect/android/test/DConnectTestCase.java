@@ -8,6 +8,10 @@ package org.deviceconnect.android.test;
 
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
 
 import org.deviceconnect.android.profile.AuthorizationProfile;
 import org.deviceconnect.android.profile.ServiceDiscoveryProfile;
@@ -23,6 +27,7 @@ import org.junit.Before;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.deviceconnect.android.manager.core.request.ServiceDiscoveryRequest.TIMEOUT;
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 
@@ -90,6 +95,7 @@ public abstract class DConnectTestCase {
         if (isLocalOAuth()) {
             // アクセストークン取得
             if (sAccessToken == null) {
+                perform();
                 sAccessToken = requestAccessToken(PROFILES);
                 assertNotNull(sAccessToken);
             }
@@ -99,7 +105,34 @@ public abstract class DConnectTestCase {
             waitForFoundTestService();
         }
     }
+    protected void perform() {
+        new Thread(() -> {
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
 
+            UiObject2 obj = device.wait(Until.findObject(By.text("ACCEPT")), TIMEOUT);
+            if (obj != null) {
+                try {
+                    obj.click();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                obj = device.wait(Until.findObject(By.text("同意する")), TIMEOUT);
+                if (obj != null) {
+                    try {
+                        obj.click();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
     @After
     public void tearDown() throws Exception {}
 

@@ -7,8 +7,10 @@
 package org.deviceconnect.android.profile.restful.test;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.rule.GrantPermissionRule;
 
 import org.deviceconnect.android.test.http.HttpUtil;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -26,7 +28,11 @@ import static org.junit.Assert.assertThat;
  */
 @RunWith(AndroidJUnit4.class)
 public class NormalFilesProfileTestCase extends RESTfulDConnectTestCase {
-
+    @Rule
+    public GrantPermissionRule mGrantPermissionRule =
+            GrantPermissionRule.grant(
+                    "android.permission.WRITE_EXTERNAL_STORAGE",
+                    "android.permission.READ_EXTERNAL_STORAGE");
     /**
      * テスト用デバイスプラグインのファイルへのURIを定義.
      */

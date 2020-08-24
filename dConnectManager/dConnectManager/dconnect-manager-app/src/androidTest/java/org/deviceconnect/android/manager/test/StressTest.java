@@ -2,6 +2,7 @@ package org.deviceconnect.android.manager.test;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.rule.GrantPermissionRule;
 
 import org.deviceconnect.android.profile.restful.test.RESTfulDConnectTestCase;
 import org.deviceconnect.message.DConnectMessage;
@@ -10,6 +11,7 @@ import org.deviceconnect.message.DConnectSDK;
 import org.deviceconnect.message.entity.FileEntity;
 import org.deviceconnect.message.entity.MultipartEntity;
 import org.deviceconnect.message.entity.StringEntity;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -36,6 +38,11 @@ import static org.junit.Assert.assertThat;
  */
 @RunWith(AndroidJUnit4.class)
 public class StressTest extends RESTfulDConnectTestCase {
+    @Rule
+    public GrantPermissionRule mGrantPermissionRule =
+            GrantPermissionRule.grant(
+                    "android.permission.WRITE_EXTERNAL_STORAGE",
+                    "android.permission.READ_EXTERNAL_STORAGE");
     /**
      * ServiceDiscoveryを1000回呼び出しても問題ないことを確認する。
      * <pre>
