@@ -275,9 +275,8 @@ public class SettingsFragment extends PreferenceFragment implements Preference.O
         editDocPreferences.setEnabled(false);
         editWebHostPreferences.setEnabled(false);
 
-        setUIEnabled(power);
-
         mPauseHandler = new PauseHandlerImpl();
+        setUIEnabled(power);
     }
 
     @SuppressWarnings("deprecation")
@@ -347,6 +346,10 @@ public class SettingsFragment extends PreferenceFragment implements Preference.O
 
         mPauseHandler.setFragment(this);
         mPauseHandler.resume();
+
+        SharedPreferences sp = getPreferenceManager().getSharedPreferences();
+        boolean power = sp.getBoolean(getString(R.string.key_settings_dconn_server_on_off), false);
+        runningManager(power);
     }
 
     @Override
@@ -470,14 +473,27 @@ public class SettingsFragment extends PreferenceFragment implements Preference.O
         getActivity().runOnUiThread(() -> {
             setUIEnabled(!isRunning);
 
-            SwitchPreference serverPreferences = (SwitchPreference) getPreferenceScreen()
-                    .findPreference(getString(R.string.key_settings_dconn_server_on_off));
-            serverPreferences.setChecked(isRunning);
+            runningManager(isRunning);
 
             checkServiceConnections();
         });
     }
 
+    // ManagerがOFFの時はデバイスプラグインの設定画面を開けない
+    private void runningManager(boolean isRunning) {
+        SwitchPreference serverPreferences = (SwitchPreference) getPreferenceScreen()
+                .findPreference(getString(R.string.key_settings_dconn_server_on_off));
+        serverPreferences.setChecked(isRunning);
+        enableDevicePluginManagement(isRunning);
+    }
+
+    // ManagerがOFFの時はデバイスプラグインの設定画面を開けない
+    private void enableDevicePluginManagement(boolean enabled) {
+        PreferenceScreen devicePluginPreferences = (PreferenceScreen)
+                getPreferenceScreen().findPreference(
+                        getString(R.string.key_settings_list_device_plugin));
+        devicePluginPreferences.setEnabled(enabled);
+    }
     /**
      * AlertDialogFragment で Positive ボタンが押下された時の処理を行う.
      *
@@ -540,6 +556,8 @@ public class SettingsFragment extends PreferenceFragment implements Preference.O
     private void switchDConnectServer(final boolean checked) {
         SettingActivity activity = ((SettingActivity) getActivity());
         setUIEnabled(!checked);
+
+        enableDevicePluginManagement(checked);
         if (checked) {
             activity.showStaringManagerDialog();
             activity.startManager((running) -> activity.dismissStartingManagerDialog());

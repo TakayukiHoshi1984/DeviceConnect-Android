@@ -13,6 +13,7 @@ import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import androidx.appcompat.widget.SwitchCompat;
+
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -90,6 +91,14 @@ public class DevicePluginListFragment extends BaseSettingFragment {
 
     @Override
     protected void onManagerBonded(final DConnectService manager) {
+        // managerがoffの場合は、Activityを終了する
+        if (!manager.isRunning()) {
+            Activity activity = getActivity();
+            if (activity != null) {
+                activity.finish();
+                return;
+            }
+        }
         DevicePluginManager mgr = getPluginManager();
         if (mgr != null) {
             mgr.addEventListener(mEventListener);

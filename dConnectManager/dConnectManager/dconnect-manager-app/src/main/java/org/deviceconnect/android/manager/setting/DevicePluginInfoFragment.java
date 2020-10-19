@@ -301,6 +301,14 @@ public class DevicePluginInfoFragment extends BaseSettingFragment {
 
     @Override
     protected void onManagerBonded(final DConnectService manager) {
+        // managerがoffの場合は、Activityを終了する
+        if (!manager.isRunning()) {
+            Activity activity = getActivity();
+            if (activity != null) {
+                activity.finish();
+                return;
+            }
+        }
         DevicePluginManager mgr = getPluginManager();
         if (mgr != null) {
             mgr.addEventListener(mEventListener);
