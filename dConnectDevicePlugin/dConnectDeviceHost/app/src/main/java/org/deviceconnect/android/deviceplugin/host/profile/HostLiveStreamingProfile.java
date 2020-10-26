@@ -10,6 +10,8 @@ import org.deviceconnect.android.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceLiveStreamRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostMediaRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostMediaRecorderManager;
+import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServer;
+import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider;
 import org.deviceconnect.android.deviceplugin.host.recorder.camera.Camera2Recorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.camera.CameraVideoEncoder;
 import org.deviceconnect.android.deviceplugin.host.recorder.screen.ScreenCastRecorder;
@@ -168,6 +170,9 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
 
                             //ストリーミング開始
                             mHostDeviceLiveStreamRecorder.startLiveStreaming();
+                            PreviewServerProvider provider = ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getServerProvider();
+                            provider.registerBroadcastReceiver();
+                            provider.sendNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId(), ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getName());
                             mCurrentResponse = response;
                         }
 
@@ -207,6 +212,9 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                               @Override
                               public void onAllowed() {
                                   mHostDeviceLiveStreamRecorder.stopLiveStreaming();
+                                  PreviewServerProvider provider = ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getServerProvider();
+                                  provider.unregisterBroadcastReceiver();
+                                  provider.hideNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId());
                                   mCurrentResponse = response;
                               }
 

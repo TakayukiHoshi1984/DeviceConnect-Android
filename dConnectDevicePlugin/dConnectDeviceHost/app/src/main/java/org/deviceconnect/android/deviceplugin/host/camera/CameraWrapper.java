@@ -440,9 +440,10 @@ public class CameraWrapper {
     public synchronized void startPreview(final Surface previewSurface, final boolean isResume) throws CameraWrapperException {
         if (mIsPreview && !isResume) {
             throw new CameraWrapperException("preview is started already.");
+        } else if (!mIsPreview && !isResume) {  // プレビューが開始されていない時、isResumeがfalseの時だけSurfaceを変更する
+            mPreviewSurface = previewSurface;
         }
         mIsPreview = true;
-        mPreviewSurface = previewSurface;
         try {
             CameraDevice cameraDevice = openCamera();
             CameraCaptureSession captureSession = createCaptureSession(cameraDevice);

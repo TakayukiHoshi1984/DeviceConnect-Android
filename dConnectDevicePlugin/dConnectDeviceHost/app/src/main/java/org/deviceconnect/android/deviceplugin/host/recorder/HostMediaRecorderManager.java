@@ -345,7 +345,25 @@ public class HostMediaRecorderManager {
             }
         }
     }
+    /**
+     * 指定された ID のレコーダのストリーミングを停止します.
+     *
+     * @param id レコーダのID
+     */
+    public void stopStreamer(final String id) {
+        if (id == null) {
+            return;
+        }
 
+        HostDeviceLiveStreamRecorder recorder = (HostDeviceLiveStreamRecorder) getRecorder(id);
+        if (recorder != null) {
+            recorder.stopLiveStreaming();
+            PreviewServerProvider provider = ((HostMediaRecorder) recorder).getServerProvider();
+            provider.unregisterBroadcastReceiver();
+            provider.hideNotification(((HostMediaRecorder) recorder).getId());
+
+        }
+    }
     @SuppressWarnings("deprecation")
     public void sendEventForRecordingChange(final String serviceId, final HostMediaRecorder.RecorderState state,
                                             final String uri, final String path,

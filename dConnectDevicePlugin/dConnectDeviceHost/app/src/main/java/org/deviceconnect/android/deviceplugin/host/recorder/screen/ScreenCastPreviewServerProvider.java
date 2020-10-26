@@ -23,4 +23,14 @@ class ScreenCastPreviewServerProvider extends AbstractPreviewServerProvider {
         addServer(new ScreenCastRTSPPreviewServer(context, recorder, 22000));
         addServer(new ScreenCastSRTPreviewServer(context, recorder, 23000));
     }
+
+    @Override
+    public void registerBroadcastReceiver() {
+
+    }
+
+    @Override
+    public void unregisterBroadcastReceiver() {
+
+    }
 }

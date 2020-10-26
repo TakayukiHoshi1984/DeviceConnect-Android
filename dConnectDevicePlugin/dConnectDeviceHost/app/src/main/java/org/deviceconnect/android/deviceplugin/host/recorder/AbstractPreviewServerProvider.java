@@ -120,7 +120,6 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
                 // TODO タイムアウト処理
             } else {
                 sendNotification(mRecorder.getId(), mRecorder.getName());
-                mIsShownNotification = true;
             }
         } catch (InterruptedException e) {
             // ignore.
@@ -169,7 +168,8 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
      *
      * @param id notification を識別する ID
      */
-    private void hideNotification(String id) {
+    @Override
+    public void hideNotification(String id) {
         NotificationManager manager = (NotificationManager) mContext
                 .getSystemService(Service.NOTIFICATION_SERVICE);
         if (manager != null) {
@@ -184,7 +184,9 @@ public abstract class AbstractPreviewServerProvider implements PreviewServerProv
      * @param id notification を識別する ID
      * @param name 名前
      */
-    private void sendNotification(String id, String name) {
+    @Override
+    public void sendNotification(String id, String name) {
+        mIsShownNotification = true;
         PendingIntent contentIntent = createPendingIntent(id);
         Notification notification = createNotification(contentIntent, null, name);
         NotificationManager manager = (NotificationManager) mContext

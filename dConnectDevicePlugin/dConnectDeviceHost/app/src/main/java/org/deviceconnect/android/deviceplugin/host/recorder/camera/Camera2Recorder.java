@@ -651,7 +651,16 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     void stopPreview() throws CameraWrapperException {
         mCameraWrapper.stopPreview();
     }
-
+    /**
+     * プレビューを再開します.
+     *
+     * @param previewSurface プレビューを描画する Surface
+     * @param isResume 再開するかどうか
+     * @throws CameraWrapperException カメラの操作に失敗した場合に発生
+     */
+    void startPreview(final Surface previewSurface, boolean isResume) throws CameraWrapperException {
+        mCameraWrapper.startPreview(previewSurface, isResume);
+    }
     /**
      * 静止画の撮影を行います.
      *

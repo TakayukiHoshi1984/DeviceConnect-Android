@@ -265,7 +265,11 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
                 } else {
                     new Thread(() -> {
                         try {
-                            mRecorder.startPreview(null);
+                            if (mRecorder.isPreview()) {
+                                mRecorder.startPreview(null, true);
+                            } else {
+                                mRecorder.startPreview(null);
+                            }
                         } catch (CameraWrapperException e) {
                             // ignore.
                         }
@@ -373,7 +377,8 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * 画面にプレビューを表示するためのアクションを受け取るための BroadcastReceiver を登録します.
      */
-    private void registerBroadcastReceiver() {
+    @Override
+    public void registerBroadcastReceiver() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(SHOW_OVERLAY_PREVIEW_ACTION);
         filter.addAction(HIDE_OVERLAY_PREVIEW_ACTION);
@@ -383,7 +388,8 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * 画面にプレビューを表示するためのアクションを受け取るための BroadcastReceiver を解除します.
      */
-    private void unregisterBroadcastReceiver() {
+    @Override
+    public void unregisterBroadcastReceiver() {
         try {
             mContext.unregisterReceiver(mBroadcastReceiver);
         } catch (Exception e) {

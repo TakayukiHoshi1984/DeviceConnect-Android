@@ -7,6 +7,8 @@
 package org.deviceconnect.android.deviceplugin.host.recorder;
 
 
+import android.content.IntentFilter;
+
 import java.util.List;
 
 public interface PreviewServerProvider {
@@ -79,4 +81,26 @@ public interface PreviewServerProvider {
      * return true:表示されている false:表示されていない
      */
     boolean isShownCameraNotification();
+    /**
+     * 画面にプレビューを表示するためのアクションを受け取るための BroadcastReceiver を登録します.
+     */
+    void registerBroadcastReceiver();
+
+    /**
+     * 画面にプレビューを表示するためのアクションを受け取るための BroadcastReceiver を解除します.
+     */
+    void unregisterBroadcastReceiver();
+    /**
+     * プレビュー配信サーバ停止用の Notification を送信します.
+     *
+     * @param id notification を識別する ID
+     * @param name 名前
+     */
+    void sendNotification(String id, String name);
+    /**
+     * プレビュー配信サーバ停止用の Notification を削除します.
+     *
+     * @param id notification を識別する ID
+     */
+    void hideNotification(String id);
 }

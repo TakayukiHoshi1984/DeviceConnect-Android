@@ -148,6 +148,7 @@ public class HostDevicePlugin extends DevicePluginContext {
                 onChangedBluetoothStatus();
             } else if (PreviewServerProvider.DELETE_PREVIEW_ACTION.equals(action)) {
                 stopWebServer(intent);
+                stopStreamer(intent);
             }
         }
     };
@@ -472,7 +473,9 @@ public class HostDevicePlugin extends DevicePluginContext {
     private void stopWebServer(final Intent intent) {
         mRecorderMgr.stopPreviewServer(intent.getStringExtra(PreviewServerProvider.EXTRA_CAMERA_ID));
     }
-
+    private void stopStreamer(final Intent intent) {
+        mRecorderMgr.stopStreamer(intent.getStringExtra(PreviewServerProvider.EXTRA_CAMERA_ID));
+    }
     private void onChangedBluetoothStatus() {
         List<Event> events = EventManager.INSTANCE.getEventList(SERVICE_ID, HostConnectionProfile.PROFILE_NAME, null,
                 HostConnectionProfile.ATTRIBUTE_ON_BLUETOOTH_CHANGE);
