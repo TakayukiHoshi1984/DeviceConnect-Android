@@ -25,6 +25,7 @@ import android.widget.TextView;
 import org.deviceconnect.android.deviceplugin.host.R;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperException;
 import org.deviceconnect.android.deviceplugin.host.recorder.AbstractPreviewServerProvider;
+import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceLiveStreamRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostMediaRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServer;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.OverlayManager;
@@ -303,7 +304,13 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
         if (mOverlayView != null) {
             try {
                 mRecorder.setTargetSurface(null);
-                mRecorder.stopPreview();
+                HostDeviceLiveStreamRecorder liveStreamRecorder = mRecorder;
+                if (!liveStreamRecorder.isStreaming()) {
+                    mRecorder.stopPreview();
+                } else {
+                    mRecorder.stopLiveStreaming();
+                    mRecorder.startLiveStreaming();
+                }
             } catch (CameraWrapperException e) {
                 // ignore.
             }

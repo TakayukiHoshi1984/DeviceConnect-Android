@@ -172,7 +172,8 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             mHostDeviceLiveStreamRecorder.startLiveStreaming();
                             PreviewServerProvider provider = ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getServerProvider();
                             provider.registerBroadcastReceiver();
-                            provider.sendNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId(), ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getName());
+                            provider.sendNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId(),
+                                                    ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getName());
                             mCurrentResponse = response;
                         }
 
@@ -430,35 +431,8 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                 }
                 break;
             }
-            case VIDEO_URI_CAMERA_FRONT:
-            case VIDEO_URI_CAMERA_1: {
-                HostMediaRecorder hostMediaRecorder = mHostMediaRecorderManager.getRecorder(VIDEO_URI_CAMERA_1);
-                if (hostMediaRecorder != null) {
-                    if (mHostMediaRecorderManager.usingStreamingRecorder()) {
-                        throw new RuntimeException("Another target in using.");
-                    }
-                    if (hostMediaRecorder instanceof HostDeviceLiveStreamRecorder) {
-                        return (HostDeviceLiveStreamRecorder) hostMediaRecorder;
-                    }
-                }
-                break;
-            }
-            case VIDEO_URI_CAMERA_BACK:
-            case VIDEO_URI_CAMERA_0: {
-                HostMediaRecorder hostMediaRecorder = mHostMediaRecorderManager.getRecorder(VIDEO_URI_CAMERA_0);
-                if (hostMediaRecorder != null) {
-                    if (mHostMediaRecorderManager.usingPreviewOrStreamingRecorder(hostMediaRecorder.getId())) {
-                        throw new RuntimeException("Another target in using.");
-                    }
-
-                    if (hostMediaRecorder instanceof HostDeviceLiveStreamRecorder) {
-                        return (HostDeviceLiveStreamRecorder) hostMediaRecorder;
-                    }
-                }
-                break;
-            }
-            case VIDEO_URI_SCREEN: {
-                HostMediaRecorder hostMediaRecorder = mHostMediaRecorderManager.getRecorder(VIDEO_URI_SCREEN);
+            default:
+                HostMediaRecorder hostMediaRecorder = mHostMediaRecorderManager.getRecorder(mVideoURI);
                 if (hostMediaRecorder != null) {
 
                     if (hostMediaRecorder instanceof HostDeviceLiveStreamRecorder) {
@@ -466,7 +440,6 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                     }
                 }
                 break;
-            }
         }
         Log.e(TAG, "getHostDeviceLiveStreamRecorder() recorder not found");
         throw new RuntimeException("recorder not found");
@@ -493,11 +466,12 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                 case VIDEO_URI_FALSE:
                 case VIDEO_URI_CAMERA_FRONT:
                 case VIDEO_URI_CAMERA_BACK:
-                case VIDEO_URI_CAMERA_0:
-                case VIDEO_URI_CAMERA_1:
                 case VIDEO_URI_SCREEN:
                     break;
                 default:
+                    if (mVideoURI.startsWith("camera_")) {
+                        break;
+                    }
                     MessageUtils.setInvalidRequestParameterError(response, "video parameter illegal");
                     return null;
             }
