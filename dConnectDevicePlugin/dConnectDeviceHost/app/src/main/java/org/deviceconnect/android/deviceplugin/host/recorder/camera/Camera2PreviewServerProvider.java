@@ -286,7 +286,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
             public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
             }
         });
-
+        mOverlayManager.update();
         mOverlayManager.addView(mOverlayView,
                 0,
                 0,
@@ -355,7 +355,6 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
                     changeSize.getHeight());
 
             surfaceView.getHolder().setFixedSize(previewSize.getWidth(), previewSize.getHeight());
-            mOverlayManager.update();
 
             TextView textView = mOverlayView.findViewById(R.id.text_view);
             textView.setVisibility(mCameraPreviewFlag ? View.VISIBLE : View.GONE);
