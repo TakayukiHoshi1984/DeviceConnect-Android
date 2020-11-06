@@ -12,9 +12,17 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ImageFormat;
+import android.graphics.Paint;
+import android.media.Image;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
@@ -23,6 +31,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import org.deviceconnect.android.deviceplugin.host.R;
+import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapper;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperException;
 import org.deviceconnect.android.deviceplugin.host.recorder.AbstractPreviewServerProvider;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceLiveStreamRecorder;
@@ -46,12 +55,12 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * プレビュー確認用オーバレイ用アクションを定義.
      */
-    private static final String SHOW_OVERLAY_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.SHOW_OVERLAY_PREVIEW";
+    protected static final String SHOW_OVERLAY_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.SHOW_OVERLAY_PREVIEW";
 
     /**
      * プレビュー確認用オーバレイ用アクションを定義.
      */
-    private static final String HIDE_OVERLAY_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.HIDE_OVERLAY_PREVIEW";
+    protected static final String HIDE_OVERLAY_PREVIEW_ACTION = "org.deviceconnect.android.deviceplugin.host.HIDE_OVERLAY_PREVIEW";
 
     /**
      * プレビュー配信サーバ停止用 Notification の識別子を定義.
@@ -65,27 +74,27 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * オーバーレイを管理するクラス.
      */
-    private OverlayManager mOverlayManager;
+    protected OverlayManager mOverlayManager;
 
     /**
      * プレビューを表示する SurfaceView.
      */
-    private View mOverlayView;
+    protected View mOverlayView;
 
     /**
      * コンテキスト.
      */
-    private Context mContext;
+    protected Context mContext;
 
     /**
      * カメラを操作するレコーダ.
      */
-    private Camera2Recorder mRecorder;
+    protected Camera2Recorder mRecorder;
 
     /**
      * UI スレッドで動作するハンドラ.
      */
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    protected final Handler mHandler = new Handler(Looper.getMainLooper());
 
     /**
      * プレビュー配信開始フラグ.
@@ -93,7 +102,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
      * プレビューが配信中は true、それ以外はfalse
      * </p>
      */
-    private boolean mCameraPreviewFlag;
+    protected boolean mCameraPreviewFlag;
 
     /**
      * コンストラクタ.
@@ -135,7 +144,6 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     @Override
     public void onConfigChange() {
         super.onConfigChange();
-
         if (mOverlayView != null) {
             // 画面が回転したので、オーバーレイのレイアウトも調整
             mOverlayManager.update();
@@ -194,7 +202,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
      * @param id カメラID
      * @return PendingIntent
      */
-    private PendingIntent createShowActionIntent(String id) {
+    protected PendingIntent createShowActionIntent(String id) {
         Intent intent = new Intent();
         intent.setAction(SHOW_OVERLAY_PREVIEW_ACTION);
         intent.putExtra(EXTRA_CAMERA_ID, id);
@@ -207,7 +215,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
      * @param id カメラID
      * @return PendingIntent
      */
-    private PendingIntent createHideActionIntent(String id) {
+    protected PendingIntent createHideActionIntent(String id) {
         Intent intent = new Intent();
         intent.setAction(HIDE_OVERLAY_PREVIEW_ACTION);
         intent.putExtra(EXTRA_CAMERA_ID, id);
@@ -217,7 +225,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * 各 PreviewServer に対して、カメラの再起動要求を送信します.
      */
-    private void restartCamera() {
+    protected void restartCamera() {
         for (PreviewServer server : getServers()) {
             ((Camera2PreviewServer) server).restartCamera();
         }
@@ -226,7 +234,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * オーバーレイの許可を求めるための Activity を開きます.
      */
-    private void openOverlayPermissionActivity() {
+    protected void openOverlayPermissionActivity() {
         Intent intent = new Intent();
         intent.setClass(mContext, OverlayPermissionActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -236,7 +244,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * オーバーレイ上にプレビューを表示します.
      */
-    private synchronized void showPreviewOnOverlay() {
+    protected synchronized void showPreviewOnOverlay() {
         if (mOverlayView != null) {
             return;
         }
@@ -253,12 +261,11 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
 
         mOverlayView = inflater.inflate(R.layout.host_preview_overlay, null);
 
-        SurfaceView surfaceView = mOverlayView.findViewById(R.id.surface_view);
+        final SurfaceView surfaceView = mOverlayView.findViewById(R.id.surface_view);
         surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder surfaceHolder) {
-                mRecorder.setTargetSurface(surfaceView.getHolder().getSurface());
-
+                    mRecorder.setTargetSurface(surfaceView.getHolder().getSurface());
                 if (mCameraPreviewFlag) {
                     // 既にプレビューが配信中の場合は、オーバーレイ用の Surface を追加してから
                     // カメラを再起動させます。
@@ -300,7 +307,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     /**
      * オーバーレイ上に表示しているプレビューを削除します.
      */
-    private synchronized void hidePreviewOnOverlay() {
+    protected synchronized void hidePreviewOnOverlay() {
         if (mOverlayView != null) {
             try {
                 mRecorder.setTargetSurface(null);
@@ -355,7 +362,6 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
                     changeSize.getHeight());
 
             surfaceView.getHolder().setFixedSize(previewSize.getWidth(), previewSize.getHeight());
-
             TextView textView = mOverlayView.findViewById(R.id.text_view);
             textView.setVisibility(mCameraPreviewFlag ? View.VISIBLE : View.GONE);
         });
@@ -369,7 +375,7 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
      * @param viewSize Viewのサイズ
      * @return viewSize に収まるように計算された縦横のサイズ
      */
-    private Size calculateViewSize(int width, int height, Size viewSize) {
+    protected Size calculateViewSize(int width, int height, Size viewSize) {
         int h = (int) (height * (viewSize.getWidth() / (float) width));
         if (viewSize.getHeight() < h) {
             int w = (int) (width * (viewSize.getHeight() / (float) height));

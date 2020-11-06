@@ -7,9 +7,13 @@
 package org.deviceconnect.android.deviceplugin.host.recorder;
 
 
+import android.media.MediaRecorder;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Size;
+
+import org.deviceconnect.android.libmedia.streaming.mjpeg.MJPEGEncoder;
+import org.deviceconnect.android.libmedia.streaming.video.VideoEncoder;
 
 import java.util.List;
 
@@ -265,6 +269,15 @@ public interface HostMediaRecorder {
      */
     void requestPermission(PermissionCallback callback);
 
+    /**
+     * MJPEG用のEncoderを取得する.
+     */
+    MJPEGEncoder getMJPEGEncorder();
+
+    /**
+     * RTSP, SRT, RTMP用のStreamを取得する.
+     */
+    VideoEncoder getVideoEncoder();
     /**
      * パーミッション結果通知用コールバック.
      */

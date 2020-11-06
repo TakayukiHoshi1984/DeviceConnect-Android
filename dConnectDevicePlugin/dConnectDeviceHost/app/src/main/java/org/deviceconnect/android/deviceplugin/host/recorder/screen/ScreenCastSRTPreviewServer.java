@@ -178,7 +178,7 @@ class ScreenCastSRTPreviewServer extends ScreenCastPreviewServer {
 
             ScreenCastRecorder recorder = (ScreenCastRecorder) getRecorder();
 
-            ScreenCastVideoEncoder videoEncoder = new ScreenCastVideoEncoder(mScreenCastMgr);
+            ScreenCastVideoEncoder videoEncoder = (ScreenCastVideoEncoder) getRecorder().getVideoEncoder();
             setVideoQuality(videoEncoder.getVideoQuality());
             session.setVideoEncoder(videoEncoder);
 

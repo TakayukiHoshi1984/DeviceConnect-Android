@@ -7,7 +7,7 @@ import org.deviceconnect.android.libmedia.streaming.mjpeg.SurfaceMJPEGEncoder;
 
 import java.io.IOException;
 
-public class CameraMJPEGEncoder extends SurfaceMJPEGEncoder {
+class CameraMJPEGEncoder extends SurfaceMJPEGEncoder {
     /**
      * カメラ操作クラス.
      */
@@ -38,7 +38,7 @@ public class CameraMJPEGEncoder extends SurfaceMJPEGEncoder {
     @Override
     protected void startRecording() throws IOException {
         try {
-            mCamera2Recorder.startPreview(new Surface(getSurfaceTexture()));
+                mCamera2Recorder.startPreview(new Surface(getSurfaceTexture()));
         } catch (CameraWrapperException e) {
             throw new IOException(e);
         }
@@ -56,4 +56,5 @@ public class CameraMJPEGEncoder extends SurfaceMJPEGEncoder {
     @Override
     protected void release() {
     }
+
 }

@@ -163,7 +163,7 @@ class ScreenCastMJPEGPreviewServer extends AbstractPreviewServer {
 
         @Override
         public MJPEGEncoder createMJPEGEncoder() {
-            ScreenCastMJPEGEncoder encoder = new ScreenCastMJPEGEncoder(mScreenCastMgr);
+            ScreenCastMJPEGEncoder encoder = (ScreenCastMJPEGEncoder) getRecorder().getMJPEGEncorder();
             setMJPEGQuality(encoder.getMJPEGQuality());
             return encoder;
         }

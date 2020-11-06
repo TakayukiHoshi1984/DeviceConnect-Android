@@ -7,13 +7,20 @@
 package org.deviceconnect.android.deviceplugin.host.recorder.camera;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.media.AudioFormat;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -47,10 +54,15 @@ import org.deviceconnect.android.libmedia.streaming.audio.AudioEncoder;
 import org.deviceconnect.android.libmedia.streaming.audio.AudioQuality;
 import org.deviceconnect.android.libmedia.streaming.audio.MicAACLATMEncoder;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.LiveStreamingClient;
+import org.deviceconnect.android.libmedia.streaming.mjpeg.MJPEGEncoder;
 import org.deviceconnect.android.libmedia.streaming.video.VideoEncoder;
 import org.deviceconnect.android.provider.FileManager;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ShortBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -116,12 +128,12 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     /**
      * ファイルマネージャ.
      */
-    private final FileManager mFileManager;
+    protected final FileManager mFileManager;
 
     /**
      * {@link SurfaceRecorder} のインスタンス.
      */
-    private SurfaceRecorder mSurfaceRecorder;
+    protected SurfaceRecorder mSurfaceRecorder;
 
     /**
      * {@link CameraManager} のインスタンス.
@@ -131,7 +143,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     /**
      * カメラ操作オブジェクト.
      */
-    private final CameraWrapper mCameraWrapper;
+    protected final CameraWrapper mCameraWrapper;
 
     /**
      * カメラID.
@@ -143,17 +155,13 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     /**
      * カメラの位置.
      */
-    private final Camera2Recorder.CameraFacing mFacing;
+    protected final Camera2Recorder.CameraFacing mFacing;
 
     /**
      * リクエストの処理を実行するハンドラ.
      */
-    private final Handler mRequestHandler;
+    protected final Handler mRequestHandler;
 
-    /**
-     * 写真撮影の処理を実行するハンドラ.
-     */
-    private final Handler mPhotoHandler;
 
     /**
      * 現在の端末の回転方向.
@@ -163,7 +171,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
      * @see Surface#ROTATION_180
      * @see Surface#ROTATION_270
      */
-    private int mCurrentRotation;
+    protected int mCurrentRotation;
 
     /**
      * フレームインターバル.
@@ -183,7 +191,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     /**
      * コンテキスト.
      */
-    private Context mContext;
+    protected Context mContext;
 
     /**
      * コンストラクタ.
@@ -203,16 +211,11 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
         mCameraId = camera.getId();
         mFacing = detectFacing();
 
-        HandlerThread photoThread = new HandlerThread("host-camera-photo");
-        photoThread.start();
-        mPhotoHandler = new Handler(photoThread.getLooper());
-
         HandlerThread requestThread = new HandlerThread("host-camera-request");
         requestThread.start();
         mRequestHandler = new Handler(requestThread.getLooper());
-
-        mCamera2PreviewServerProvider = new Camera2PreviewServerProvider(context,
-                                                                this, mFacing.getValue());
+        mCamera2PreviewServerProvider = new Camera2PreviewServerProvider(mContext,
+                this, mFacing.getValue());
     }
 
     @Override
@@ -226,7 +229,6 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
 
     @Override
     public void destroy() {
-        mPhotoHandler.getLooper().quit();
         mRequestHandler.getLooper().quit();
     }
 
@@ -376,6 +378,21 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
                 callback.onDisallowed();
             }
         });
+    }
+
+    @Override
+    public MJPEGEncoder getMJPEGEncorder() {
+        return new CameraMJPEGEncoder(this);
+    }
+
+    @Override
+    public VideoEncoder getVideoEncoder() {
+        return new CameraVideoEncoder(this);
+    }
+
+    @Override
+    public int getImageFormat() {
+        return mCameraWrapper.getImageFormat();
     }
 
     @Override
@@ -661,43 +678,8 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     void startPreview(final Surface previewSurface, boolean isResume) throws CameraWrapperException {
         mCameraWrapper.startPreview(previewSurface, isResume);
     }
-    /**
-     * 静止画の撮影を行います.
-     *
-     * @param listener 静止画の撮影結果を通知するリスナー
-     */
-    private void takePhotoInternal(final @NonNull OnPhotoEventListener listener) {
-        try {
-            ImageReader stillImageReader = mCameraWrapper.createStillImageReader(ImageFormat.JPEG);
-            stillImageReader.setOnImageAvailableListener((reader) -> {
-                Image photo = reader.acquireNextImage();
-                if (photo == null) {
-                    listener.onFailedTakePhoto("Failed to acquire image.");
-                    return;
-                }
-                storePhoto(photo, listener);
-                photo.close();
-            }, mPhotoHandler);
-            mCameraWrapper.takeStillImage(stillImageReader.getSurface());
-        } catch (CameraWrapperException e) {
-            if (DEBUG) {
-                Log.e(TAG, "Failed to take photo.", e);
-            }
-            listener.onFailedTakePhoto("Failed to take photo.");
-        }
-    }
 
-    /**
-     * 撮影した静止画をファイルに保存します.
-     *
-     * @param image 撮影された静止画
-     * @param listener 静止画の撮影結果を通知するリスナー
-     */
-    private void storePhoto(final Image image, final OnPhotoEventListener listener) {
-        if (DEBUG) {
-            Log.d(TAG, "storePhoto: screen orientation: " + Camera2Helper.getScreenOrientation(mContext));
-        }
-
+    byte[] convertJPEG(final Image image) {
         byte[] jpeg = ImageUtil.convertToJPEG(image);
         int deviceRotation = ROTATIONS.get(mCurrentRotation);
         int cameraRotation = Camera2Helper.getSensorOrientation(mCameraManager, mCameraId);
@@ -706,8 +688,38 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
             degrees = (180 - degrees) % 360;
         }
 
-        jpeg = ImageUtil.rotateJPEG(jpeg, PHOTO_JPEG_QUALITY, degrees);
+        return ImageUtil.rotateJPEG(jpeg, PHOTO_JPEG_QUALITY, degrees);
+    }
+    /**
+     * 静止画の撮影を行います.
+     *
+     * @param listener 静止画の撮影結果を通知するリスナー
+     */
+    private void takePhotoInternal(final @NonNull OnPhotoEventListener listener) {
+        mCameraWrapper.takeStillImage(new CameraWrapper.OnImageAvailableListener() {
+            @Override
+            public void onSuccess(Image image) {
+                storePhoto(image, listener);
+            }
 
+            @Override
+            public void onFailed(String message) {
+                listener.onFailedTakePhoto(message);
+            }
+        });
+    }
+
+    /**
+     * 撮影した静止画をファイルに保存します.
+     *
+     * @param image 撮影された静止画
+     * @param listener 静止画の撮影結果を通知するリスナー
+     */
+    protected void storePhoto(final Image image, final OnPhotoEventListener listener) {
+        if (DEBUG) {
+            Log.d(TAG, "storePhoto: screen orientation: " + Camera2Helper.getScreenOrientation(mContext));
+        }
+        byte[] jpeg = convertJPEG(image);
         final String filename = createNewFileName();
         mFileManager.saveFile(filename, jpeg, true, new FileManager.SaveFileCallback() {
             @Override
@@ -731,13 +743,12 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
             }
         });
     }
-
     /**
      * 録画を行います.
      *
      * @param listener 録画開始結果を通知するリスナー
      */
-    private void startRecordingInternal(final RecordingListener listener) {
+    protected void startRecordingInternal(final RecordingListener listener) {
         if (mSurfaceRecorder != null) {
             listener.onFailed(this, "Recording has started already.");
             return;
@@ -784,7 +795,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
      *
      * @param listener 録画停止結果を通知するリスナー
      */
-    private void stopRecordingInternal(final StoppingListener listener) {
+    protected void stopRecordingInternal(final StoppingListener listener) {
         if (mSurfaceRecorder == null) {
             listener.onFailed(this, "Recording has stopped already.");
             return;
@@ -819,7 +830,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
         }
     }
 
-    private void registerVideo(final File videoFile) {
+    protected void registerVideo(final File videoFile) {
         Uri uri = mMediaSharing.shareVideo(mContext, videoFile, mFileManager);
         if (DEBUG) {
             String filePath = videoFile.getAbsolutePath();

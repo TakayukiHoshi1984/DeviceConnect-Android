@@ -149,9 +149,8 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                         }
                                     }
                                 } else {
-                                    encoder = new CameraVideoEncoder((Camera2Recorder) mHostDeviceLiveStreamRecorder);
+                                    encoder = ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getVideoEncoder();
                                 }
-
                                 mHostDeviceLiveStreamRecorder.setVideoEncoder(encoder,
                                                                 width, height, bitrate, frameRate);
                             } else {

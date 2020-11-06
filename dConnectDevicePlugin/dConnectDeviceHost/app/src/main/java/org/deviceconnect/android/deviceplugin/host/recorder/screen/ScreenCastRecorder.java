@@ -33,6 +33,7 @@ import org.deviceconnect.android.deviceplugin.host.recorder.util.RecorderSetting
 import org.deviceconnect.android.libmedia.streaming.audio.AudioEncoder;
 import org.deviceconnect.android.libmedia.streaming.audio.AudioQuality;
 import org.deviceconnect.android.libmedia.streaming.audio.MicAACLATMEncoder;
+import org.deviceconnect.android.libmedia.streaming.mjpeg.MJPEGEncoder;
 import org.deviceconnect.android.libmedia.streaming.video.VideoEncoder;
 import org.deviceconnect.android.provider.FileManager;
 
@@ -283,6 +284,21 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
                 callback.onDisallowed();
             }
         });
+    }
+
+    @Override
+    public MJPEGEncoder getMJPEGEncorder() {
+        return new ScreenCastMJPEGEncoder(mScreenCastMgr);
+    }
+
+    @Override
+    public VideoEncoder getVideoEncoder() {
+        return new ScreenCastVideoEncoder(mScreenCastMgr);
+    }
+
+    @Override
+    public int getImageFormat() {
+        return 0;
     }
 
     @Override

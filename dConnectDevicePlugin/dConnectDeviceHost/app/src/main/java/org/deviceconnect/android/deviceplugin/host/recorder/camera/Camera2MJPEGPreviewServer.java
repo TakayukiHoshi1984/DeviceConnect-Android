@@ -194,9 +194,7 @@ class Camera2MJPEGPreviewServer extends Camera2PreviewServer {
             }
             postOnCameraStarted();
 
-            Camera2Recorder recorder = (Camera2Recorder) getRecorder();
-
-            MJPEGEncoder encoder = new CameraMJPEGEncoder(recorder);
+            MJPEGEncoder encoder = getRecorder().getMJPEGEncorder();
             setMJPEGQuality(encoder.getMJPEGQuality());
             return encoder;
         }

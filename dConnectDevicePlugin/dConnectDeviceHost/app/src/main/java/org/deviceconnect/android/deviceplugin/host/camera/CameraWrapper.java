@@ -19,8 +19,10 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.InputConfiguration;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -30,15 +32,20 @@ import android.view.Surface;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 /**
  * カメラ操作クラス.
@@ -57,7 +64,10 @@ public class CameraWrapper {
     public interface CameraEventListener {
         void onEvent(CameraEvent event);
     }
-
+    public interface OnImageAvailableListener {
+        void onSuccess(Image image);
+        void onFailed(String message);
+    }
     private static class CameraEventListenerHolder {
         private CameraEventListener mListener;
         private Handler mHandler;
@@ -124,8 +134,12 @@ public class CameraWrapper {
 
     private CameraEventListenerHolder mCameraEventListenerHolder;
 
+    protected int mImageFormat;
+
+
     CameraWrapper(final @NonNull Context context,
-                  final @NonNull String cameraId) throws CameraAccessException {
+                  final @NonNull String cameraId,
+                  final @NonNull int imageFormat) throws CameraAccessException {
         mCameraId = cameraId;
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mOptions = initOptions();
@@ -134,7 +148,9 @@ public class CameraWrapper {
         mSessionConfigurationHandler = new Handler(mSessionConfigurationThread.getLooper());
         mAutoFocusMode = choiceAutoFocusMode(context, mCameraManager, cameraId);
         mAutoExposureMode = choiceAutoExposureMode(mCameraManager, cameraId);
-        mPlaceHolderPreviewReader = createImageReader(mOptions.getPreviewSize(), ImageFormat.YUV_420_888);
+        mImageFormat = imageFormat;
+
+        mPlaceHolderPreviewReader = createImageReader(mOptions.getPreviewSize(), mImageFormat);
         mPlaceHolderPreviewReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireNextImage();
             if (image != null) {
@@ -194,6 +210,7 @@ public class CameraWrapper {
     public synchronized void destroy() {
         close();
         mSessionConfigurationThread.quit();
+        mBackgroundHandler.getLooper().quit();
     }
 
     private void close() {
@@ -386,6 +403,7 @@ public class CameraWrapper {
             }
             final CountDownLatch lock = new CountDownLatch(1);
             final AtomicReference<CameraCaptureSession> sessionRef = new AtomicReference<>();
+
             cameraDevice.createCaptureSession(targets, new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(final @NonNull CameraCaptureSession session) {
@@ -558,8 +576,27 @@ public class CameraWrapper {
         }
         notifyCameraEvent(CameraEvent.STOPPED_VIDEO_RECORDING);
     }
-
-    public synchronized void takeStillImage(final Surface stillImageSurface) throws CameraWrapperException {
+    public synchronized void takeStillImage(final OnImageAvailableListener listener) {
+        try {
+            ImageReader stillImageReader = createStillImageReader(mImageFormat);
+            stillImageReader.setOnImageAvailableListener((reader) -> {
+                Image photo = reader.acquireNextImage();
+                if (photo == null) {
+                    listener.onFailed("Failed to acquire image.");
+                    return;
+                }
+                listener.onSuccess(photo);
+                photo.close();
+            }, mBackgroundHandler);
+            takeStillImage(stillImageReader.getSurface());
+        } catch (CameraWrapperException e) {
+            if (DEBUG) {
+                Log.e(TAG, "Failed to take photo.", e);
+            }
+            listener.onFailed("Failed to take photo.");
+        }
+    }
+    void takeStillImage(final Surface stillImageSurface) throws CameraWrapperException {
         if (DEBUG) {
             Log.d(TAG, "takeStillImage: started.");
         }
@@ -590,7 +627,7 @@ public class CameraWrapper {
                 @Override
                 public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
                     if (DEBUG) {
-                        Log.d(TAG, "takeStillImage: onCaptureStarted");
+                        Log.d(TAG, "takeStillImage: onCaptureStarted:");
                     }
                     notifyCameraEvent(CameraEvent.SHUTTERED);
                 }
@@ -874,6 +911,10 @@ public class CameraWrapper {
 
     public boolean isUseTorch() {
         return mUseTouch;
+    }
+
+    public int getImageFormat() {
+        return mImageFormat;
     }
 
     private void notifyTorchOnEvent(final TorchOnListener listener, final Handler handler) {

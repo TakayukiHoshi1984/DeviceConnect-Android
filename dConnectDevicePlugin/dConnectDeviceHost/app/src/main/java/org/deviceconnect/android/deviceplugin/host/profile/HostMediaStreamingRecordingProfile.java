@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.HostDevicePlugin;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
@@ -552,7 +553,6 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 server.setSSLContext(sslContext);
             }
         }
-
         List<PreviewServer> servers = recorder.startPreviews();
         if (servers.isEmpty()) {
             MessageUtils.setIllegalServerStateError(response, "Failed to start web server.");
@@ -731,6 +731,9 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
             }
 
             final HostDeviceStreamRecorder streamRecorder = (HostDeviceStreamRecorder) recorder;
+            Log.d("ABC", "record:" + recorder.getClass().getName());
+            Log.d("ABC", "streamRecorder:" + streamRecorder.getClass().getName());
+
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
                 public void onAllowed() {

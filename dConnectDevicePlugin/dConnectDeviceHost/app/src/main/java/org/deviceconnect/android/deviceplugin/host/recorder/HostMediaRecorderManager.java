@@ -12,14 +12,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.WindowManager;
 
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapper;
 import org.deviceconnect.android.deviceplugin.host.camera.CameraWrapperManager;
 import org.deviceconnect.android.deviceplugin.host.recorder.audio.HostAudioRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.camera.Camera2Recorder;
+import org.deviceconnect.android.deviceplugin.host.recorder.camera.DepthCamera2Recorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.screen.ScreenCastRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.RecorderSetting;
 import org.deviceconnect.android.event.Event;
@@ -81,6 +84,7 @@ public class HostMediaRecorderManager {
                 int rotation = windowManager.getDefaultDisplay().getRotation();
                 for (HostMediaRecorder recorder : mRecorders) {
                     try {
+                        Log.d("ABC", "recorder rotation: " + recorder.getClass().getName());
                         recorder.onDisplayRotation(rotation);
                     } catch (Exception e) {
                         // ignore.
@@ -134,7 +138,11 @@ public class HostMediaRecorderManager {
     private void createCameraRecorders(final CameraWrapperManager cameraMgr, final FileManager fileMgr) {
         List<Camera2Recorder> photoRecorders = new ArrayList<>();
         for (CameraWrapper camera : cameraMgr.getCameraList()) {
-            photoRecorders.add(new Camera2Recorder(getContext(), camera, fileMgr));
+            if (camera.getImageFormat() == ImageFormat.DEPTH16) {
+                photoRecorders.add(new DepthCamera2Recorder(getContext(), camera, fileMgr));
+            } else {
+                photoRecorders.add(new Camera2Recorder(getContext(), camera, fileMgr));
+            }
         }
         mRecorders.addAll(photoRecorders);
         if (!photoRecorders.isEmpty()) {

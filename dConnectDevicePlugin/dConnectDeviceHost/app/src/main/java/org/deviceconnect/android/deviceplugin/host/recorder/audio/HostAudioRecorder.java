@@ -24,6 +24,8 @@ import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServer;
 import org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.CapabilityUtil;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.MediaSharing;
+import org.deviceconnect.android.libmedia.streaming.mjpeg.MJPEGEncoder;
+import org.deviceconnect.android.libmedia.streaming.video.VideoEncoder;
 import org.deviceconnect.android.provider.FileManager;
 
 import java.io.File;
@@ -272,6 +274,16 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
                 callback.onDisallowed();
             }
         });
+    }
+
+    @Override
+    public MJPEGEncoder getMJPEGEncorder() {
+        return null;
+    }
+
+    @Override
+    public VideoEncoder getVideoEncoder() {
+        return null;
     }
 
     @Override

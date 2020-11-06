@@ -7,6 +7,7 @@
 package org.deviceconnect.android.deviceplugin.host.camera;
 
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
 import android.util.Log;
@@ -42,7 +43,12 @@ public class CameraWrapperManager {
             for (String cameraId : cameraManager.getCameraIdList()) {
                 CameraWrapper camera = null;
                 try {
-                    camera = new CameraWrapper(context, cameraId);
+                    int imageFormat = Camera2Helper.getImageFormat(cameraManager, cameraId);
+                    if (imageFormat == ImageFormat.DEPTH16) {
+                        camera = new DepthCameraWrapper(context, cameraId, imageFormat);
+                    } else {
+                        camera = new CameraWrapper(context, cameraId, imageFormat);
+                    }
                     mCameras.put(cameraId, camera);
                 } catch (Exception e) {
                     // ignore.

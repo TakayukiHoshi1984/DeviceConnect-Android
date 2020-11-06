@@ -174,7 +174,7 @@ public class Camera2SRTPreviewServer extends Camera2PreviewServer {
 
             Camera2Recorder recorder = (Camera2Recorder) getRecorder();
 
-            CameraVideoEncoder encoder = new CameraVideoEncoder(mRecorder);
+            VideoEncoder encoder = getRecorder().getVideoEncoder();
             setVideoQuality(encoder.getVideoQuality());
             session.setVideoEncoder(encoder);
 

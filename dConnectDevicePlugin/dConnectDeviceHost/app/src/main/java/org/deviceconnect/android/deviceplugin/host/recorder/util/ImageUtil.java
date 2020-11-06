@@ -2,14 +2,19 @@ package org.deviceconnect.android.deviceplugin.host.recorder.util;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
+import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * Image の処理を行うユーティリティクラス.
@@ -49,14 +54,38 @@ public final class ImageUtil {
      */
     public static byte[] convertToJPEG(Image image) {
         byte[] jpeg;
-        if (image.getFormat() == ImageFormat.JPEG) {
+        if (image.getFormat() == ImageFormat.JPEG || image.getFormat() == ImageFormat.DEPTH_JPEG) {
             jpeg = readJPEG(image);
         } else if (image.getFormat() == ImageFormat.YUV_420_888) {
             jpeg = NV21toJPEG(YUV420toNV21(image), image.getWidth(), image.getHeight(), 100);
+        } else if (image.getFormat() == ImageFormat.DEPTH16) {
+            jpeg = writeDepth16Image(image);
         } else {
             throw new RuntimeException("Unsupported format: " + image.getFormat());
         }
         return jpeg;
+    }
+    private static byte[] writeDepth16Image(final Image img) {
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        int w = img.getWidth();
+        int h = img.getHeight();
+        int rowStride = img.getPlanes()[0].getRowStride() / 2; // in shorts
+        int[] rgbData = new int[w * h];
+        short[] yRow = new short[w];
+        ShortBuffer y16Data = img.getPlanes()[0].getBuffer().asShortBuffer();
+        int rgbIndex = 0;
+        for (int y = 0; y < h; y++) {
+            y16Data.position(y * rowStride);
+            y16Data.get(yRow, 0, w);
+            for (int x = 0; x < w; x++) {
+                short y16 = yRow[x];
+                rgbData[rgbIndex++] =
+                        Color.rgb(y16 & 0x00FF, (y16 >> 8) & 0x00FF, 0);
+            }
+        }
+        Bitmap rgbImage = Bitmap.createBitmap(rgbData, w, h, Bitmap.Config.ARGB_8888);
+        rgbImage.compress(Bitmap.CompressFormat.PNG, 100, bout);
+        return bout.toByteArray();
     }
 
     private static byte[] readJPEG(final Image jpegImage) {

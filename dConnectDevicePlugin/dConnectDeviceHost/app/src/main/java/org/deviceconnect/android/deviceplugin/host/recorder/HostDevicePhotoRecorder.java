@@ -56,7 +56,11 @@ public interface HostDevicePhotoRecorder {
      * @return カメラのライトが使用中の場合は<code>true</code>, そうでない場合は<code>false</code>
      */
     boolean isUseFlashLight();
-
+    /**
+     * Recorderが持つCameraのImageFormatを返す.
+     *
+     */
+    int getImageFormat();
     /**
      * 写真撮影の結果を受け取るためのリスナー.
      */

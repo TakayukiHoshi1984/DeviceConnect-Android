@@ -15,6 +15,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import androidx.annotation.NonNull;
+
 import android.util.Size;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -106,7 +107,13 @@ public final class Camera2Helper {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             if (map != null) {
-                previewSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
+                if (map.getOutputSizes(SurfaceTexture.class) != null) {
+                    previewSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
+                } else if (map.getOutputSizes(ImageFormat.DEPTH16) != null) {
+                    previewSizes = Arrays.asList(map.getOutputSizes(ImageFormat.DEPTH16));
+                } else if (map.getOutputSizes(ImageFormat.DEPTH_JPEG) != null) {
+                    previewSizes = Arrays.asList(map.getOutputSizes(ImageFormat.DEPTH_JPEG));
+                }
                 Collections.sort(previewSizes, SizeComparator);
             }
         } catch (CameraAccessException e) {
@@ -129,13 +136,38 @@ public final class Camera2Helper {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             if(map != null) {
-                pictureSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                if (map.getOutputSizes(ImageFormat.YUV_420_888) != null) {
+                    pictureSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
+                } else if (map.getOutputSizes(ImageFormat.JPEG) != null) {
+                    pictureSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                } else if (map.getOutputSizes(ImageFormat.DEPTH16) != null) {
+                    pictureSizes = Arrays.asList(map.getOutputSizes(ImageFormat.DEPTH16));
+                } else if (map.getOutputSizes(ImageFormat.DEPTH_JPEG) != null) {
+                    pictureSizes = Arrays.asList(map.getOutputSizes(ImageFormat.DEPTH_JPEG));
+                }
                 Collections.sort(pictureSizes, SizeComparator);
             }
         } catch (CameraAccessException e) {
             // ignore.
         }
         return pictureSizes;
+    }
+
+    public static int getImageFormat(final CameraManager cameraManager, final String cameraId) throws CameraAccessException {
+        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+        StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        if(map != null) {
+            if (map.getOutputSizes(ImageFormat.YUV_420_888) != null) {
+                return ImageFormat.YUV_420_888;
+            } else if (map.getOutputSizes(ImageFormat.JPEG) != null) {
+                return ImageFormat.JPEG;
+            } else if (map.getOutputSizes(ImageFormat.DEPTH16) != null) {
+                return ImageFormat.DEPTH16;
+            } else if (map.getOutputSizes(ImageFormat.DEPTH_JPEG) != null) {
+                return ImageFormat.DEPTH_JPEG;
+            }
+        }
+        return ImageFormat.YUV_420_888;
     }
 
     /**

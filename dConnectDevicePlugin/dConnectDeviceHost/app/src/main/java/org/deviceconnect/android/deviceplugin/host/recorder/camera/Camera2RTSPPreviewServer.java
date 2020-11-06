@@ -1,10 +1,12 @@
 package org.deviceconnect.android.deviceplugin.host.recorder.camera;
 
 import android.content.Context;
+import android.graphics.Picture;
 import android.os.Build;
 import android.util.Log;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
+import org.deviceconnect.android.deviceplugin.host.recorder.HostMediaRecorder;
 import org.deviceconnect.android.deviceplugin.host.recorder.util.RecorderSetting;
 import org.deviceconnect.android.libmedia.streaming.audio.AudioEncoder;
 import org.deviceconnect.android.libmedia.streaming.rtsp.RtspServer;
@@ -12,8 +14,11 @@ import org.deviceconnect.android.libmedia.streaming.rtsp.session.RtspSession;
 import org.deviceconnect.android.libmedia.streaming.rtsp.session.audio.AudioStream;
 import org.deviceconnect.android.libmedia.streaming.rtsp.session.audio.MicAACLATMStream;
 import org.deviceconnect.android.libmedia.streaming.rtsp.session.video.VideoStream;
+import org.deviceconnect.android.libmedia.streaming.video.CameraVideoQuality;
+import org.deviceconnect.android.libmedia.streaming.video.VideoQuality;
 
 import java.io.IOException;
+import java.util.List;
 
 import androidx.annotation.RequiresApi;
 
@@ -102,6 +107,7 @@ class Camera2RTSPPreviewServer extends Camera2PreviewServer {
 
     @Override
     public void onConfigChange() {
+        Log.d("ABC", "onConfigChange");
         setEncoderQuality();
         restartCamera();
     }
@@ -151,12 +157,19 @@ class Camera2RTSPPreviewServer extends Camera2PreviewServer {
      * エンコーダーの設定を行います.
      */
     private void setEncoderQuality() {
+        Log.d("ABC", "videoStream1 port:" + getPort());
         if (mRtspServer != null) {
+            Log.d("ABC", "videoStream2");
             RtspSession session = mRtspServer.getRtspSession();
             if (session != null) {
                 VideoStream videoStream = session.getVideoStream();
                 if (videoStream != null) {
-                    setVideoQuality(videoStream.getVideoEncoder().getVideoQuality());
+                    Log.d("ABC", "videoStream3");
+                    VideoQuality quality = videoStream.getVideoEncoder().getVideoQuality();
+                    List<HostMediaRecorder.PictureSize> pSize = mRecorder.getSupportedPreviewSizes();
+                    quality.setVideoHeight(pSize.get(0).getWidth());
+                    quality.setVideoWidth(pSize.get(0).getHeight());
+                    setVideoQuality(quality);
                 }
 
                 AudioStream audioStream = session.getAudioStream();
