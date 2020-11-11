@@ -31,6 +31,9 @@ import org.deviceconnect.android.profile.api.PostApi;
 import org.deviceconnect.android.profile.api.PutApi;
 import org.deviceconnect.message.DConnectMessage;
 
+import static org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider.DELETE_PREVIEW_ACTION;
+import static org.deviceconnect.android.deviceplugin.host.recorder.PreviewServerProvider.EXTRA_CAMERA_ID;
+
 public class HostLiveStreamingProfile extends DConnectProfile implements LiveStreamingClient.EventListener {
 
     private static final String TAG = "LiveStreamingProfile";
@@ -151,7 +154,6 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                 } else {
                                     encoder = new CameraVideoEncoder((Camera2Recorder) mHostDeviceLiveStreamRecorder);
                                 }
-
                                 mHostDeviceLiveStreamRecorder.setVideoEncoder(encoder,
                                                                 width, height, bitrate, frameRate);
                             } else {
@@ -167,6 +169,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             if (!mAudioURI.equals("false")) {
                                 mHostDeviceLiveStreamRecorder.setMute(false);
                             }
+                            mCurrentResponse = response;
 
                             //ストリーミング開始
                             mHostDeviceLiveStreamRecorder.startLiveStreaming();
@@ -174,7 +177,6 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             provider.registerBroadcastReceiver();
                             provider.sendNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId(),
                                                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getName());
-                            mCurrentResponse = response;
                         }
 
                         @Override
@@ -212,11 +214,16 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             .requestPermission(new HostMediaRecorder.PermissionCallback() {
                               @Override
                               public void onAllowed() {
+                                  mCurrentResponse = response;
                                   mHostDeviceLiveStreamRecorder.stopLiveStreaming();
                                   PreviewServerProvider provider = ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getServerProvider();
                                   provider.unregisterBroadcastReceiver();
                                   provider.hideNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId());
-                                  mCurrentResponse = response;
+
+                                  Intent intent = new Intent();
+                                  intent.setAction(DELETE_PREVIEW_ACTION);
+                                  intent.putExtra(EXTRA_CAMERA_ID, ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId());
+                                  getContext().sendBroadcast(intent);
                               }
 
                               @Override
@@ -508,11 +515,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
         if (DEBUG) {
             Log.d(TAG, "onStart()");
         }
-        if (mCurrentResponse != null) {
-            setResult(mCurrentResponse, DConnectMessage.RESULT_OK);
-            sendResponse(mCurrentResponse);
-            mCurrentResponse = null;
-        }
+
         for(Event event : EventManager.INSTANCE.getEventList(getService().getId(), PROFILE_NAME, null, AT_ON_STATUS_CHANGE)) {
             Bundle root = new Bundle();
             Bundle streaming = new Bundle();
@@ -532,6 +535,11 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
 
             sendEvent(event, root);
         }
+        if (mCurrentResponse != null) {
+            setResult(mCurrentResponse, DConnectMessage.RESULT_OK);
+            sendResponse(mCurrentResponse);
+            mCurrentResponse = null;
+        }
     }
 
     @Override
@@ -539,12 +547,6 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
         if (DEBUG) {
             Log.d(TAG, "onStop()");
         }
-        if (mCurrentResponse != null) {
-            setResult(mCurrentResponse, DConnectMessage.RESULT_OK);
-            sendResponse(mCurrentResponse);
-            mCurrentResponse = null;
-        }
-
         for(Event event : EventManager.INSTANCE.getEventList(getService().getId(), PROFILE_NAME, null, AT_ON_STATUS_CHANGE)) {
             Bundle root = new Bundle();
             Bundle streaming = new Bundle();
@@ -564,17 +566,18 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
 
             sendEvent(event, root);
         }
+        if (mCurrentResponse != null) {
+            setResult(mCurrentResponse, DConnectMessage.RESULT_OK);
+            sendResponse(mCurrentResponse);
+            mCurrentResponse = null;
+        }
+
     }
 
     @Override
     public void onError(MediaEncoderException mediaEncoderException) {
         if (DEBUG) {
             Log.d(TAG, "onError()");
-        }
-        if (mCurrentResponse != null) {
-            MessageUtils.setIllegalServerStateError(mCurrentResponse, mediaEncoderException.getMessage());
-            sendResponse(mCurrentResponse);
-            mCurrentResponse = null;
         }
 
         for(Event event : EventManager.INSTANCE.getEventList(getService().getId(), PROFILE_NAME, null, AT_ON_STATUS_CHANGE)) {
@@ -595,6 +598,11 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
             root.putParcelable(PARAM_KEY_STREAMING, streaming);
 
             sendEvent(event, root);
+        }
+        if (mCurrentResponse != null) {
+            MessageUtils.setIllegalServerStateError(mCurrentResponse, mediaEncoderException.getMessage());
+            sendResponse(mCurrentResponse);
+            mCurrentResponse = null;
         }
     }
 }
