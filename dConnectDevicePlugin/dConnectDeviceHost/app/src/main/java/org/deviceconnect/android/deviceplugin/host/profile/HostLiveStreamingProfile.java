@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import org.deviceconnect.android.BuildConfig;
@@ -56,13 +58,9 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
     private static final String VIDEO_URI_FALSE = "false";
     private static final String VIDEO_URI_CAMERA_FRONT = "camera-front";
     private static final String VIDEO_URI_CAMERA_BACK = "camera-back";
-    private static final String VIDEO_URI_CAMERA_0 = "camera_0";
-    private static final String VIDEO_URI_CAMERA_1 = "camera_1";
     private static final String VIDEO_URI_SCREEN = "screen";
     private static final String AUDIO_URI_TRUE = "true";
     private static final String AUDIO_URI_FALSE = "false";
-    private static final int CAMERA_TYPE_FRONT = 0;
-    private static final int CAMERA_TYPE_BACK = 1;
     private HostDeviceLiveStreamRecorder mHostDeviceLiveStreamRecorder;
     private HostMediaRecorderManager mHostMediaRecorderManager;
     private String mVideoURI = null;
@@ -177,6 +175,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             provider.registerBroadcastReceiver();
                             provider.sendNotification(((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId(),
                                                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getName());
+                            startRequestTimer();
                         }
 
                         @Override
@@ -224,6 +223,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                   intent.setAction(DELETE_PREVIEW_ACTION);
                                   intent.putExtra(EXTRA_CAMERA_ID, ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).getId());
                                   getContext().sendBroadcast(intent);
+                                  startRequestTimer();
                               }
 
                               @Override
@@ -416,6 +416,16 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                 return true;
             }
         });
+    }
+
+    private void startRequestTimer() {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (mCurrentResponse != null) {
+                setResult(mCurrentResponse, DConnectMessage.RESULT_OK);
+                sendResponse(mCurrentResponse);
+                mCurrentResponse = null;
+            }
+        }, 10000);
     }
 
     private HostDeviceLiveStreamRecorder getHostDeviceLiveStreamRecorder()  {
