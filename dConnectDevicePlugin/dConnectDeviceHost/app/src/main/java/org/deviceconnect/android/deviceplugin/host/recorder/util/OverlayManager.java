@@ -244,7 +244,19 @@ public class OverlayManager {
             mViewList.clear();
         }
     }
-
+    /**
+     * オーバーレイに追加されている全ての View を非表示にします。
+     */
+    public void setVisibilityAllViews() {
+        List<View> views = getViewList();
+        for (View view : views) {
+            try {
+                mWindowManager.updateViewLayout(view, createLayoutParams(0,0));
+            } catch (Exception e) {
+                // ignore.
+            }
+        }
+    }
     /**
      * オーバーレイに追加されている View のリストを取得します.
      *

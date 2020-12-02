@@ -237,7 +237,8 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
      * オーバーレイ上にプレビューを表示します.
      */
     private synchronized void showPreviewOnOverlay() {
-        if (mOverlayView != null) {
+        if (mOverlayView != null && mOverlayView.getWidth() != 0) {
+            // オーバレイが非表示になっていない場合は更新を行わない
             return;
         }
 
@@ -249,43 +250,44 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
             return;
         }
 
-        LayoutInflater inflater = LayoutInflater.from(mContext);
+        if (mOverlayView == null) {
+            LayoutInflater inflater = LayoutInflater.from(mContext);
+            mOverlayView = inflater.inflate(R.layout.host_preview_overlay, null);
 
-        mOverlayView = inflater.inflate(R.layout.host_preview_overlay, null);
+            SurfaceView surfaceView = mOverlayView.findViewById(R.id.surface_view);
+            surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+                @Override
+                public void surfaceCreated(SurfaceHolder surfaceHolder) {
+                    mRecorder.setTargetSurface(surfaceView.getHolder().getSurface());
 
-        SurfaceView surfaceView = mOverlayView.findViewById(R.id.surface_view);
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder surfaceHolder) {
-                mRecorder.setTargetSurface(surfaceView.getHolder().getSurface());
-
-                if (mCameraPreviewFlag) {
-                    // 既にプレビューが配信中の場合は、オーバーレイ用の Surface を追加してから
-                    // カメラを再起動させます。
-                    restartCamera();
-                } else {
-                    new Thread(() -> {
-                        try {
-                            if (mRecorder.isPreview()) {
-                                mRecorder.startPreview(null, true);
-                            } else {
-                                mRecorder.startPreview(null);
+                    if (mCameraPreviewFlag) {
+                        // 既にプレビューが配信中の場合は、オーバーレイ用の Surface を追加してから
+                        // カメラを再起動させます。
+                        restartCamera();
+                    } else {
+                        new Thread(() -> {
+                            try {
+                                if (mRecorder.isPreview()) {
+                                    mRecorder.startPreview(null, true);
+                                } else {
+                                    mRecorder.startPreview(null);
+                                }
+                            } catch (CameraWrapperException e) {
+                                // ignore.
                             }
-                        } catch (CameraWrapperException e) {
-                            // ignore.
-                        }
-                    }).start();
+                        }).start();
+                    }
                 }
-            }
 
-            @Override
-            public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
-            }
+                @Override
+                public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
+                }
 
-            @Override
-            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-            }
-        });
+                @Override
+                public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+                }
+            });
+        }
         mOverlayManager.update();
         mOverlayManager.addView(mOverlayView,
                 0,
@@ -293,7 +295,6 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
                 mOverlayManager.getDisplayWidth(),
                 mOverlayManager.getDisplayHeight(),
                 "overlay-" + mRecorder.getId());
-
         adjustSurfaceView(mRecorder.isSwappedDimensions());
     }
 
@@ -303,20 +304,18 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     private synchronized void hidePreviewOnOverlay() {
         if (mOverlayView != null) {
             try {
-                mRecorder.setTargetSurface(null);
                 HostDeviceLiveStreamRecorder liveStreamRecorder = mRecorder;
                 if (!liveStreamRecorder.isStreaming()) {
+                    mRecorder.setTargetSurface(null);
                     mRecorder.stopPreview();
+                    mOverlayManager.removeAllViews();
+                    mOverlayView = null;
                 } else {
-                    mRecorder.stopLiveStreaming();
-                    mRecorder.startLiveStreaming();
+                    mOverlayManager.setVisibilityAllViews();
                 }
             } catch (CameraWrapperException e) {
                 // ignore.
             }
-            mOverlayManager.removeAllViews();
-            mOverlayView = null;
-
             // プレビュー配信中は、カメラを再開させます。
             if (mCameraPreviewFlag) {
                 restartCamera();
@@ -399,6 +398,10 @@ class Camera2PreviewServerProvider extends AbstractPreviewServerProvider {
     public void unregisterBroadcastReceiver() {
         try {
             mContext.unregisterReceiver(mBroadcastReceiver);
+            if (mOverlayView != null) {
+                mOverlayManager.removeAllViews();
+                mOverlayView = null;
+            }
         } catch (Exception e) {
             // ignore.
         }
