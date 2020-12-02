@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.Range;
 
 import org.deviceconnect.android.activity.PermissionUtility;
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
@@ -158,6 +159,11 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
 
     @Override
     public void setMaxFrameRate(double frameRate) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Range<Integer> getPreviewSupportedFrameRates() {
         throw new UnsupportedOperationException();
     }
 

@@ -15,6 +15,9 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import androidx.annotation.NonNull;
+
+import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -115,6 +118,28 @@ public final class Camera2Helper {
         return previewSizes;
     }
 
+    @NonNull
+    public static Range<Integer> getSupportedFrameRates(final CameraManager cameraManager, final String cameraId) {
+        Range<Integer> range = null;
+        try {
+            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+            Range<Integer>[] fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+            int lower = fpsRanges[0].getLower();
+            int upper = fpsRanges[0].getUpper();
+            for (Range<Integer> fps : fpsRanges) {
+                if (lower > fps.getLower()) {
+                    lower = fps.getLower();
+                }
+                if (upper < fps.getUpper()) {
+                    upper = fps.getUpper();
+                }
+            }
+            range = new Range<>(lower, upper);
+        } catch (CameraAccessException e) {
+            // ignore.
+        }
+        return range;
+    }
     /**
      * カメラID に対応したカメラデバイスがサポートしている写真サイズのリストを取得します.
      *

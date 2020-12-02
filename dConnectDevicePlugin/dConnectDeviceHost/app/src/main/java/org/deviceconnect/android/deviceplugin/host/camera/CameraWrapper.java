@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 
@@ -134,6 +135,7 @@ public class CameraWrapper {
         mSessionConfigurationHandler = new Handler(mSessionConfigurationThread.getLooper());
         mAutoFocusMode = choiceAutoFocusMode(context, mCameraManager, cameraId);
         mAutoExposureMode = choiceAutoExposureMode(mCameraManager, cameraId);
+
         mPlaceHolderPreviewReader = createImageReader(mOptions.getPreviewSize(), ImageFormat.YUV_420_888);
         mPlaceHolderPreviewReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireNextImage();
@@ -252,6 +254,12 @@ public class CameraWrapper {
         defaultSize = options.getDefaultPreviewSize();
         if (defaultSize != null) {
             options.setPreviewSize(defaultSize);
+        }
+
+        Range<Integer> fps = Camera2Helper.getSupportedFrameRates(mCameraManager, mCameraId);
+        if (fps != null) {
+            options.setPreviewMaxFrameRate(fps.getUpper());
+            options.setPreviewFrameRates(fps);
         }
         return options;
     }
@@ -453,6 +461,8 @@ public class CameraWrapper {
             if (mTargetSurface != null) {
                 request.addTarget(mTargetSurface);
             }
+            int fps = (int) mOptions.getPreviewMaxFrameRate();
+            request.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(fps, fps));
             request.set(CaptureRequest.JPEG_QUALITY, mPreviewJpegQuality);
             setDefaultCaptureRequest(request);
             captureSession.setRepeatingRequest(request.build(), new CameraCaptureSession.CaptureCallback() {
@@ -917,6 +927,8 @@ public class CameraWrapper {
 
         private double mPreviewMaxFrameRate = 30.0d; //fps
 
+        private Range<Integer> mPreviewFrameRates = new Range<>(30, 30);
+
         private int mPreviewBitRate = 1000 * 1000; //bps
 
         private String mWhiteBalance = DEFAULT_WHITE_BALANCE;
@@ -993,6 +1005,13 @@ public class CameraWrapper {
 
         public void setPreviewMaxFrameRate(final double previewMaxFrameRate) {
             mPreviewMaxFrameRate = previewMaxFrameRate;
+        }
+        public Range<Integer> getPreviewFrameRates() {
+            return mPreviewFrameRates;
+        }
+
+        public void setPreviewFrameRates(final Range<Integer> previewFrameRates) {
+            mPreviewFrameRates = previewFrameRates;
         }
 
         public int getPreviewBitRate() {

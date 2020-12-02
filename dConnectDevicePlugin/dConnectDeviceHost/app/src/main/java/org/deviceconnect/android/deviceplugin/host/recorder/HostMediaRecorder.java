@@ -9,6 +9,7 @@ package org.deviceconnect.android.deviceplugin.host.recorder;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Range;
 import android.util.Size;
 
 import java.util.List;
@@ -125,6 +126,15 @@ public interface HostMediaRecorder {
      * @param frameRate 最大のフレームレート
      */
     void setMaxFrameRate(double frameRate);
+
+
+    /**
+     * プレビューに設定できるフレームレートの範囲を取得します.
+     * lowerがフレームの最小値、upperがフレームの最大値.
+     *
+     * @return プレビューのフレームレート
+     */
+    Range<Integer> getPreviewSupportedFrameRates();
 
     /**
      * プレビューのビットレートを取得します.

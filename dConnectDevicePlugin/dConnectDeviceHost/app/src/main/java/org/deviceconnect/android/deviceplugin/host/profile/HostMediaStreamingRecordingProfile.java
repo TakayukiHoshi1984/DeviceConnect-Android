@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Range;
 
 import org.deviceconnect.android.deviceplugin.host.HostDevicePlugin;
 import org.deviceconnect.android.deviceplugin.host.mediaplayer.VideoConst;
@@ -177,6 +178,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                         // 映像系の設定
                         setSupportedImageSizes(response, recorder.getSupportedPictureSizes());
                         setSupportedPreviewSizes(response, recorder.getSupportedPreviewSizes());
+                        setSupportedFramerates(response, recorder.getPreviewSupportedFrameRates());
                     } else if (recorder.getMimeType().startsWith("audio/")) {
                         // 音声系の設定
                     }
@@ -249,7 +251,12 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
             }
 
             if (previewMaxFrameRate != null) {
-                recorder.setMaxFrameRate(previewMaxFrameRate);
+                try {
+                    recorder.setMaxFrameRate(previewMaxFrameRate);
+                } catch (IllegalArgumentException e) {
+                    MessageUtils.setInvalidRequestParameterError(response, e.getMessage());
+                    return;
+                }
             }
 
             if (previewBitRate != null) {
@@ -993,6 +1000,18 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
         setPreviewSizes(response, array);
     }
 
+    private static void setSupportedFramerates(final Intent response,
+                                               final Range<Integer> fps) {
+        Bundle[] array = new Bundle[1];
+        int i = 0;
+        Bundle info = new Bundle();
+        info.putInt("lower", fps.getLower());
+        info.putInt("upper", fps.getUpper());
+        array[0] = info;
+        response.putExtra("previewFrameRates", array);
+    }
+
+
     private boolean supportsMimeType(final HostMediaRecorder recorder, final String mimeType) {
         for (String supportedMimeType : recorder.getSupportedMimeTypes()) {
             if (supportedMimeType.equals(mimeType)) {
@@ -1010,6 +1029,13 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
      * @param mimeType MIMEタイプ
      */
     public static void setMIMEType(final Intent response, final List<String> mimeType) {
-        response.putExtra(PARAM_MIME_TYPE, mimeType.toArray(new String[mimeType.size()]));
+        // 複数レコーダ上に同じMIME-Typeがある場合は除外する
+        List<String> mimeTypes = new ArrayList<>();
+        for (String mime : mimeType) {
+            if (!mimeTypes.contains(mime)) {
+                mimeTypes.add(mime);
+            }
+        }
+        response.putExtra(PARAM_MIME_TYPE, mimeTypes.toArray(new String[mimeTypes.size()]));
     }
 }

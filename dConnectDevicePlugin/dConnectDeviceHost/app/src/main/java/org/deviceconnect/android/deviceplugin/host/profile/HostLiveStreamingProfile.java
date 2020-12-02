@@ -129,36 +129,42 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                 Log.d(TAG, "bitrate : " + bitrate);
                                 Log.d(TAG, "frameRate : " + frameRate);
                             }
-                            if (!mVideoURI.equals("false")) {
-                                VideoEncoder encoder;
-                                if (mVideoURI.equals(VIDEO_URI_SCREEN)) {
-                                    ScreenCastRecorder sRecorder = (ScreenCastRecorder) mHostDeviceLiveStreamRecorder;
-                                    encoder = new ScreenCastVideoEncoder(sRecorder.getScreenCastMgr());
-                                    // widthかheightがnullの場合は、PreviewSizeの最小値を設定する
-                                    if (width == null || height == null) {
-                                        HostMediaRecorder.PictureSize pSize = sRecorder.getSupportedPreviewSizes().get(0);
-                                        width = pSize.getWidth();
-                                        height = pSize.getHeight();
-                                        for (int i = 1; i < sRecorder.getSupportedPreviewSizes().size(); i++) {
-                                            if (pSize.getWidth() < sRecorder.getSupportedPreviewSizes().get(i).getWidth()) {
-                                                width = sRecorder.getSupportedPreviewSizes().get(i).getWidth();
-                                                height = sRecorder.getSupportedPreviewSizes().get(i).getHeight();
+                            try {
+                                if (!mVideoURI.equals("false")) {
+                                    VideoEncoder encoder;
+                                    if (mVideoURI.equals(VIDEO_URI_SCREEN)) {
+                                        ScreenCastRecorder sRecorder = (ScreenCastRecorder) mHostDeviceLiveStreamRecorder;
+                                        encoder = new ScreenCastVideoEncoder(sRecorder.getScreenCastMgr());
+                                        // widthかheightがnullの場合は、PreviewSizeの最小値を設定する
+                                        if (width == null || height == null) {
+                                            HostMediaRecorder.PictureSize pSize = sRecorder.getSupportedPreviewSizes().get(0);
+                                            width = pSize.getWidth();
+                                            height = pSize.getHeight();
+                                            for (int i = 1; i < sRecorder.getSupportedPreviewSizes().size(); i++) {
+                                                if (pSize.getWidth() < sRecorder.getSupportedPreviewSizes().get(i).getWidth()) {
+                                                    width = sRecorder.getSupportedPreviewSizes().get(i).getWidth();
+                                                    height = sRecorder.getSupportedPreviewSizes().get(i).getHeight();
+                                                }
                                             }
                                         }
+                                    } else {
+                                        encoder = new CameraVideoEncoder((Camera2Recorder) mHostDeviceLiveStreamRecorder);
                                     }
-                                } else {
-                                    encoder = new CameraVideoEncoder((Camera2Recorder) mHostDeviceLiveStreamRecorder);
-                                }
 
-                                mHostDeviceLiveStreamRecorder.setVideoEncoder(encoder,
-                                                                width, height, bitrate, frameRate);
-                            } else {
-                                mHostDeviceLiveStreamRecorder.setVideoEncoder(new CanvasVideoEncoder() {
-                                    @Override
-                                    public void draw(Canvas canvas, int width, int height) {
-                                        canvas.drawColor(Color.BLACK);
-                                    }
-                                }, width, height, bitrate, frameRate);
+                                    mHostDeviceLiveStreamRecorder.setVideoEncoder(encoder,
+                                            width, height, bitrate, frameRate);
+                                } else {
+                                    mHostDeviceLiveStreamRecorder.setVideoEncoder(new CanvasVideoEncoder() {
+                                        @Override
+                                        public void draw(Canvas canvas, int width, int height) {
+                                            canvas.drawColor(Color.BLACK);
+                                        }
+                                    }, width, height, bitrate, frameRate);
+                                }
+                            } catch (IllegalArgumentException e) {
+                                MessageUtils.setInvalidRequestParameterError(response, e.getMessage());
+                                sendResponse(response);
+                                return;
                             }
                             //音声無し以外の場合はエンコーダーをセット
                             mHostDeviceLiveStreamRecorder.setAudioEncoder();

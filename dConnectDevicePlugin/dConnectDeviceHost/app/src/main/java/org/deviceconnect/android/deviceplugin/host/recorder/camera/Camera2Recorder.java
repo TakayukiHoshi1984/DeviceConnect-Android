@@ -19,6 +19,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -292,7 +293,17 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
 
     @Override
     public void setMaxFrameRate(final double frameRate) {
-        mCameraWrapper.getOptions().setPreviewMaxFrameRate(frameRate);
+        if (mCameraWrapper.getOptions().getPreviewFrameRates().getLower() <= frameRate
+                && mCameraWrapper.getOptions().getPreviewFrameRates().getUpper() >= frameRate) {
+            mCameraWrapper.getOptions().setPreviewMaxFrameRate(frameRate);
+        } else {
+            throw new IllegalArgumentException("FrameRate is out of range.");
+        }
+    }
+
+    @Override
+    public Range<Integer> getPreviewSupportedFrameRates() {
+        return mCameraWrapper.getOptions().getPreviewFrameRates();
     }
 
     @Override
@@ -953,6 +964,8 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
             Log.d(TAG, "mLiveStreamingClient : " + mLiveStreamingClient);
         }
         if (mLiveStreamingClient != null) {
+            // PreviewのFramerateも修正する
+            setMaxFrameRate(framerate);
             mLiveStreamingClient.setVideoEncoder(encoder, width, height, bitrate, framerate);
         }
     }

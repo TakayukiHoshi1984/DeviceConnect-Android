@@ -18,6 +18,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Range;
 
 import org.deviceconnect.android.deviceplugin.host.BuildConfig;
 import org.deviceconnect.android.deviceplugin.host.recorder.HostDeviceLiveStreamRecorder;
@@ -208,6 +209,11 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
     @Override
     public void setMaxFrameRate(double frameRate) {
         mMaxFps = frameRate;
+    }
+
+    @Override
+    public Range<Integer> getPreviewSupportedFrameRates() {
+        return new Range<>(30, 30);
     }
 
     @Override
