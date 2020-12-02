@@ -338,7 +338,7 @@ public class HostMediaRecorderManager {
         }
 
         HostMediaRecorder recorder = getRecorder(id);
-        if (recorder != null) {
+        if (recorder != null && recorder.getState() == HostMediaRecorder.RecorderState.PREVIEW) {
             PreviewServerProvider provider = recorder.getServerProvider();
             if (provider != null) {
                 provider.stopServers();
@@ -356,12 +356,10 @@ public class HostMediaRecorderManager {
         }
 
         HostDeviceLiveStreamRecorder recorder = (HostDeviceLiveStreamRecorder) getRecorder(id);
-        if (recorder != null) {
+        if (recorder != null && recorder.isStreaming()) {
             recorder.stopLiveStreaming();
             PreviewServerProvider provider = ((HostMediaRecorder) recorder).getServerProvider();
-            provider.unregisterBroadcastReceiver();
-            provider.hideNotification(((HostMediaRecorder) recorder).getId());
-
+            provider.stopServers();
         }
     }
     @SuppressWarnings("deprecation")

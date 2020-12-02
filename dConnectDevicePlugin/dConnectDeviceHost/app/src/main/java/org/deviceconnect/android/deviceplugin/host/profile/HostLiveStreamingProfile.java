@@ -85,13 +85,6 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                     Log.d(TAG, "onRequest() : post /start");
                 }
 
-                //レコーダーがセット済みで配信中の場合エラーを返しておく
-                if (mHostDeviceLiveStreamRecorder != null) {
-                    if (mHostDeviceLiveStreamRecorder.isStreaming()) {
-                        MessageUtils.setIllegalDeviceStateError(response, "status is normal(streaming)");
-                        return true;
-                    }
-                }
 
                 final Bundle extras = request.getExtras();
                 if (extras != null) {
@@ -103,6 +96,12 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                     //映像リソースURIからレコーダーを取得する
                     try {
                         mHostDeviceLiveStreamRecorder = getHostDeviceLiveStreamRecorder();
+                        //レコーダーがセット済みで配信中の場合エラーを返しておく
+                        HostMediaRecorder recorder = (HostMediaRecorder) mHostDeviceLiveStreamRecorder;
+                        if (mHostMediaRecorderManager.usingPreviewOrStreamingRecorder(recorder.getId())) {
+                            MessageUtils.setIllegalDeviceStateError(response, "status is normal(streaming or previewing)");
+                            return true;
+                        }
                     } catch (IllegalArgumentException ex) {
                         ex.printStackTrace();
                         //例外(パラメータ)はエラー応答
