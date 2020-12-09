@@ -71,6 +71,10 @@ public class ChromeCastService extends DConnectMessageService implements
     /** MediaPlayerのステータスアップデートフラグ. */
     private boolean mEnableCastMediaPlayerStatusUpdate = false;
     /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
+    /**
      * ChromeCastが接続完了してからレスポンスを返すためのCallbackを返す.
      * @author NTT DOCOMO, INC.
      */
@@ -90,6 +94,8 @@ public class ChromeCastService extends DConnectMessageService implements
         app.getDiscovery().setCallbacks(this);
         app.getController().setResult(this);
         String appMsgUrn = getString(R.string.application_message_urn);
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
 
         int portCount = 0;
         while (portCount < 500) { // Portを決定する
@@ -460,5 +466,23 @@ public class ChromeCastService extends DConnectMessageService implements
                 callback.onResponse(false);
             }
         }
+    }
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
+
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
     }
 }

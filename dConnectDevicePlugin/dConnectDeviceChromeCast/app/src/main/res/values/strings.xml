@@ -19,5 +19,7 @@
     <string name="media_route_menu_title" translatable="false">Play on</string>
     <string name="action_settings" translatable="false">Settings</string>
     <string name="introducing_cast" translatable="false">キャストするChromeCastを選んでください。</string>
+    <string translatable="false" name="local_oauth">プラグイン認可</string>
+    <string translatable="false" name="local_oauth_explain">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
 
 </resources>
