@@ -35,6 +35,10 @@ public class WearDeviceService extends DConnectMessageService implements WearMan
      * Android Wearとの通信を管理するクラス.
      */
     private WearManager mWearManager;
+    /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
 
     @Override
     public void onCreate() {
@@ -43,6 +47,8 @@ public class WearDeviceService extends DConnectMessageService implements WearMan
         mWearManager.addNodeListener(this);
         mWearManager.init();
 
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
         addProfile(new WearServiceDiscoveryProfile(mWearManager, getServiceProvider()));
     }
 
@@ -120,5 +126,25 @@ public class WearDeviceService extends DConnectMessageService implements WearMan
      */
     public WearManager getManager() {
         return mWearManager;
+    }
+
+
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
+
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
     }
 }
