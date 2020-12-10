@@ -18,4 +18,7 @@
     <string name="uvc_settings_online" translatable="false">[ONLINE]</string>
     <string name="uvc_settings_offline" translatable="false">[OFFLINE]</string>
     <string name="uvc_settings_no_device_found" translatable="false">USBカメラが接続されていません。</string>
+
+    <string name="local_oauth" translatable="false">プラグイン認可</string>
+    <string name="local_oauth_explain" translatable="false">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
 </resources>

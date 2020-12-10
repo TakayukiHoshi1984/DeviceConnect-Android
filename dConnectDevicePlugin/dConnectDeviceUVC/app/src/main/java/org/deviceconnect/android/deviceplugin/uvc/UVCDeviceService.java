@@ -61,6 +61,10 @@ public class UVCDeviceService extends DConnectMessageService {
 
     private SSLContext mSSLContext;
     /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
+    /**
      * SSLContext を提供するインターフェース.
      */
     public interface SSLContextCallback {
@@ -120,6 +124,9 @@ public class UVCDeviceService extends DConnectMessageService {
     @Override
     public void onCreate() {
         super.onCreate();
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
+
         registerReceiver(mPermissionReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED));
     }
     @Override
@@ -302,5 +309,23 @@ public class UVCDeviceService extends DConnectMessageService {
                     (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
                     (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
         }
+    }
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
+
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
     }
 }
