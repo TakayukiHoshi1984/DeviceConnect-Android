@@ -34,4 +34,7 @@
     <string name="heart_rate_setting_dialog_error_permission" translatable="false">BLE検索するためのパーミッションが許可されていないために検索できません。\nBluetooth設定画面から位置情報の許可を取得してください。</string>
     <string name="heart_rate_setting_dialog_disable_bluetooth" translatable="false">Bluetoothが無効になっているために検索できません。\nBluetooth設定画面からBluetoothを有効に設定してください。</string>
     <string name="heart_rate_setting_searching" translatable="false">デバイス検索中</string>
+    <string name="local_oauth">プラグイン認可</string>
+    <string name="local_oauth_explain">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+
 </resources>

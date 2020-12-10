@@ -49,6 +49,10 @@ public class HeartRateDeviceService extends DConnectMessageService
      * Instance of HeartRateManager.
      */
     private HeartRateManager mHeartRateManager;
+    /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
 
     /**
      * Received a event that Bluetooth has been changed.
@@ -136,6 +140,8 @@ public class HeartRateDeviceService extends DConnectMessageService
         for (HeartRateDevice device : devices) {
             retrieveService(device);
         }
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
 
         getServiceProvider().addServiceListener(this);
 
@@ -282,5 +288,24 @@ public class HeartRateDeviceService extends DConnectMessageService
      */
     public HeartRateManager getManager() {
         return mHeartRateManager;
+    }
+
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
+
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
     }
 }
