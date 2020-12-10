@@ -4,7 +4,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
+        <Switch
+            android:id="@+id/local_oauth"
+            android:layout_gravity="center_horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="false"
+            android:text="@string/local_oauth"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp"
+            android:layout_marginBottom="24dip"
+            android:textSize="12sp"
+            android:textColor="#888"
+            android:text="@string/local_oauth_explain"/>
+    </LinearLayout>
     <ImageView
         android:id="@+id/iv01"
         android:layout_width="wrap_content"

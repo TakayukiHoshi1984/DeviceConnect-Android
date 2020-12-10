@@ -55,11 +55,17 @@ public class HueDeviceService extends DConnectMessageService {
      * ロガー.
      */
     private final Logger mLogger = Logger.getLogger("hue.dplugin");
+    /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
 
     @Override
     public void onCreate() {
         super.onCreate();
         initHueSDK();
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
@@ -103,7 +109,24 @@ public class HueDeviceService extends DConnectMessageService {
     protected SystemProfile getSystemProfile() {
         return new HueSystemProfile();
     }
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
 
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
+    }
     /**
      * HueSDKを初期化します.
      */

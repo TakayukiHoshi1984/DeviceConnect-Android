@@ -10,9 +10,13 @@ package org.deviceconnect.android.deviceplugin.hue.activity.fragment;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -22,6 +26,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
@@ -34,8 +39,10 @@ import com.philips.lighting.hue.sdk.PHSDKListener;
 import com.philips.lighting.model.PHBridge;
 import com.philips.lighting.model.PHHueParsingError;
 
+import org.deviceconnect.android.deviceplugin.hue.HueDeviceService;
 import org.deviceconnect.android.deviceplugin.hue.db.HueManager;
 import org.deviceconnect.android.deviceplugin.hue.R;
+import org.deviceconnect.android.message.DConnectMessageService;
 
 import java.util.List;
 
@@ -52,7 +59,10 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     /** 再検索ボタン. */
     private Button mSearchButton;
-
+    /**
+     * バインドしたサービス.
+     */
+    private HueDeviceService mBoundService;
     /**
      * hueブリッジのNotificationを受け取るためのリスナー.
      */
@@ -130,14 +140,21 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
             View headerView = inflater.inflate(R.layout.hue_fragment_01_header, null, false);
             listView.addHeaderView(headerView, null, false);
             listView.setAdapter(mAdapter);
+            Switch authSwitch = (Switch) rootView.findViewById(R.id.local_oauth);
+            authSwitch.setEnabled(false);
+            authSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (mBoundService != null) {
+                    mBoundService.setEnableOAuth(isChecked);
+                }
+            });
         }
-
         return rootView;
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        bindMessageService();
 
         HueManager.INSTANCE.addSDKListener(mListener);
 
@@ -153,6 +170,7 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
 
     @Override
     public void onPause() {
+        unbindMessageService();
         // リスナーを解除
         HueManager.INSTANCE.removeSDKListener(mListener);
         super.onPause();
@@ -293,6 +311,59 @@ public class HueFragment01 extends Fragment implements OnClickListener, OnItemCl
         @Override
         public long getItemId(final int position) {
             return 0;
+        }
+    }
+    /**
+     * {@link HueDeviceService} にバインドします.
+     */
+    private void bindMessageService() {
+        Intent intent = new Intent();
+        intent.setClass(getContext(), HueDeviceService.class);
+        getContext().bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    /**
+     * {@link HueDeviceService} からアンバインドします.
+     */
+    private void unbindMessageService() {
+        try {
+            getContext().unbindService(mConnection);
+        } catch (Exception e) {
+            // ignore.
+        }
+    }
+
+    /**
+     * {@link HueDeviceService} とのコネクションの通知を受けるリスナー.
+     */
+    private final ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(final ComponentName name, final IBinder service) {
+            DConnectMessageService.LocalBinder binder = (DConnectMessageService.LocalBinder) service;
+            mBoundService = ((HueDeviceService) binder.getMessageService());
+            if (mBoundService != null) {
+                updateLocalOAuth();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(final ComponentName name) {
+            mBoundService = null;
+        }
+    };
+
+    /**
+     * 認可の設定を更新します.
+     */
+    private void updateLocalOAuth() {
+        if (mBoundService != null) {
+            getActivity().runOnUiThread(() -> {
+                if (mBoundService != null) {
+                    Switch authSwitch = (Switch) getActivity().findViewById(R.id.local_oauth);
+                    authSwitch.setEnabled(true);
+                    authSwitch.setChecked(mBoundService.isEnabledOAuth());
+                }
+            });
         }
     }
 }

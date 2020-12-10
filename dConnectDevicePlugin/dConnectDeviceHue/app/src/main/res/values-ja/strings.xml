@@ -39,4 +39,7 @@
     <string name="hue_dialog_no_connect">ネットワーク接続に失敗しました。</string>
     <string name="hue_dialog_network_error">ネットワークエラー</string>
     <string name="hue_dialog_not_connect_wifi">Wi-Fiに接続されていません。</string>
+    <string name="local_oauth">プラグイン認可</string>
+    <string name="local_oauth_explain">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+
 </resources>
