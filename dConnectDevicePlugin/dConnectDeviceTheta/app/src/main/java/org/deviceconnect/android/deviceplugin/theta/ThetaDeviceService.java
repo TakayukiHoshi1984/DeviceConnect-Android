@@ -76,6 +76,10 @@ public class ThetaDeviceService extends DConnectMessageService implements ThetaD
     private ThetaMediaStreamRecordingProfile mThetaMediaStreamRecording;
     private SSLContext mSSLContext;
     /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
+    /**
      * SSLContext を提供するインターフェース.
      */
     public interface SSLContextCallback {
@@ -146,6 +150,8 @@ public class ThetaDeviceService extends DConnectMessageService implements ThetaD
         mDeviceMgr.startDeviceDetection();
         mClient = new ThetaDeviceClient(mDeviceMgr);
         mFileMgr = new FileManager(this);
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
 
         EventManager.INSTANCE.setController(new MemoryCacheController());
 
@@ -299,5 +305,25 @@ public class ThetaDeviceService extends DConnectMessageService implements ThetaD
                     (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
                     (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
         }
+    }
+
+
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
+
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
     }
 }

@@ -83,4 +83,8 @@
     <string name="theta_error_wrong_password">接続がタイムアウトしました。入力されたパスワードが不正でないかをご確認ください。</string>
     <string name="theta_error_import">THETAデータの取り込みに失敗しました。</string>
     <string name="theta_error_request_permission">パーミッションの許可が取得できませんでした。</string>
+
+    <string name="local_oauth" >プラグイン認可</string>
+    <string name="local_oauth_explain">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+
 </resources>

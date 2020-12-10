@@ -83,4 +83,8 @@
     <string name="theta_error_wrong_password">Connection timed out. Please confirm the entered password.</string>
     <string name="theta_error_import">Failed to import the THETA data.</string>
     <string name="theta_error_request_permission">Failed to get a permission</string>
+
+    <string name="local_oauth" >Plug-in Authorization</string>
+    <string name="local_oauth_explain">※ If enabled, it will show an authorization dialog before using the plugin.</string>
+
 </resources>
