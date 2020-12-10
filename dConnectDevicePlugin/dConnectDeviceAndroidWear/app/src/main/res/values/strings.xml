@@ -5,7 +5,7 @@
     <string name="android_wear_notification_channel_id" translatable="false">org.deviceconnect.android.intent.action.notifiy.androidwear</string>
     <string name="android_wear_notification_channel_title" translatable="false">Device Connect AndroidWear Notification</string>
     <string name="android_wear_notification_channel_desc" translatable="false">DeviceConnectのAndroidWearプラグインの通知</string>
-    <string name="local_oauth">プラグイン認可</string>
-    <string name="local_oauth_explain">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+    <string name="local_oauth" translatable="false">プラグイン認可</string>
+    <string name="local_oauth_explain" translatable="false">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
 
 </resources>

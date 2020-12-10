@@ -78,7 +78,10 @@ public class IRKitDeviceService extends DConnectMessageService implements Detect
 
     /** ロガー. */
     private final Logger mLogger = Logger.getLogger("irkit.dplugin");
-
+    /**
+     * プラグインの設定.
+     */
+    private LocalOAuthSetting mLocalOAuthSetting;
     /** 内部的なブロードキャストレシーバー. */
     private final BroadcastReceiver mLocalBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -148,6 +151,8 @@ public class IRKitDeviceService extends DConnectMessageService implements Detect
         if (WiFiUtil.isOnWiFi(this)) {
             startDetection();
         }
+        mLocalOAuthSetting = new LocalOAuthSetting(getApplicationContext());
+        setUseLocalOAuth(mLocalOAuthSetting.isEnabledOAuth());
 
 
         IntentFilter localFilter = new IntentFilter();
@@ -254,7 +259,24 @@ public class IRKitDeviceService extends DConnectMessageService implements Detect
             service.setOnline(false);
         }
     }
+    /**
+     * Local OAuth の有効・無効を設定します.
+     *
+     * @param enabled Local OAuthを有効にする場合はtrue、それ以外はfalse
+     */
+    public void setEnableOAuth(final boolean enabled) {
+        setUseLocalOAuth(enabled);
+        mLocalOAuthSetting.setEnabledOAuth(enabled);
+    }
 
+    /**
+     * Local OAuth の有効・無効を取得します.
+     *
+     * @return 有効の場合はtrue、無効の場合はfalse
+     */
+    public boolean isEnabledOAuth() {
+        return isUseLocalOAuth();
+    }
 
     /**
      * デバイスリストを更新する.

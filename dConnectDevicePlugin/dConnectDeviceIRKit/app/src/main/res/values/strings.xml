@@ -97,6 +97,9 @@
     <string name="not_open_virtual_device_title" translatable="false">仮想デバイス</string>
     <string name="not_open_virtual_device_message" translatable="false">このデバイスは仮想デバイスのため、さらに仮想デバイスを作ることはできません。</string>
 
+    <string name="local_oauth" translatable="false">プラグイン認可</string>
+    <string name="local_oauth_explain" translatable="false">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+
     <!--
     IRKit Parameters.
     IRKitから取得したAPI KEYを記載してください。
