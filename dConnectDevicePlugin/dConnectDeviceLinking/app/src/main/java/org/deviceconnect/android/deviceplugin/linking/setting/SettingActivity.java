@@ -91,7 +91,9 @@ public class SettingActivity extends AppCompatActivity implements ConfirmationDi
 
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
-        if (item.getItemId() == R.id.menu_setting) {
+        if (item.getItemId() == R.id.menu_localoauth) {
+            transitionLocalOAuth();
+        } else if (item.getItemId() == R.id.menu_setting) {
             transitionLinkingApp();
         } else if (item.getItemId() == R.id.menu_information) {
             transitionAppInform();
@@ -123,6 +125,11 @@ public class SettingActivity extends AppCompatActivity implements ConfirmationDi
         }
     }
 
+    private void transitionLocalOAuth() {
+        Intent intent = new Intent();
+        intent.setClass(this, LocalOAuthSettingActivity.class);
+        startActivity(intent);
+    }
     private void transitionLinkingApp() {
         Intent intent = new Intent();
         intent.setClass(this, LinkingInductionActivity.class);

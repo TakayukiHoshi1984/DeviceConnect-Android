@@ -90,7 +90,13 @@
             android:launchMode="singleInstance"
             android:theme="@style/LinkingTheme">
         </activity>
-
+        <activity
+            android:name="org.deviceconnect.android.deviceplugin.linking.setting.LocalOAuthSettingActivity"
+            android:configChanges="orientation|screenSize"
+            android:label="@string/linking_app_name"
+            android:launchMode="singleInstance"
+            android:theme="@style/LinkingTheme">
+        </activity>
         <activity
             android:name="org.deviceconnect.android.deviceplugin.linking.linking.ConfirmActivity"
             android:configChanges="orientation|screenSize"

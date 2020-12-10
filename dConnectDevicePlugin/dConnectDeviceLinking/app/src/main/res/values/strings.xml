@@ -10,6 +10,7 @@
 
     <string name="activity_setting_tab_paring" translatable="false">ペアリング</string>
     <string name="activity_setting_tab_beacon" translatable="false">ビーコン</string>
+    <string name="activity_setting_local_oauth" translatable="false">プラグイン認可</string>
     <string name="activity_setting_menu" translatable="false">Linkingアプリ誘導</string>
     <string name="activity_setting_menu_app_inform" translatable="false">アプリ情報</string>
     <string name="activity_setting_refresh_devices" translatable="false">Linkingデバイスの更新</string>
@@ -171,4 +172,8 @@
     <string name="linking_beacon_scan_detail_bt_disabled" translatable="false">端末のBluetooth設定がOFF</string>
     <string name="linking_beacon_scan_detail_sda_disabled" translatable="false">Linkingアプリのビーコン設定がOFF</string>
     <string name="linking_beacon_scan_detail_permission_denied" translatable="false">Linkingアプリにてビーコンスキャンに必要なPermissionが未許諾</string>
+
+    <string name="local_oauth" translatable="false">プラグイン認可</string>
+    <string name="local_oauth_explain" translatable="false">※ 有効の場合には、プラグインを使用する前に認可ダイアログを表示します。</string>
+
 </resources>
