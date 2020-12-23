@@ -278,16 +278,13 @@ public class LocalOAuth2Main {
             try {
                 mDb.beginTransaction();
 
-                // パッケージ情報に対応するクライアントIDがすでに登録済なら破棄する
+                // パッケージ情報に対応するクライアントIDがすでに登録済なら再利用する
                 Client client = mClientManager.findByPackageInfo(packageInfo);
-                if (client != null) {
-                    String clientId = client.getClientId();
-                    removeTokenData(clientId);
-                    removeClientData(clientId);
+                if (client == null) {
+                    // クライアントデータを新規生成して返す
+                    client = addClientData(packageInfo);
                 }
                 
-                // クライアントデータを新規生成して返す
-                client = addClientData(packageInfo);
                 clientData = new ClientData(client.getClientId(), String.copyValueOf(client.getClientSecret()));
                 
                 mDb.setTransactionSuccessful();
