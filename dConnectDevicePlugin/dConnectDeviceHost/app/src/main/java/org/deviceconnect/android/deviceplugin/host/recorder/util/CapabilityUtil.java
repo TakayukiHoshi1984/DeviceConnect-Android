@@ -25,13 +25,15 @@ public final class CapabilityUtil {
     private CapabilityUtil() {
     }
 
-    public static void requestPermissions(final Context context, final Handler handler, final PermissionUtility.PermissionRequestCallback callback) {
+    public static void requestPermissions(final Context context, final Handler handler, final PermissionUtility.PermissionRequestCallback callback,
+                                          final boolean forceActivity) {
         PermissionUtility.requestPermissions(context, handler, new String[]{Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE}, callback);
+                Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE}, callback, forceActivity);
     }
 
-    public static void requestPermissions(final Context context, final PermissionUtility.PermissionRequestCallback callback) {
-        requestPermissions(context, new Handler(Looper.getMainLooper()), callback);
+    public static void requestPermissions(final Context context, final PermissionUtility.PermissionRequestCallback callback,
+                                          final boolean forceActivity) {
+        requestPermissions(context, new Handler(Looper.getMainLooper()), callback, forceActivity);
     }
 
     public static void checkCapability(final Context context, final Handler handler, final Callback callback) {

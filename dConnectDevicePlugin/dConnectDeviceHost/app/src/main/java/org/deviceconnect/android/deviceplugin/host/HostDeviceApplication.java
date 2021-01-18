@@ -8,23 +8,16 @@ package org.deviceconnect.android.deviceplugin.host;
 
 import android.app.Activity;
 import android.app.Application;
-import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.deviceconnect.android.logger.AndroidHandler;
-import org.deviceconnect.android.profile.BatteryProfile;
 import org.deviceconnect.android.profile.KeyEventProfile;
 import org.deviceconnect.android.profile.TouchProfile;
-import org.deviceconnect.message.DConnectMessage;
-import org.deviceconnect.message.intent.message.IntentDConnectMessage;
 
-import java.util.logging.Filter;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -36,7 +29,7 @@ import static org.deviceconnect.android.deviceplugin.host.profile.HostTouchProfi
  * 
  * @author NTT DOCOMO, INC.
  */
-public class HostDeviceApplication extends Application implements Application.ActivityLifecycleCallbacks{
+public class HostDeviceApplication extends Application implements Application.ActivityLifecycleCallbacks {
 
     /** Cache retention time (mSec). */
     static final long CACHE_RETENTION_TIME = 10000;
@@ -302,7 +295,6 @@ public class HostDeviceApplication extends Application implements Application.Ac
 
     @Override
     public void onActivityStopped(@NonNull Activity activity) {
-        mNowTopActivityClassName = "";
     }
 
     @Override

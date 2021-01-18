@@ -136,6 +136,6 @@ public class HostDemoSettingFragment extends DemoSettingFragment implements View
     }
 
     private void requestPermission(final Context context, final PermissionUtility.PermissionRequestCallback callback) {
-        PermissionUtility.requestPermissions(context, getMainHandler(), PERMISSIONS, callback);
+        PermissionUtility.requestPermissions(context, getMainHandler(), PERMISSIONS, callback, true);  //必ずUI上から実行される
     }
 }
