@@ -36,35 +36,53 @@ import java.util.logging.Logger;
  * @author NTT DOCOMO, INC.
  */
 public class FileManager {
-    /** ロガー. */
+    /**
+     * ロガー.
+     */
     private final Logger mLogger = Logger.getLogger("org.deviceconnect.dplugin");
 
-    /** バッファサイズを定義. */
+    /**
+     * バッファサイズを定義.
+     */
     private static final int BUF_SIZE = 8192;
 
-    /** ファイルが生存できる有効時間を定義する. */
+    /**
+     * ファイルが生存できる有効時間を定義する.
+     */
     private static final long DEFAULT_EXPIRE = 1000 * 60 * 5;
 
-    /** ファイルが生存できる有効時間. */
+    /**
+     * ファイルが生存できる有効時間.
+     */
     private long mExpire = DEFAULT_EXPIRE;
 
-    /** コンテキスト. */
+    /**
+     * コンテキスト.
+     */
     private Context mContext;
 
-    /** File Provider Class Name. */
+    /**
+     * File Provider Class Name.
+     */
     private String mFileProviderClassName;
 
-    /** authority. */
+    /**
+     * authority.
+     */
     private String mAuthority;
     /**
      * ファイルの保存場所.
      */
     private FileLocation mLocation;
 
-    /** 作業用スレッド */
+    /**
+     * 作業用スレッド
+     */
     private HandlerThread mWorkerThread;
 
-    /** ハンドラー */
+    /**
+     * ハンドラー
+     */
     private Handler mHandler;
 
     /**
@@ -78,8 +96,8 @@ public class FileManager {
 
     /**
      * コンストラクタ.
-     * 
-     * @param context コンテキスト
+     *
+     * @param context      コンテキスト
      * @param fileProvider FileProviderクラス名
      */
     public FileManager(final Context context, final String fileProvider) {
@@ -127,9 +145,13 @@ public class FileManager {
      * @param callback コールバック
      */
     public void checkWritePermission(@NonNull final CheckPermissionCallback callback) {
+        checkWritePermission(callback, false);
+    }
+
+    public void checkWritePermission(@NonNull final CheckPermissionCallback callback, @NonNull final boolean isForceActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PermissionUtility.requestPermissions(mContext, mHandler,
-                    new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE },
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     new PermissionUtility.PermissionRequestCallback() {
                         @Override
                         public void onSuccess() {
@@ -140,7 +162,7 @@ public class FileManager {
                         public void onFail(@NonNull String deniedPermission) {
                             callback.onFail();
                         }
-                    });
+                    }, isForceActivity);
         } else {
             callback.onSuccess();
         }
@@ -148,13 +170,17 @@ public class FileManager {
 
     /**
      * ファイルシステムへの読み込み権限をチェックし、必要であればユーザに権限のリクエストを行う。
-     * 
+     *
      * @param callback コールバック
      */
     public void checkReadPermission(@NonNull final CheckPermissionCallback callback) {
+        checkReadPermission(callback, false);
+    }
+
+    public void checkReadPermission(@NonNull final CheckPermissionCallback callback, @NonNull final boolean isForceActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PermissionUtility.requestPermissions(mContext, mHandler,
-                    new String[] { Manifest.permission.READ_EXTERNAL_STORAGE },
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     new PermissionUtility.PermissionRequestCallback() {
                         @Override
                         public void onSuccess() {
@@ -165,7 +191,7 @@ public class FileManager {
                         public void onFail(@NonNull String deniedPermission) {
                             callback.onFail();
                         }
-                    });
+                    }, isForceActivity);
         } else {
             callback.onSuccess();
         }
@@ -173,7 +199,7 @@ public class FileManager {
 
     /**
      * ファイルを管理するためのベースとなるパスを取得する.
-     * 
+     *
      * @return パス
      */
     @SuppressWarnings("deprecation")
@@ -194,7 +220,7 @@ public class FileManager {
 
     /**
      * デバイスプラグインのファイルコンテンツへのURIを取得する.
-     * 
+     *
      * @return Content URI
      */
     public String getContentUri() {
@@ -203,7 +229,7 @@ public class FileManager {
 
     /**
      * コンテキストを取得する.
-     * 
+     *
      * @return コンテキスト
      */
     public final Context getContext() {
@@ -212,18 +238,18 @@ public class FileManager {
 
     /**
      * ファイルを保存して、アクセスするためのContentURIを返却する.
-     * 
+     * <p>
      * ここで、保存すると返り値にURIが返ってくる。 このURIをFile Profileのuriの値としてDevice Connect
      * Managerに 渡す事で、ファイルのやり取りができるようになる。
-     * 
+     * <p>
      * TODO 既に同じ名前のファイルが存在する場合の処理を考慮すること。
-     * 
+     *
      * @param filename ファイル名
-     * @param data ファイルデータ
+     * @param data     ファイルデータ
      * @return 保存したファイルへのURI
      * @throws IOException ファイルの保存に失敗した場合に発生
      * @deprecated use FileManager#saveFile(String, byte[], SaveFileCallback)
-     *             instead.
+     * instead.
      */
     @Deprecated
     public final String saveFile(final String filename, final byte[] data) throws IOException {
@@ -266,16 +292,16 @@ public class FileManager {
 
     /**
      * ファイルを保存する.
-     * 
+     * <p>
      * ここで、保存すると返り値にURIが返ってくる。 このURIをFile Profileのuriの値としてDevice Connect
      * Managerに 渡す事で、ファイルのやり取りができるようになる。
-     * 
+     *
      * @param filename ファイル名
-     * @param in ストリーム
+     * @param in       ストリーム
      * @return 保存したファイルへのURI
      * @throws IOException ファイルの保存に失敗した場合に発生
      * @deprecated use FileManager#saveFile(String, InputStream,
-     *             SaveFileCallback) instead.
+     * SaveFileCallback) instead.
      */
     @Deprecated
     public final String saveFile(final String filename, final InputStream in) throws IOException {
@@ -322,17 +348,22 @@ public class FileManager {
 
     /**
      * ファイルを保存して、アクセスするためのContentURIを返却する.
-     *
+     * <p>
      * ここで、保存すると返り値にURIが返ってくる。 このURIをFile Profileのuriの値としてDevice Connect
      * Managerに 渡す事で、ファイルのやり取りができるようになる。
      *
-     * @param filename ファイル名
-     * @param data ファイルデータ
+     * @param filename       ファイル名
+     * @param data           ファイルデータ
      * @param forceOverwrite 強制上書きフラグ
-     * @param callback コールバック
+     * @param callback       コールバック
      */
     public final void saveFile(@NonNull final String filename, @NonNull final byte[] data, final boolean forceOverwrite,
-            @NonNull final SaveFileCallback callback) {
+                               @NonNull final SaveFileCallback callback) {
+        saveFile(filename, data, forceOverwrite, callback, false);
+    }
+
+    public final void saveFile(@NonNull final String filename, @NonNull final byte[] data, final boolean forceOverwrite,
+                               @NonNull final SaveFileCallback callback, @NonNull boolean isForceActivity) {
         checkWritePermission(new CheckPermissionCallback() {
             @Override
             public void onSuccess() {
@@ -387,7 +418,7 @@ public class FileManager {
             public void onFail() {
                 callback.onFail(new IOException("Permission WRITE_EXTERNAL_STORAGE not granted."));
             }
-        });
+        }, isForceActivity);
     }
 
     /**
@@ -401,7 +432,11 @@ public class FileManager {
      * @param callback コールバック
      */
     public final void saveFile(@NonNull final String filename, @NonNull final InputStream in,
-            @NonNull final SaveFileCallback callback) {
+                               @NonNull final SaveFileCallback callback) {
+        saveFile(filename, in, callback, false);
+    }
+    public final void saveFile(@NonNull final String filename, @NonNull final InputStream in,
+            @NonNull final SaveFileCallback callback, @NonNull boolean isForceActivity) {
         checkWritePermission(new CheckPermissionCallback() {
             @Override
             public void onSuccess() {
@@ -450,7 +485,7 @@ public class FileManager {
             public void onFail() {
                 callback.onFail(new IOException("Permission WRITE_EXTERNAL_STORAGE not granted."));
             }
-        });
+        }, isForceActivity);
     }
 
     /**
@@ -495,6 +530,9 @@ public class FileManager {
      * @return ファイルの削除に成功した場合はtrue、それ以外はfalse
      */
     public void removeFile(@NonNull final String name, @NonNull final RemoveFileCallback callback) {
+        removeFile(name, callback, false);
+    }
+    public void removeFile(@NonNull final String name, @NonNull final RemoveFileCallback callback, @NonNull boolean isForceActivity) {
         final File file = new File(getBasePath(), name);
         if (file.isDirectory()) {
             callback.onFail(new IOException("Directory can not be removed."));
@@ -513,7 +551,7 @@ public class FileManager {
                 public void onFail() {
                     callback.onFail(new IOException("Permission WRITE_EXTERNAL_STORAGE not granted."));
                 }
-            });
+            }, isForceActivity);
         } else {
             callback.onFail(new IOException("Unknown type."));
         }
@@ -595,6 +633,9 @@ public class FileManager {
      * @param callback コールバック
      */
     public void checkAndRemove(@NonNull final File file, @NonNull final RemoveFileCallback callback) {
+        checkAndRemove(file, callback, false);
+    }
+    public void checkAndRemove(@NonNull final File file, @NonNull final RemoveFileCallback callback, @NonNull boolean isForceActivity) {
         checkWritePermission(new CheckPermissionCallback() {
             @Override
             public void onSuccess() {
@@ -625,7 +666,7 @@ public class FileManager {
             public void onFail() {
                 callback.onFail(new IOException("Permission WRITE_EXTERNAL_STORAGE not granted."));
             }
-        });
+        }, isForceActivity);
     }
 
     private boolean checkAndRemoveInternal(@NonNull final File file, @NonNull final RemoveFileCallback callback) {

@@ -375,7 +375,7 @@ public final class DConnectUtil {
      * @param callback パーミッションの許諾を通知するコールバック
      */
     public static void requestPermission(final Context context, final Handler handler, final PermissionUtility.PermissionRequestCallback callback) {
-        PermissionUtility.requestPermissions(context, handler, PERMISSIONS, callback);
+        PermissionUtility.requestPermissions(context, handler, PERMISSIONS, callback, true);  //必ずUI上から実行される
     }
 
     /**

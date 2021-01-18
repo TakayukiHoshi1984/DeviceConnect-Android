@@ -644,6 +644,7 @@ public class ServiceListActivity extends BaseSettingActivity implements AlertDia
                 SystemProfile.setInterface(request, SystemProfile.INTERFACE_DEVICE);
                 SystemProfile.setAttribute(request, SystemProfile.ATTRIBUTE_WAKEUP);
                 request.putExtra("pluginId", plugin.getPluginId());
+                request.putExtra("forceActivity", true);
                 try {
                     plugin.send(request);
                 } catch (MessagingException e) {

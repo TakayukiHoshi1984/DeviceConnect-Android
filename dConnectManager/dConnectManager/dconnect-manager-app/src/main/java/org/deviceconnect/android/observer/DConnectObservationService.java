@@ -29,6 +29,7 @@ import androidx.annotation.NonNull;
 
 
 import org.deviceconnect.android.activity.PermissionUtility;
+import org.deviceconnect.android.manager.DConnectApplication;
 import org.deviceconnect.android.manager.R;
 import org.deviceconnect.android.observer.activity.WarningDialogActivity;
 import org.deviceconnect.android.observer.receiver.ObserverReceiver;
@@ -162,6 +163,7 @@ public class DConnectObservationService extends Service {
                 startObservation(port, interval);
                 resultReceiver.send(Activity.RESULT_OK, null);
             } else {
+                DConnectApplication app = (DConnectApplication) getApplication();
                 PermissionUtility.requestPermissions(this, new Handler(Looper.getMainLooper()),
                         new String[] { Manifest.permission.READ_EXTERNAL_STORAGE },
                         new PermissionUtility.PermissionRequestCallback() {
@@ -177,7 +179,7 @@ public class DConnectObservationService extends Service {
                                 stopObservation();
                                 stopSelf();
                             }
-                        });
+                        }, app.isForground());
             }
         } else if (ACTION_STOP.equals(action)) {
             stopObservation();

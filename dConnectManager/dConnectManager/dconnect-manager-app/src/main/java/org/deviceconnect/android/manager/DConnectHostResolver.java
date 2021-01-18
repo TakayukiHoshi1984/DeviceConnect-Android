@@ -185,7 +185,8 @@ public class DConnectHostResolver extends AppCompatActivity implements AlertDial
                 getApplicationContext(),
                 mPermissionHandler,
                 PERMISSIONS,
-                callback);
+                callback,
+                true);  // 必ずUI上から実行される
     }
 
     private void startWebServer(final DConnectWebService webService) {
