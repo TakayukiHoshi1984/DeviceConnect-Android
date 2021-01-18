@@ -190,6 +190,8 @@ public abstract class DConnectRequest {
             }
         }
 
+
+        targetIntent.putExtra("forceActivity", mInterface.forceActivity());
         targetIntent.putExtra(IntentDConnectMessage.EXTRA_RECEIVER,
                 new ComponentName(mContext, mInterface.getDConnectBroadcastReceiverClass()));
         targetIntent.setFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);

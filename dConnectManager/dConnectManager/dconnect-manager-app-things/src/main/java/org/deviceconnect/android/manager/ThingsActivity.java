@@ -117,6 +117,11 @@ public class ThingsActivity extends Activity {
             public Class<? extends Activity> getKeywordActivityClass() {
                 return ThingsActivity.this.getClass();
             }
+
+            @Override
+            public boolean forceActivity() {
+                return true;
+            }
         };
 
         mManager.setOnEventListener(new DConnectManager.OnEventListener() {

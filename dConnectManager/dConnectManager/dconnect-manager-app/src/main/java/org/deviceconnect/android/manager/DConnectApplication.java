@@ -6,8 +6,14 @@
  */
 package org.deviceconnect.android.manager;
 
+import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.deviceconnect.android.deviceplugin.host.HostDeviceApplication;
 import org.deviceconnect.android.logger.AndroidHandler;
@@ -27,7 +33,7 @@ import java.util.logging.SimpleFormatter;
  *
  * @author NTT DOCOMO, INC.
  */
-public class DConnectApplication extends HostDeviceApplication {
+public class DConnectApplication extends HostDeviceApplication implements Application.ActivityLifecycleCallbacks {
 
     /**
      * Device Connect システム設定.
@@ -38,6 +44,11 @@ public class DConnectApplication extends HostDeviceApplication {
      * プラグイン管理クラス.
      */
     private DevicePluginManager mPluginManager;
+
+    /**
+     * Managerがフォアグラウンドにいるかどうかのフラグ.
+     */
+    private boolean mIsForeground;
 
     @Override
     public void onCreate() {
@@ -87,13 +98,64 @@ public class DConnectApplication extends HostDeviceApplication {
         Context appContext = getApplicationContext();
         mSettings = new DConnectSettings(appContext);
         mPluginManager = new DevicePluginManager(appContext, DConnectConst.LOCALHOST_DCONNECT);
+        mIsForeground = false;
+        registerActivityLifecycleCallbacks(this);
     }
-
+    @Override
+    public void onTerminate() {
+        unregisterActivityLifecycleCallbacks(this);
+        super.onTerminate();
+    }
     public DConnectSettings getSettings() {
         return mSettings;
     }
 
     public DevicePluginManager getPluginManager() {
         return mPluginManager;
+    }
+
+    public boolean isForground() {
+        return mIsForeground;
+    }
+
+    @Override
+    public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+    }
+
+    @Override
+    public void onActivityStarted(@NonNull Activity activity) {
+        if ("setting.ServiceListActivity".equals(activity.getLocalClassName())) {
+            mIsForeground = true;
+        }
+        super.onActivityStarted(activity);
+    }
+
+    @Override
+    public void onActivityResumed(@NonNull Activity activity) {
+        if ("setting.ServiceListActivity".equals(activity.getLocalClassName())) {
+            mIsForeground = true;
+        }
+        super.onActivityResumed(activity);
+    }
+
+    @Override
+    public void onActivityPaused(@NonNull Activity activity) {
+    }
+
+    @Override
+    public void onActivityStopped(@NonNull Activity activity) {
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
+    }
+
+    @Override
+    public void onActivityDestroyed(@NonNull Activity activity) {
+        if ("setting.ServiceListActivity".equals(activity.getLocalClassName())) {
+            mIsForeground = false;
+        }
+        super.onActivityDestroyed(activity);
+
     }
 }

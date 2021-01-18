@@ -140,7 +140,7 @@ public class DConnectService extends Service {
         mSettings = app.getSettings();
         mSettingProfile = new DConnectSettingProfile();
         mSettingProfile.start(this, R.drawable.on_icon);
-        mManager = new DConnectManager(this, mSettings, app.getPluginManager()) {
+        mManager = new  DConnectManager(this, mSettings, app.getPluginManager()) {
             @Override
             public Class<? extends BroadcastReceiver> getDConnectBroadcastReceiverClass() {
                 return DConnectBroadcastReceiver.class;
@@ -154,6 +154,12 @@ public class DConnectService extends Service {
             @Override
             public Class<? extends Activity> getKeywordActivityClass() {
                 return SettingActivity.class;
+            }
+
+            @Override
+            public boolean forceActivity() {
+                DConnectApplication app = (DConnectApplication) getApplication();
+                return app.isForground();
             }
         };
         mManager.addProfile(mSettingProfile);
@@ -410,6 +416,7 @@ public class DConnectService extends Service {
         SystemProfile.setProfile(request, SystemProfile.PROFILE_NAME);
         SystemProfile.setInterface(request, SystemProfile.INTERFACE_DEVICE);
         SystemProfile.setAttribute(request, SystemProfile.ATTRIBUTE_WAKEUP);
+        request.putExtra("forceActivity", true);
         request.putExtra("pluginId", plugin.getPluginId());
         mExecutor.execute(() -> {
             try {

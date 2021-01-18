@@ -87,10 +87,11 @@ public class GetAccessTokenRequest extends DConnectRequest {
             scopes = parseScopes(scopeParam.toLowerCase()); // XXXX パスの大文字小文字を無視
         }
 
+        boolean forceActivity = mInterface.forceActivity();
         // TODO _type からアプリ or デバイスプラグインかを判別できる？
         ConfirmAuthParams params = new ConfirmAuthParams.Builder().context(mContext).serviceId(serviceId)
                 .clientId(clientId).scopes(scopes).applicationName(applicationName)
-                .isForDevicePlugin(false)
+                .isForDevicePlugin(false).isForceActivity(forceActivity)
                 .keyword(mKeyword)
                 .build();
 

@@ -10,4 +10,5 @@ public interface DConnectInterface {
     Class<? extends BroadcastReceiver> getDConnectBroadcastReceiverClass();
     Class<? extends Activity> getSettingActivityClass();
     Class<? extends Activity> getKeywordActivityClass();
+    boolean forceActivity();
 }
