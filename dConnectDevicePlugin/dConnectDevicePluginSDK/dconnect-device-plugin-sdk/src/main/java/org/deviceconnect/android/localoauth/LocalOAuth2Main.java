@@ -1197,7 +1197,9 @@ public class LocalOAuth2Main {
         declineIntent.setAction(ACTION_OAUTH_DECLINE);
         declineIntent.putExtra(EXTRA_APPROVAL, false);
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        boolean isForceActivity = request.getConfirmAuthParams().isForceActivity();
+
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || isForceActivity) {
             context.startActivity(detailIntent);
 
             request.startTimer(new ConfirmAuthRequest.OnTimeoutCallback() {

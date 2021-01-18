@@ -219,6 +219,7 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
             scopes = getAllProfileNames();
         }
 
+        boolean forceActivity = request.getBooleanExtra("forceActivity", false);
         String applicationName;
         PackageManager pm = getContext().getPackageManager();
         try {
@@ -232,7 +233,7 @@ public class AuthorizationProfile extends DConnectProfile implements Authorizati
         // TODO _typeからアプリorデバイスプラグインかを判別できる？
         ConfirmAuthParams params = new ConfirmAuthParams.Builder().context(getContext()).serviceId(serviceId)
                 .clientId(clientId).scopes(scopes).applicationName(applicationName)
-                .isForDevicePlugin(true) 
+                .isForDevicePlugin(true).isForceActivity(forceActivity)
                 .build();
 
         // Local OAuthでAccessTokenを作成する。
