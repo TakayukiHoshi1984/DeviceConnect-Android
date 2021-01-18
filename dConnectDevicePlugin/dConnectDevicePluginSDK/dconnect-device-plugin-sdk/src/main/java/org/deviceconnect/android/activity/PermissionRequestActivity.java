@@ -56,7 +56,6 @@ public class PermissionRequestActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
             @NonNull int[] grantResults) {
-
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             NotificationManager notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
             if(notificationManager != null) {
@@ -85,7 +84,7 @@ public class PermissionRequestActivity extends Activity {
     }
 
     public static void requestPermissions(@NonNull Context context, @NonNull String[] permissions,
-            @NonNull ResultReceiver resultReceiver) {
+            @NonNull ResultReceiver resultReceiver, @NonNull boolean isActivity) {
         Intent callIntent = new Intent(context, PermissionRequestActivity.class);
         callIntent.putExtra(EXTRA_PERMISSIONS, permissions);
         callIntent.putExtra(EXTRA_CALLBACK, resultReceiver);
@@ -95,7 +94,7 @@ public class PermissionRequestActivity extends Activity {
         callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                 | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || isActivity) {
             context.startActivity(callIntent);
         } else {
             NotificationUtils.createNotificationChannel(context);
