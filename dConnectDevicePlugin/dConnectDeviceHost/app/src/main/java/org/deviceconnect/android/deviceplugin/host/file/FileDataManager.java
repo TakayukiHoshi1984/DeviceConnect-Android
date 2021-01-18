@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * ファイル操作を行うクラス.
  */
+@Deprecated
 public class FileDataManager {
     /** バッファーサイズ. */
     private static final int BUFFER_SIZE = 1024;
