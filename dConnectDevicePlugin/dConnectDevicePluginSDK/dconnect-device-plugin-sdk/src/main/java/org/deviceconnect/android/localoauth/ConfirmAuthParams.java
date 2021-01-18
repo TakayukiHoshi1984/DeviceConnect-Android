@@ -82,6 +82,12 @@ public class ConfirmAuthParams {
 
     private boolean mIsAutoFlag = false;
 
+    /** DeviceConnectManagerが開いている場合はNotificationを経由せずに表示する(Android10以上).
+     * true: 直接開く
+     * false: Notification経由で開く
+     */
+    private boolean mIsForceActivity = false;
+
     /**
      * コンストラクタ.
      * 
@@ -97,6 +103,7 @@ public class ConfirmAuthParams {
         mIsForDevicePlugin = builder.mIsForDevicePlugin;
         mKeyword = builder.mKeyword;
         mIsAutoFlag = builder.mIsAutoFlag;
+        mIsForceActivity = builder.mIsForceActivity;
     }
 
     /**
@@ -199,6 +206,14 @@ public class ConfirmAuthParams {
     }
 
     /**
+     * 強制的にActivityを起動できるかのフラグ.
+     *
+     * @return 強制的にActivityを起動できるかのフラグ
+     */
+    public boolean isForceActivity() {
+        return mIsForceActivity;
+    }
+    /**
      * デバイスプラグイン向け承認画面フラグを設定.
      * 
      * @param isForDevicePlugin デバイスプラグイン向け承認画面フラグ
@@ -254,6 +269,12 @@ public class ConfirmAuthParams {
         private String mKeyword;
 
         private boolean mIsAutoFlag;
+
+        /** DeviceConnectManagerが開いている場合はNotificationを経由せずに表示する(Android10以上).
+         * true: 直接開く
+         * false: Notification経由で開く
+         */
+        private boolean mIsForceActivity;
         /**
          * ConfirmAuthParamsのインスタンスを設定された設定値で生成する.
          * 
@@ -342,7 +363,14 @@ public class ConfirmAuthParams {
             mIsAutoFlag = isAutoFlag;
             return this;
         }
-
+        /** DeviceConnectManagerが開いている場合はNotificationを経由せずに表示する(Android10以上).
+         * true: 直接開く
+         * false: Notification経由で開く
+         */
+        public Builder isForceActivity(final boolean isForceActivity) {
+            mIsForceActivity = isForceActivity;
+            return this;
+        }
         /**
          * キーワードを設定する.
          * @param keyword キーワード

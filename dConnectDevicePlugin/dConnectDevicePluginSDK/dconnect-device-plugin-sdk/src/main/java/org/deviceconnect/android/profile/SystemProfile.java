@@ -85,10 +85,11 @@ public abstract class SystemProfile extends DConnectProfile implements SystemPro
             if (clazz == null) {
                 setUnsupportedError(response);
             } else {
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 Intent i = new Intent(getContext(), clazz);
                 i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 i.putExtra(SETTING_PAGE_PARAMS, param);
-                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                     getContext().startActivity(i);
                 } else {
                     NotificationUtils.createNotificationChannel(getContext());
