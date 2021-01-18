@@ -260,7 +260,7 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
     }
 
     @Override
-    public void requestPermission(PermissionCallback callback) {
+    public void requestPermission(PermissionCallback callback, boolean forceActivity) {
         CapabilityUtil.requestPermissions(mContext, new PermissionUtility.PermissionRequestCallback() {
             @Override
             public void onSuccess() {
@@ -271,7 +271,7 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
             public void onFail(final @NonNull String deniedPermission) {
                 callback.onDisallowed();
             }
-        });
+        }, forceActivity);
     }
 
     @Override
@@ -280,11 +280,11 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
     }
 
     @Override
-    public synchronized void startRecording(final RecordingListener listener) {
+    public synchronized void startRecording(final RecordingListener listener, boolean forceActivity) {
         if (getState() == RecorderState.RECORDING) {
             listener.onFailed(this, "MediaRecorder is already recording.");
         } else {
-            requestPermissions(generateAudioFileName(), listener);
+            requestPermissions(generateAudioFileName(), listener, forceActivity);
         }
     }
 
@@ -357,7 +357,7 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
         return "android_audio_" + mSimpleDateFormat.format(new Date()) + AudioConst.FORMAT_TYPE;
     }
 
-    private void requestPermissions(final String fileName, final RecordingListener listener) {
+    private void requestPermissions(final String fileName, final RecordingListener listener, boolean forceActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PermissionUtility.requestPermissions(mContext, new Handler(Looper.getMainLooper()),
                     new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE},
@@ -373,7 +373,7 @@ public class HostAudioRecorder implements HostMediaRecorder, HostDeviceStreamRec
                             listener.onFailed(HostAudioRecorder.this,
                                     "Permission " + deniedPermission + " not granted.");
                         }
-                    });
+                    }, forceActivity);
         } else {
             startRecordingInternal(fileName, listener);
         }

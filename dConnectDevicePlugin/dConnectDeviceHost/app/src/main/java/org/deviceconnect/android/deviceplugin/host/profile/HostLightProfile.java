@@ -84,6 +84,8 @@ public class HostLightProfile extends LightProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
             PermissionUtility.requestPermissions(mContext,
                     new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.CAMERA},
                     new PermissionUtility.PermissionRequestCallback() {
@@ -108,7 +110,7 @@ public class HostLightProfile extends LightProfile {
                                     "CAMERA permission not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
 
             return false;
         }
@@ -132,6 +134,7 @@ public class HostLightProfile extends LightProfile {
                 MessageUtils.setInvalidRequestParameterError(response, "lightId is not specified.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             PermissionUtility.requestPermissions(mContext,
                     new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.CAMERA},
@@ -171,7 +174,7 @@ public class HostLightProfile extends LightProfile {
                                     "CAMERA permission not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
 
             return false;
         }
@@ -195,6 +198,7 @@ public class HostLightProfile extends LightProfile {
                 MessageUtils.setInvalidRequestParameterError(response, "lightId is not specified.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             PermissionUtility.requestPermissions(mContext,
                     new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.CAMERA},
@@ -228,7 +232,7 @@ public class HostLightProfile extends LightProfile {
                                     "CAMERA permission not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
 
             return false;
         }

@@ -9,6 +9,8 @@ package org.deviceconnect.android.deviceplugin.host.profile;
 
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -78,10 +80,11 @@ public class HostCanvasProfile extends CanvasProfile {
             final String uri = getURI(request);
             final double x = getX(request);
             final double y = getY(request);
+            final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
             if (data == null) {
                 if (uri != null) {
                     if (uri.startsWith("http")) {
-                        drawImage(response, uri, enumMode, x, y);
+                        drawImage(response, uri, enumMode, x, y, forceActivity);
                     } else {
                         MessageUtils.setInvalidRequestParameterError(response, "Invalid uri.");
                     }
@@ -93,7 +96,7 @@ public class HostCanvasProfile extends CanvasProfile {
                 mImageService.execute(new Runnable() {
                     @Override
                     public void run() {
-                        sendImage(data, response, enumMode, x, y);
+                        sendImage(data, response, enumMode, x, y, forceActivity);
                     }
                 });
                 return false;
@@ -110,7 +113,9 @@ public class HostCanvasProfile extends CanvasProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            String className = getApp().getClassnameOfTopActivity();
+            String className = ((HostDeviceApplication) getApp()).getClassnameOfTopActivity();
+            Log.d("ABC", "canvas display:" + className);
+
             if (CanvasProfileActivity.class.getName().equals(className)) {
                 Intent intent = new Intent(CanvasDrawImageObject.ACTION_DELETE_CANVAS);
                 LocalBroadcastManager.getInstance(getContext()).sendBroadcast(intent);
@@ -139,9 +144,9 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param x position
      * @param y position
      */
-    private void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, double x, double y) {
+    private void sendImage(byte[] data, Intent response, CanvasDrawImageObject.Mode enumMode, double x, double y, boolean forceActivity) {
         try {
-            drawImage(response, writeForImage(data), enumMode, x, y);
+            drawImage(response, writeForImage(data), enumMode, x, y, forceActivity);
         } catch (OutOfMemoryError e) {
             MessageUtils.setIllegalDeviceStateError(response, e.getMessage());
         } catch (IOException e) {
@@ -158,7 +163,7 @@ public class HostCanvasProfile extends CanvasProfile {
      * @param x position
      * @param y position
      */
-    private void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, double x, double y) {
+    private void drawImage(Intent response, String uri, CanvasDrawImageObject.Mode enumMode, double x, double y, boolean forceActivity) {
         CanvasDrawImageObject drawObj = new CanvasDrawImageObject(uri, enumMode, x, y);
 
         String className = getApp().getClassnameOfTopActivity();
@@ -171,7 +176,7 @@ public class HostCanvasProfile extends CanvasProfile {
             intent.setClass(getContext(), CanvasProfileActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             drawObj.setValueToIntent(intent);
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                 getContext().startActivity(intent);
             } else {
                 NotificationUtils.createNotificationChannel(getContext());

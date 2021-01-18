@@ -364,7 +364,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     }
 
     @Override
-    public void requestPermission(final PermissionCallback callback) {
+    public void requestPermission(final PermissionCallback callback, final boolean forceActivity) {
         CapabilityUtil.requestPermissions(mContext, new PermissionUtility.PermissionRequestCallback() {
             @Override
             public void onSuccess() {
@@ -375,7 +375,7 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
             public void onFail(final @NonNull String deniedPermission) {
                 callback.onDisallowed();
             }
-        });
+        }, forceActivity);
     }
 
     @Override
@@ -425,12 +425,12 @@ public class Camera2Recorder implements HostMediaRecorder, HostDevicePhotoRecord
     }
 
     @Override
-    public void takePhoto(final @NonNull OnPhotoEventListener listener) {
+    public void takePhoto(final @NonNull OnPhotoEventListener listener, final boolean forceActivity) {
         mRequestHandler.post(() -> takePhotoInternal(listener));
     }
 
     @Override
-    public void startRecording(final RecordingListener listener) {
+    public void startRecording(final RecordingListener listener, final boolean forceActivity) {
         mRequestHandler.post(() -> startRecordingInternal(listener));
     }
 

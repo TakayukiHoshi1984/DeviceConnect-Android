@@ -377,11 +377,11 @@ public class HostConnectionProfile extends ConnectionProfile {
         if (enabled) {
             // enable bluetooth
             if (!mBluetoothAdapter.isEnabled()) {
-
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 Intent intent = new Intent(request);
                 intent.setClass(getContext(), BluetoothManageActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                     this.getContext().startActivity(intent);
                 } else {
                     NotificationUtils.createNotificationChannel(getContext());

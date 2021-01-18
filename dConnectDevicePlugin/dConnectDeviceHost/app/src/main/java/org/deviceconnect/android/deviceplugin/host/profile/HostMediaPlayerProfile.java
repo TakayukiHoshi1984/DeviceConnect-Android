@@ -119,7 +119,8 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
-            mHostMediaPlayerManager.playMedia(response);
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+            mHostMediaPlayerManager.playMedia(response, forceActivity);
             return false;
         }
     };
@@ -194,6 +195,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
                 mHostMediaPlayerManager.putMediaId(response, mediaId);
                 return true;
             } else {
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 PermissionUtility.requestPermissions(getContext(), new Handler(Looper.getMainLooper()),
                     new String[] { Manifest.permission.READ_EXTERNAL_STORAGE },
                     new PermissionUtility.PermissionRequestCallback() {
@@ -217,7 +219,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
                                 "Permission READ_EXTERNAL_STORAGE not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
                 return false;
             }
         }
@@ -234,6 +236,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
         public boolean onRequest(final Intent request, final Intent response) {
             final String serviceId = getServiceID(request);
             final String mediaId = getMediaId(request);
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
             PermissionUtility.requestPermissions(getContext(), new Handler(Looper.getMainLooper()),
                 new String[] { Manifest.permission.READ_EXTERNAL_STORAGE },
                 new PermissionUtility.PermissionRequestCallback() {
@@ -248,7 +251,7 @@ public class HostMediaPlayerProfile extends MediaPlayerProfile {
                             "Permission READ_EXTERNAL_STORAGE not granted.");
                         sendResponse(response);
                     }
-                });
+                }, forceActivity);
             return false;
         }
     };

@@ -452,7 +452,7 @@ public class HostMediaPlayerManager {
      * @param response レスポンス
      * @return セッションID
      */
-    public int playMedia(final Intent response) {
+    public int playMedia(final Intent response, final boolean forceActivity) {
         if (mSetMediaType == MEDIA_TYPE_MUSIC) {
             if (response != null) {
                 setResult(response, DConnectMessage.RESULT_OK);
@@ -504,7 +504,7 @@ public class HostMediaPlayerManager {
                 mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
                 mLogger.info("Launch VideoPlayer activity: uri = " + data);
-                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                     mHostDevicePluginContext.getContext().startActivity(mIntent);
                     sendOnStatusChangeEvent("play");
                 } else {

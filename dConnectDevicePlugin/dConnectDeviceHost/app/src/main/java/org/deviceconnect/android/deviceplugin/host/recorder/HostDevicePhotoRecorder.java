@@ -21,7 +21,7 @@ public interface HostDevicePhotoRecorder {
      *
      * @param listener 写真撮影の結果を受け取るためのリスナー
      */
-    void takePhoto(OnPhotoEventListener listener);
+    void takePhoto(OnPhotoEventListener listener, boolean forceActivity);
 
     /**
      * カメラのライトを ON にする.

@@ -226,6 +226,7 @@ public class HostSettingProfile extends SettingProfile {
                 if (Settings.System.canWrite(getContext())) {
                     onPutDisplayLightInternal(request, response, serviceId, level);
                 } else {
+                    boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                     requestSystemSettingPermission(new ResultReceiver(new Handler(Looper.getMainLooper())) {
                         @Override
                         protected void onReceiveResult(final int resultCode, final Bundle resultData) {
@@ -237,7 +238,7 @@ public class HostSettingProfile extends SettingProfile {
                             }
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
                     return false;
                 }
             } else {
@@ -247,7 +248,7 @@ public class HostSettingProfile extends SettingProfile {
         }
     };
 
-    private void requestSystemSettingPermission(final ResultReceiver resultReceiver) {
+    private void requestSystemSettingPermission(final ResultReceiver resultReceiver, final boolean forceActivity) {
         Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
                 Uri.parse("package:" + getContext().getPackageName()));
 
@@ -257,7 +258,7 @@ public class HostSettingProfile extends SettingProfile {
         callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                 | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || forceActivity) {
             NotificationUtils.createNotificationChannel(getContext());
             NotificationUtils.notify(getContext(), NOTIFICATION_ID, 0, callIntent,
                     getContext().getString(R.string.host_notification_setting_warnning));

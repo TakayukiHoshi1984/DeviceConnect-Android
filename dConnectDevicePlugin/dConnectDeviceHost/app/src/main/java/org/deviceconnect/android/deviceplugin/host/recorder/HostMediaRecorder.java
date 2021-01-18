@@ -263,7 +263,7 @@ public interface HostMediaRecorder {
      *
      * @param callback コールバック
      */
-    void requestPermission(PermissionCallback callback);
+    void requestPermission(PermissionCallback callback, boolean forceActivity);
 
     /**
      * パーミッション結果通知用コールバック.

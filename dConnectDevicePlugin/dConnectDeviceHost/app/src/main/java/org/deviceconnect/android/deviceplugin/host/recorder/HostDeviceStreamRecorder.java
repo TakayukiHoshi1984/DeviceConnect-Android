@@ -26,7 +26,7 @@ public interface HostDeviceStreamRecorder {
      *
      * @param listener リスナー
      */
-    void startRecording(RecordingListener listener);
+    void startRecording(RecordingListener listener, boolean forceActivity);
 
     /**
      * 録画を停止します.

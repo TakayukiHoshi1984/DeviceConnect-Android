@@ -75,6 +75,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
 
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 PermissionUtility.requestPermissions(getContext(),
                         new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.ACCESS_COARSE_LOCATION},
@@ -87,7 +88,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
                                     response.putExtra(GeolocationProfile.PARAM_POSITION, mLocationCache);
                                     sendResponse(response);
                                 } else {
-                                    getLocationManager(response);
+                                    getLocationManager(response, forceActivity);
                                     getGPS(getHighAccuracy(request), response);
                                 }
                             }
@@ -98,7 +99,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
                                         "ACCESS_FINE_LOCATION permission not granted.");
                                 sendResponse(response);
                             }
-                        });
+                        }, forceActivity);
 
                 return false;
             }
@@ -114,13 +115,14 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
 
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 PermissionUtility.requestPermissions(getContext(),
                         new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.ACCESS_COARSE_LOCATION},
                         new PermissionUtility.PermissionRequestCallback() {
                             @Override
                             public void onSuccess() {
-                                getLocationManager(response);
+                                getLocationManager(response, forceActivity);
                                 String serviceId = getServiceID(request);
                                 // イベントの登録
                                 EventError error = EventManager.INSTANCE.addEvent(request);
@@ -142,7 +144,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
                                         "ACCESS_FINE_LOCATION permission not granted.");
                                 sendResponse(response);
                             }
-                        });
+                        }, forceActivity);
 
                 return false;
             }
@@ -158,13 +160,14 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
 
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 PermissionUtility.requestPermissions(getContext(),
                         new Handler(Looper.getMainLooper()), new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.ACCESS_COARSE_LOCATION},
                         new PermissionUtility.PermissionRequestCallback() {
                             @Override
                             public void onSuccess() {
-                                getLocationManager(response);
+                                getLocationManager(response, forceActivity);
                                 // イベントの解除
                                 EventError error = EventManager.INSTANCE.removeEvent(request);
                                 if (error == EventError.NONE) {
@@ -184,7 +187,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
                                         "ACCESS_FINE_LOCATION permission not granted.");
                                 sendResponse(response);
                             }
-                        });
+                        }, forceActivity);
 
                 return false;
             }
@@ -196,7 +199,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
      * 位置情報管理クラスを取得する.
      * @return 位置情報管理クラス
      */
-    private LocationManager getLocationManager(final Intent response) {
+    private LocationManager getLocationManager(final Intent response, final boolean forceActivity) {
         if (mLocationManager == null) {
             mLocationManager = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
         }
@@ -208,7 +211,7 @@ public class HostGeolocationProfile extends GeolocationProfile implements Locati
             Bundle bundle = new Bundle();
             bundle.putParcelable("response", response);
             intent.putExtra("Intent", bundle);
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                 getContext().startActivity(intent);
             } else {
                 NotificationUtils.createNotificationChannel(getContext());

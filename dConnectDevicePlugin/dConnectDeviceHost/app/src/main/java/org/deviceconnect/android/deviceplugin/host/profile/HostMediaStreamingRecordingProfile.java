@@ -97,6 +97,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setInvalidRequestParameterError(response, "target is invalid.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
@@ -149,7 +150,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
             return false;
         }
     };
@@ -169,7 +170,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setInvalidRequestParameterError(response, "target is invalid.");
                 return true;
             }
-
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
                 public void onAllowed() {
@@ -192,7 +193,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }
@@ -284,6 +285,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setInvalidRequestParameterError(response, "target is invalid.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
@@ -297,7 +299,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
             return false;
         }
     };
@@ -445,6 +447,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                         "target does not support take a photo.");
                 return true;
             }
+            final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
@@ -478,7 +481,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                             MessageUtils.setUnknownError(response, errorMessage);
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
                 }
 
                 @Override
@@ -486,7 +489,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }
@@ -513,6 +516,8 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setInvalidRequestParameterError(response, "Another target in using.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
                 public void onAllowed() {
@@ -535,7 +540,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }
@@ -594,6 +599,8 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setInvalidRequestParameterError(response, "target is invalid.");
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
                 public void onAllowed() {
@@ -607,7 +614,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
             return false;
         }
     };
@@ -664,6 +671,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
             MessageUtils.setNotSupportAttributeError(response, "mute is not supported.");
             return true;
         }
+        boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
         recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
             @Override
@@ -691,7 +699,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                 sendResponse(response);
             }
-        });
+        }, forceActivity);
         return false;
     }
 
@@ -729,6 +737,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                         recorder.getName() + " is already running.");
                 return true;
             }
+            final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             final HostDeviceStreamRecorder streamRecorder = (HostDeviceStreamRecorder) recorder;
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
@@ -754,7 +763,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                             mRecorderMgr.sendEventForRecordingChange(getServiceID(request), HostMediaRecorder.RecorderState.ERROR,"",
                                     "", recorder.getStreamMimeType(), errorMessage);
                         }
-                    });
+                    }, forceActivity);
                 }
 
                 @Override
@@ -762,7 +771,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
             return false;
         }
     };
@@ -793,6 +802,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setIllegalDeviceStateError(response, "recorder is stopped already.");
                 return true;
             }
+            final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             final HostDeviceStreamRecorder streamRecorder = (HostDeviceStreamRecorder) recorder;
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
@@ -826,7 +836,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }
@@ -866,6 +876,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setIllegalDeviceStateError(response);
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
@@ -881,7 +892,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }
@@ -922,6 +933,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                 MessageUtils.setIllegalDeviceStateError(response);
                 return true;
             }
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
             recorder.requestPermission(new HostMediaRecorder.PermissionCallback() {
                 @Override
@@ -936,7 +948,7 @@ public class HostMediaStreamingRecordingProfile extends MediaStreamRecordingProf
                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                     sendResponse(response);
                 }
-            });
+            }, forceActivity);
 
             return false;
         }

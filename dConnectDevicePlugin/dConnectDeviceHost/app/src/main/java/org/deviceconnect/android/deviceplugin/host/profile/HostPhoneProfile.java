@@ -86,7 +86,7 @@ public class HostPhoneProfile extends PhoneProfile {
      */
     private final Logger mLogger = Logger.getLogger("host.dplugin");
 
-    private boolean doPrivileged(final Runnable action, final Intent response) {
+    private boolean doPrivileged(final Runnable action, final Intent response, final boolean isForceActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PermissionUtility.requestPermissions(getContext(), new Handler(Looper.getMainLooper()),
                     PERMISSIONS,
@@ -103,7 +103,7 @@ public class HostPhoneProfile extends PhoneProfile {
                                     "CALL_PHONE permission not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, isForceActivity);
             return false;
         }
         action.run();
@@ -120,13 +120,15 @@ public class HostPhoneProfile extends PhoneProfile {
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
             final String phoneNumber = getPhoneNumber(request);
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
             if (phoneNumber != null) {
                 return doPrivileged(new Runnable() {
                     @Override
                     public void run() {
                         onPostCallInternal(request, response, phoneNumber);
                     }
-                }, response);
+                }, response, forceActivity);
             } else {
                 MessageUtils.setInvalidRequestParameterError(response, "phoneNumber is invalid.");
             }
@@ -149,7 +151,7 @@ public class HostPhoneProfile extends PhoneProfile {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                     && !notificationManager.isNotificationPolicyAccessGranted()) {
-
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 requestNotificationPolicyPermission(new ResultReceiver(new Handler(Looper.getMainLooper())) {
                     @Override
                     protected void onReceiveResult(final int resultCode, final Bundle resultData) {
@@ -161,7 +163,7 @@ public class HostPhoneProfile extends PhoneProfile {
                         }
                         sendResponse(response);
                     }
-                });
+                }, forceActivity);
                 return false;
             }
             setPhoneMode(response, mode);
@@ -170,7 +172,7 @@ public class HostPhoneProfile extends PhoneProfile {
         }
     };
 
-    private void requestNotificationPolicyPermission(final ResultReceiver resultReceiver) {
+    private void requestNotificationPolicyPermission(final ResultReceiver resultReceiver, final boolean forceActivity) {
         Intent intent = new Intent(
                 android.provider.Settings
                         .ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
@@ -181,7 +183,7 @@ public class HostPhoneProfile extends PhoneProfile {
         callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP
                 | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || forceActivity) {
             NotificationUtils.createNotificationChannel(getContext());
             NotificationUtils.notify(getContext(), NOTIFICATION_ID, 0, callIntent,
                     getContext().getString(R.string.host_notification_setting_warnning));
@@ -298,6 +300,8 @@ public class HostPhoneProfile extends PhoneProfile {
 
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
             return doPrivileged(() -> {
                 EventError error = EventManager.INSTANCE.addEvent(request);
                 if (error == EventError.NONE) {
@@ -318,7 +322,7 @@ public class HostPhoneProfile extends PhoneProfile {
                             break;
                     }
                 }
-            }, response);
+            }, response, forceActivity);
         }
     };
 
@@ -365,11 +369,12 @@ public class HostPhoneProfile extends PhoneProfile {
         @TargetApi(26)
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
             return doPrivileged(() -> {
                 TelecomManager telecomMgr = (TelecomManager) getContext().getSystemService(Context.TELECOM_SERVICE);
                 telecomMgr.acceptRingingCall();
                 setResult(response, IntentDConnectMessage.RESULT_OK);
-            }, response);
+            }, response, forceActivity);
         }
     };
 
@@ -397,11 +402,12 @@ public class HostPhoneProfile extends PhoneProfile {
         @TargetApi(28)
         @Override
         public boolean onRequest(final Intent request, final Intent response) {
+            boolean forceActivity = request.getBooleanExtra("forceActivity", false);
             return doPrivileged(() -> {
                 TelecomManager telecomMgr = (TelecomManager) getContext().getSystemService(Context.TELECOM_SERVICE);
                 telecomMgr.endCall();
                 setResult(response, IntentDConnectMessage.RESULT_OK);
-            }, response);
+            }, response, forceActivity);
         }
     };
 
@@ -441,7 +447,8 @@ public class HostPhoneProfile extends PhoneProfile {
 
             Uri uri = Uri.parse("tel:" + phoneNumber);
             if (uri != null) {
-                call(uri);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                call(uri, forceActivity);
                 setResult(response, DConnectMessage.RESULT_OK);
             } else {
                 MessageUtils.setInvalidRequestParameterError(response, "phoneNumber is invalid.");
@@ -468,10 +475,10 @@ public class HostPhoneProfile extends PhoneProfile {
         return phoneNumber.matches(pattern);
     }
 
-    private void call(final Uri uri) {
+    private void call(final Uri uri, final boolean forceActivity) {
         Intent intent = new Intent(Intent.ACTION_CALL, uri);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
             this.getContext().startActivity(intent);
         } else {
             NotificationUtils.createNotificationChannel(getContext());

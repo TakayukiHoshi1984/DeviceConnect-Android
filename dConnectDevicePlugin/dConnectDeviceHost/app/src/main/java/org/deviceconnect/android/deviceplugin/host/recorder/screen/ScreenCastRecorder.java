@@ -271,7 +271,7 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
     }
 
     @Override
-    public void requestPermission(final PermissionCallback callback) {
+    public void requestPermission(final PermissionCallback callback, final boolean forceActivity) {
         mScreenCastMgr.requestPermission(new ScreenCastManager.PermissionCallback() {
             @Override
             public void onAllowed() {
@@ -282,7 +282,7 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
             public void onDisallowed() {
                 callback.onDisallowed();
             }
-        });
+        }, forceActivity);
     }
 
     @Override
@@ -308,7 +308,7 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
     }
 
     @Override
-    public void takePhoto(final OnPhotoEventListener listener) {
+    public void takePhoto(final OnPhotoEventListener listener, final boolean forceActivity) {
         mScreenCastMgr.requestPermission(new ScreenCastManager.PermissionCallback() {
             @Override
             public void onAllowed() {
@@ -319,7 +319,7 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
             public void onDisallowed() {
                 listener.onFailedTakePhoto("Media projection is not allowed by user.");
             }
-        });
+        }, forceActivity);
     }
 
     @Override
@@ -328,7 +328,7 @@ public class ScreenCastRecorder implements HostMediaRecorder, HostDevicePhotoRec
     }
 
     @Override
-    public void startRecording(RecordingListener listener) {
+    public void startRecording(RecordingListener listener, boolean forceActivity) {
     }
 
     @Override

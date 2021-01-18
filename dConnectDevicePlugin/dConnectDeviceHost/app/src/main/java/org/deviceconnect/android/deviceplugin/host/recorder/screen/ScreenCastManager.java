@@ -86,7 +86,7 @@ class ScreenCastManager {
      *
      * @param callback 許可の結果を通知するコールバック
      */
-    synchronized void requestPermission(final PermissionCallback callback) {
+    synchronized void requestPermission(final PermissionCallback callback, final boolean forceActivity) {
         if (mMediaProjection != null) {
             callback.onAllowed();
             return;
@@ -119,7 +119,7 @@ class ScreenCastManager {
             }
         });
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
             mContext.startActivity(intent);
         } else {
             // Android 10(Q) からは、バックグラウンドから Activity を起動できなくなったので、

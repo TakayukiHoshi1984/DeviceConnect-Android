@@ -111,6 +111,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                         MessageUtils.setUnknownError(response, ex.getMessage());
                         return true;
                     }
+                    boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder).requestPermission(new HostMediaRecorder.PermissionCallback() {
                         @Override
@@ -176,7 +177,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                             MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                             sendResponse(response);
                         }
-                    });
+                    }, forceActivity);
                     return false;
                 } else {
                     MessageUtils.setInvalidRequestParameterError(response, "parameter not available");
@@ -202,6 +203,8 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                         MessageUtils.setIllegalDeviceStateError(response, "status is not normal(streaming)");
                         return true;
                     }
+                    boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder)
                             .requestPermission(new HostMediaRecorder.PermissionCallback() {
                               @Override
@@ -215,7 +218,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                   MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                                   sendResponse(response);
                               }
-                          });
+                          }, forceActivity);
                     return false;
                 } else {
                     MessageUtils.setIllegalDeviceStateError(response, "status is not normal(streaming)");
@@ -325,6 +328,8 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                 }
 
                 if (mHostDeviceLiveStreamRecorder != null) {
+                    boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+
                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder)
                             .requestPermission(new HostMediaRecorder.PermissionCallback() {
                                 @Override
@@ -339,7 +344,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                                     sendResponse(response);
                                 }
-                            });
+                            }, forceActivity);
                     return false;
                 } else {
                     MessageUtils.setIllegalDeviceStateError(response, "status is not normal(streaming)");
@@ -360,6 +365,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                     Log.d(TAG, "onRequest() : delete /mute");
                 }
                 if (mHostDeviceLiveStreamRecorder != null) {
+                    boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                     ((HostMediaRecorder) mHostDeviceLiveStreamRecorder)
                             .requestPermission(new HostMediaRecorder.PermissionCallback() {
                                 @Override
@@ -374,7 +380,7 @@ public class HostLiveStreamingProfile extends DConnectProfile implements LiveStr
                                     MessageUtils.setUnknownError(response, "Permission for camera is not granted.");
                                     sendResponse(response);
                                 }
-                            });
+                            }, forceActivity);
                     return false;
                 } else {
                     MessageUtils.setIllegalDeviceStateError(response, "status is not normal(streaming)");

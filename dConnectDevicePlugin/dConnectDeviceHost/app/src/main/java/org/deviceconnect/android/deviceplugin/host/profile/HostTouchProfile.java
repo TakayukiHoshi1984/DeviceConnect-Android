@@ -235,7 +235,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
 
@@ -260,7 +261,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH);
@@ -285,7 +287,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_START);
@@ -310,7 +313,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_END);
@@ -335,7 +339,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_DOUBLE_TAP);
@@ -360,7 +365,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_MOVE);
@@ -385,7 +391,8 @@ public class HostTouchProfile extends TouchProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execTouchProfileActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execTouchProfileActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_TOUCH);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mTouchEventBR, filter);
                 setTouchEventFlag(FLAG_ON_TOUCH_CANCEL);
@@ -579,7 +586,7 @@ public class HostTouchProfile extends TouchProfile {
      * @param serviceId service ID.
      * @return Always true.
      */
-    private boolean execTouchProfileActivity(final String serviceId) {
+    private boolean execTouchProfileActivity(final String serviceId, final boolean forceActivity) {
         String mClassName = getApp().getClassnameOfTopActivity();
 
         if (!(TouchProfileActivity.class.getName().equals(mClassName))) {
@@ -587,7 +594,7 @@ public class HostTouchProfile extends TouchProfile {
             mIntent.setClass(getContext(), TouchProfileActivity.class);
             mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                 this.getContext().startActivity(mIntent);
             } else {
                 NotificationUtils.createNotificationChannel(getContext());

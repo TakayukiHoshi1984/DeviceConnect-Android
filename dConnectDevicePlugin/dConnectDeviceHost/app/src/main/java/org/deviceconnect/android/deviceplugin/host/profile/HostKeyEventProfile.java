@@ -107,7 +107,8 @@ public class HostKeyEventProfile extends KeyEventProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execKeyEventActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execKeyEventActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_KEY_CHANGE);
@@ -173,7 +174,8 @@ public class HostKeyEventProfile extends KeyEventProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execKeyEventActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execKeyEventActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_DOWN);
@@ -240,7 +242,8 @@ public class HostKeyEventProfile extends KeyEventProfile {
             // Event registration.
             EventError error = EventManager.INSTANCE.addEvent(request);
             if (error == EventError.NONE) {
-                execKeyEventActivity(serviceId);
+                boolean forceActivity = request.getBooleanExtra("forceActivity", false);
+                execKeyEventActivity(serviceId, forceActivity);
                 IntentFilter filter = new IntentFilter(ACTION_KEYEVENT);
                 LocalBroadcastManager.getInstance(getContext()).registerReceiver(mKeyEventBR, filter);
                 setKeyEventEventFlag(FLAG_ON_UP);
@@ -292,7 +295,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
      * @param serviceId service ID.
      * @return Always true.
      */
-    private boolean execKeyEventActivity(final String serviceId) {
+    private boolean execKeyEventActivity(final String serviceId, final boolean forceActivity) {
         String mClassName = getApp().getClassnameOfTopActivity();
 
         if (!(KeyEventProfileActivity.class.getName().equals(mClassName))) {
@@ -300,7 +303,7 @@ public class HostKeyEventProfile extends KeyEventProfile {
             mIntent.setClass(getContext(), KeyEventProfileActivity.class);
             mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent.putExtra(DConnectMessage.EXTRA_SERVICE_ID, serviceId);
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
                 this.getContext().startActivity(mIntent);
             } else {
                 NotificationUtils.createNotificationChannel(getContext());
