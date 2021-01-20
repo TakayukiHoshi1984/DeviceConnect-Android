@@ -281,7 +281,6 @@ public class LocalOAuth2Main {
                 // パッケージ情報に対応するクライアントIDがすでに登録済なら再利用する
                 Client client = mClientManager.findByPackageInfo(packageInfo);
                 if (client == null) {
-                    // クライアントデータを新規生成して返す
                     client = addClientData(packageInfo);
                 }
                 
