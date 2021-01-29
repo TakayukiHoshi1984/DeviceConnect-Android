@@ -28,4 +28,6 @@
     <string name="activity_nfc_setting_error_write_dialog_title">NFC書き込みエラー</string>
     <string name="activity_nfc_setting_error_write_dialog_message">NFCに書き込むことに失敗しました。\n%1$s</string>
 
+    <string name="tag_notification_warnning">Tagプラグインからの起動要求</string>
+
 </resources>

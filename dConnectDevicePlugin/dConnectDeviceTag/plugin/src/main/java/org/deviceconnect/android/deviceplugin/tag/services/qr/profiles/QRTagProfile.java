@@ -80,6 +80,7 @@ public class QRTagProfile extends DConnectProfile {
                         sendResponse(response);
                     });
                 } else {
+                    final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                     getQRService().readQRCode((result, tagInfo) -> {
                         switch (result) {
                             case TagConstants.RESULT_SUCCESS:
@@ -100,7 +101,7 @@ public class QRTagProfile extends DConnectProfile {
                                 break;
                         }
                         sendResponse(response);
-                    });
+                    }, forceActivity);
                 }
                 return false;
             }
@@ -123,7 +124,7 @@ public class QRTagProfile extends DConnectProfile {
                     MessageUtils.setInvalidRequestParameterError(response);
                     return true;
                 }
-
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 writeQRCode(data, QR_CODE_SIZE, new FileManager.SaveFileCallback() {
                     @Override
                     public void onSuccess(@NonNull String uri) {
@@ -137,7 +138,7 @@ public class QRTagProfile extends DConnectProfile {
                         MessageUtils.setUnknownError(response, throwable.getMessage());
                         sendResponse(response);
                     }
-                });
+                }, forceActivity);
                 return false;
             }
         });
@@ -158,6 +159,7 @@ public class QRTagProfile extends DConnectProfile {
                 switch (error) {
                     case NONE:
                         setResult(response, DConnectMessage.RESULT_OK);
+                        final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
                         getQRService().startReadQRCode((result, tagInfo) -> {
                             switch (result) {
@@ -171,7 +173,7 @@ public class QRTagProfile extends DConnectProfile {
                                     }
                                     break;
                             }
-                        });
+                        }, forceActivity);
                         break;
                     case INVALID_PARAMETER:
                         MessageUtils.setInvalidRequestParameterError(response);
@@ -295,14 +297,15 @@ public class QRTagProfile extends DConnectProfile {
      * @param data QRコードに書き込むテキスト
      * @param size QRコードのサイズ
      * @param callback QRコードの生成結果を通知するコールバック
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    private void writeQRCode(final String data, final int size, final FileManager.SaveFileCallback callback) {
+    private void writeQRCode(final String data, final int size, final FileManager.SaveFileCallback callback, final boolean forceActivity) {
         try {
             Bitmap bitmap = new QRWriter().write(data, size, size);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
             byte[] pngData = baos.toByteArray();
-            getFileManager().saveFile("qr_code.png", pngData, true, callback);
+            getFileManager().saveFile("qr_code.png", pngData, true, callback, forceActivity);
         } catch (WriterException e) {
             callback.onFail(e);
         }

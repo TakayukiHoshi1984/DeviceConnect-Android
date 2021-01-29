@@ -8,12 +8,15 @@ package org.deviceconnect.android.deviceplugin.tag.services.qr;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
+import org.deviceconnect.android.deviceplugin.tag.R;
 import org.deviceconnect.android.deviceplugin.tag.services.TagConstants;
 import org.deviceconnect.android.deviceplugin.tag.services.TagInfo;
 import org.deviceconnect.android.deviceplugin.tag.services.TagService;
 import org.deviceconnect.android.deviceplugin.tag.activity.QRReaderActivity;
 import org.deviceconnect.android.deviceplugin.tag.services.qr.profiles.QRTagProfile;
+import org.deviceconnect.android.util.NotificationUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +27,9 @@ import java.util.Map;
  * @author NTT DOCOMO, INC.
  */
 public class QRService extends TagService {
+    /** Notification Id */
+    private final int NOTIFICATION_QR_ID = 3519;
+
     /**
      * コンテキスト.
      */
@@ -64,22 +70,24 @@ public class QRService extends TagService {
      * 読み込んだ結果はコールバックに返却されます。
      * </p>
      * @param callback コールバック
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    public void readQRCode(final ReaderCallback callback) {
+    public void readQRCode(final ReaderCallback callback, final boolean forceActivity) {
         String requestCode = createRequestCode();
         mReaderCallbackMap.put(requestCode, callback);
-        startQRReaderActivity(requestCode, true);
+        startQRReaderActivity(requestCode, true, forceActivity);
     }
 
     /**
      * QRコードの読み込みを開始します.
      *
      * @param callback コールバック
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    public void startReadQRCode(final ReaderCallback callback) {
+    public void startReadQRCode(final ReaderCallback callback, final boolean forceActivity) {
         String requestCode = createRequestCode();
         mCallback = callback;
-        startQRReaderActivity(requestCode, false);
+        startQRReaderActivity(requestCode, false, forceActivity);
     }
 
     /**
@@ -104,14 +112,22 @@ public class QRService extends TagService {
      *
      * @param requestCode リクエストコード
      * @param once
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    private void startQRReaderActivity(final String requestCode, final boolean once) {
+    private void startQRReaderActivity(final String requestCode, final boolean once, final boolean forceActivity) {
         Intent intent = new Intent();
         intent.setClass(mContext, QRReaderActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.putExtra(TagConstants.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(TagConstants.EXTRA_ONCE, once);
-        mContext.startActivity(intent);
+
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
+            getContext().startActivity(intent);
+        } else {
+            NotificationUtils.createNotificationChannel(getContext());
+            NotificationUtils.notify(getContext(),  NOTIFICATION_QR_ID, 0, intent,
+                    getContext().getString(R.string.tag_notification_warnning));
+        }
     }
 
     /**

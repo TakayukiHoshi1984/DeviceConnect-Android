@@ -58,7 +58,7 @@ public class NFCTagProfile extends DConnectProfile {
             @Override
             public boolean onRequest(final Intent request, final Intent response) {
                 String serviceId = (String) request.getExtras().get("serviceId");
-
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
                 getNFCService().readNFCOnce((result, tagInfo) -> {
                     switch (result) {
                         case TagConstants.RESULT_SUCCESS:
@@ -80,7 +80,7 @@ public class NFCTagProfile extends DConnectProfile {
                             break;
                     }
                     sendResponse(response);
-                });
+                }, forceActivity);
 
                 return false;
             }
@@ -109,6 +109,7 @@ public class NFCTagProfile extends DConnectProfile {
                     MessageUtils.setInvalidRequestParameterError(response);
                     return true;
                 }
+                final boolean forceActivity = request.getBooleanExtra("forceActivity", false);
 
                 getNFCService().writeNFC(data, (result) -> {
                     switch (result) {
@@ -135,7 +136,7 @@ public class NFCTagProfile extends DConnectProfile {
                             break;
                     }
                     sendResponse(response);
-                });
+                }, forceActivity);
                 return false;
             }
         });

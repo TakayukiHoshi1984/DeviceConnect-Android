@@ -9,13 +9,16 @@ package org.deviceconnect.android.deviceplugin.tag.services.nfc;
 import android.content.Context;
 import android.content.Intent;
 import android.nfc.Tag;
+import android.os.Build;
 
+import org.deviceconnect.android.deviceplugin.tag.R;
 import org.deviceconnect.android.deviceplugin.tag.activity.NFCReaderActivity;
 import org.deviceconnect.android.deviceplugin.tag.activity.NFCWriterActivity;
 import org.deviceconnect.android.deviceplugin.tag.services.TagConstants;
 import org.deviceconnect.android.deviceplugin.tag.services.TagInfo;
 import org.deviceconnect.android.deviceplugin.tag.services.TagService;
 import org.deviceconnect.android.deviceplugin.tag.services.nfc.profiles.NFCTagProfile;
+import org.deviceconnect.android.util.NotificationUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +29,9 @@ import java.util.Map;
  * @author NTT DOCOMO, INC.
  */
 public class NFCService extends TagService {
+    /** Notification Id */
+    private final int NOTIFICATION_NFC_ID = 3518;
+
     /**
      * コンテキスト.
      */
@@ -69,11 +75,12 @@ public class NFCService extends TagService {
      *
      * @param data 書き込むデータ
      * @param callback 書き込み結果を受け取るコールバック
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    public void writeNFC(final Map<String, String> data, final WriterCallback callback) {
+    public void writeNFC(final Map<String, String> data, final WriterCallback callback, final boolean forceActivity) {
         String requestCode = createRequestCode();
         mWriterCallbackMap.put(requestCode, callback);
-        startNFCWriterActivity(requestCode, data);
+        startNFCWriterActivity(requestCode, data, forceActivity);
     }
 
     /**
@@ -89,11 +96,12 @@ public class NFCService extends TagService {
      * 一度だけ NFC の読み込みを行います.
      *
      * @param callback コールバック
+     * @param forceActivity フォアグラウンドかどうかの状態
      */
-    public void readNFCOnce(final ReaderCallback callback) {
+    public void readNFCOnce(final ReaderCallback callback, final boolean forceActivity) {
         String requestCode = createRequestCode();
         mReaderCallbackMap.put(requestCode, callback);
-        startNFCReaderActivity(requestCode, true);
+        startNFCReaderActivity(requestCode, true, forceActivity);
     }
 
     @Override
@@ -145,13 +153,19 @@ public class NFCService extends TagService {
      * @param requestCode リクエストコード
      * @param once 一度フラグ
      */
-    private void startNFCReaderActivity(final String requestCode, final boolean once) {
+    private void startNFCReaderActivity(final String requestCode, final boolean once, final boolean forceActivity) {
         Intent intent = new Intent();
         intent.setClass(mContext, NFCReaderActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.putExtra(TagConstants.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(TagConstants.EXTRA_ONCE, once);
-        mContext.startActivity(intent);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
+            getContext().startActivity(intent);
+        } else {
+            NotificationUtils.createNotificationChannel(getContext());
+            NotificationUtils.notify(getContext(),  NOTIFICATION_NFC_ID, 0, intent,
+                    getContext().getString(R.string.tag_notification_warnning));
+        }
     }
 
     /**
@@ -160,7 +174,7 @@ public class NFCService extends TagService {
      * @param requestCode リクエストコード
      * @param data 書き込むデータ
      */
-    private void startNFCWriterActivity(final String requestCode, final Map<String, String> data) {
+    private void startNFCWriterActivity(final String requestCode, final Map<String, String> data, final boolean forceActivity) {
         Intent intent = new Intent();
         intent.setClass(mContext, NFCWriterActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -168,7 +182,13 @@ public class NFCService extends TagService {
         for (String key : data.keySet()) {
             intent.putExtra(key, data.get(key));
         }
-        mContext.startActivity(intent);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || forceActivity) {
+            getContext().startActivity(intent);
+        } else {
+            NotificationUtils.createNotificationChannel(getContext());
+            NotificationUtils.notify(getContext(),  NOTIFICATION_NFC_ID, 0, intent,
+                    getContext().getString(R.string.tag_notification_warnning));
+        }
     }
 
     /**
