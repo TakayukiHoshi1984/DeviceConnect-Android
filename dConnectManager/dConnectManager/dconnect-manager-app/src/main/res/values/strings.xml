@@ -13,6 +13,7 @@
     <string name="activity_launch_message_waiting_for_initialization">Initializing system&#8230;</string>
     <string name="activity_launch_message_launch">Please click the below button\nto launch Device Connect Manager.</string>
     <string name="activity_launch_message_stop">Please click the below button\nto stop Device Connect Manager.</string>
+    <string name="activity_launch_button_launching">Launching...</string>
 
     <!-- ================= SettingsActivity ================= -->
     <string name="activity_settings_server_on_off">Device Connect Manager</string>

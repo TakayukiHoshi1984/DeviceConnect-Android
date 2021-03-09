@@ -7,6 +7,9 @@
 package org.deviceconnect.android.manager;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +19,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.TextUtils;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,6 +30,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.deviceconnect.android.deviceplugin.host.activity.profile.CanvasProfileActivity;
 import org.deviceconnect.android.manager.core.DConnectSettings;
 import org.deviceconnect.android.manager.core.WebSocketInfoManager;
 import org.deviceconnect.android.manager.core.hmac.HmacManager;
@@ -80,16 +86,22 @@ public class DConnectLaunchActivity extends AppCompatActivity {
 
     /** マネージャ本体のサービスがBindされているかどうか. */
     private boolean mIsBind = false;
-
+    private StartingDialogFragment mDialog;
+    long start;
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_ACTION_BAR);
-        getSupportActionBar().hide();
+        start = System.currentTimeMillis();
+        showDownloadDialog();
+        new Thread(() -> {
+            requestWindowFeature(Window.FEATURE_ACTION_BAR);
+            getSupportActionBar().hide();
 
-        mHmacManager = new HmacManager(this);
-        mSettings = ((DConnectApplication) getApplication()).getSettings();
-        processRequest(getIntent());
+            mHmacManager = new HmacManager(this);
+            mSettings = ((DConnectApplication) getApplication()).getSettings();
+            processRequest(getIntent());
+
+        }).start();
     }
 
     private boolean allowExternalStartAndStop() {
@@ -99,7 +111,26 @@ public class DConnectLaunchActivity extends AppCompatActivity {
     private boolean forcedShow(final Intent intent) {
         return intent != null && intent.getData() == null;
     }
+    /**
+     * ダウンロードダイアログを表示します.
+     */
+    private synchronized void showDownloadDialog() {
+        if (mDialog != null) {
+            mDialog.dismiss();
+        }
+        mDialog = new StartingDialogFragment();
+        mDialog.show(getFragmentManager(), "dialog");
+    }
 
+    /**
+     * ダウンロードダイアログを非表示にします.
+     */
+    private synchronized void dismissDownloadDialog() {
+        if (mDialog != null) {
+            mDialog.dismiss();
+            mDialog = null;
+        }
+    }
     private void processRequest(final Intent intent) {
         if (forcedShow(intent)) {
             displayActivity();
@@ -285,19 +316,21 @@ public class DConnectLaunchActivity extends AppCompatActivity {
     }
 
     private void displayActivity() {
-        getSupportActionBar().show();
-        setContentView(R.layout.activity_dconnect_launcher);
-        setTheme(R.style.AppTheme);
-        View root = findViewById(R.id.launcher_root);
-        root.setVisibility(View.VISIBLE);
-        if (BuildConfig.DEBUG) {
-            mLogger.info("Displayed launch activity.");
-        }
+        runOnUiThread(() -> {
+            getSupportActionBar().show();
+            setContentView(R.layout.activity_dconnect_launcher);
+            setTheme(R.style.AppTheme);
+            View root = findViewById(R.id.launcher_root);
+            root.setVisibility(View.VISIBLE);
+            if (BuildConfig.DEBUG) {
+                mLogger.info("Displayed launch activity.");
+            }
 
-        Button cancelButton = findViewById(R.id.button_manager_launcher_cancel);
-        cancelButton.setOnClickListener((v) -> {
-            setResult(RESULT_OK);
-            finish();
+            Button cancelButton = findViewById(R.id.button_manager_launcher_cancel);
+            cancelButton.setOnClickListener((v) -> {
+                setResult(RESULT_OK);
+                finish();
+            });
         });
     }
 
@@ -366,6 +399,9 @@ public class DConnectLaunchActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 if (mBehavior != null) {
                     mBehavior.onManagerBonded(mDConnectService);
+                    long end = System.currentTimeMillis() - start;
+                    Log.d("ABC", "time:" + end);
+                    dismissDownloadDialog();
                 }
             });
         }
@@ -378,5 +414,31 @@ public class DConnectLaunchActivity extends AppCompatActivity {
 
     private interface Task {
         void onManagerBonded(final DConnectService managerService);
+    }
+    /**
+     * Show a dialog of download image.
+     */
+    public static class StartingDialogFragment extends DialogFragment {
+        @Override
+        public Dialog onCreateDialog(final Bundle savedInstanceState) {
+            String title = getString(R.string.activity_launch_button_launch);
+            String msg = getString(R.string.activity_launch_button_launching);
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            LayoutInflater inflater = getActivity().getLayoutInflater();
+            View v = inflater.inflate(R.layout.dialog_progress, null);
+            TextView titleView = v.findViewById(R.id.title);
+            TextView messageView = v.findViewById(R.id.message);
+            titleView.setText(title);
+            messageView.setText(msg);
+            builder.setView(v);
+
+            return builder.create();
+        }
+
+        @Override
+        public void onPause() {
+            dismiss();
+            super.onPause();
+        }
     }
 }
