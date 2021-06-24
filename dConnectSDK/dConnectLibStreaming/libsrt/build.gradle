@@ -35,6 +35,12 @@ android {
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
+        packagingOptions {
+            pickFirst 'lib/armeabi-v7a/libsrt.so'
+            pickFirst 'lib/x86_64/libsrt.so'
+            pickFirst 'lib/x86/libsrt.so'
+            pickFirst 'lib/arm64-v8a/libsrt.so'
+        }
     }
 
     buildTypes {
@@ -93,8 +99,8 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'org.deviceconnect:libmedia:1.2.2'
-//    implementation project(':libmedia')
+//    implementation 'org.deviceconnect:libmedia:1.2.2'
+    implementation project(':libmedia')
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'

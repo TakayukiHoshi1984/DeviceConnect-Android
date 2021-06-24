@@ -4,8 +4,9 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 
-import net.ossrs.rtmp.ConnectCheckerRtmp;
-import net.ossrs.rtmp.SrsFlvMuxer;
+
+import com.pedro.rtmp.rtmp.RtmpClient;
+import com.pedro.rtmp.utils.ConnectCheckerRtmp;
 
 import org.deviceconnect.android.libmedia.BuildConfig;
 import org.deviceconnect.android.libmedia.streaming.IMediaMuxer;
@@ -35,7 +36,7 @@ public class RtmpMuxer implements IMediaMuxer {
     /**
      * RMTP 用のマルチプレクサ.
      */
-    private SrsFlvMuxer mSrsFlvMuxer;
+    private RtmpClient mSrsFlvMuxer;
 
     /**
      * 送信先の URL.
@@ -73,7 +74,7 @@ public class RtmpMuxer implements IMediaMuxer {
      * @return RTMP サーバに接続されている場合はtrue、それ以外はfalse
      */
     private boolean isConnected() {
-        return mSrsFlvMuxer != null && mSrsFlvMuxer.isConnected();
+        return mSrsFlvMuxer != null && mSrsFlvMuxer.isStreaming();
     }
 
     @Override
@@ -111,16 +112,14 @@ public class RtmpMuxer implements IMediaMuxer {
                 latch.countDown();
             }
         };
-
-        mSrsFlvMuxer = new SrsFlvMuxer(rtmpAdapter);
+        mSrsFlvMuxer = new RtmpClient(rtmpAdapter);
         if (videoQuality != null) {
             mSrsFlvMuxer.setVideoResolution(videoQuality.getVideoWidth(), videoQuality.getVideoHeight());
         }
         if (audioQuality != null) {
-            mSrsFlvMuxer.setSampleRate(audioQuality.getSamplingRate());
-            mSrsFlvMuxer.setIsStereo(audioQuality.getChannelCount() == 2);
+            mSrsFlvMuxer.setAudioInfo(audioQuality.getSamplingRate(), audioQuality.getChannelCount() == 2);
         }
-        mSrsFlvMuxer.start(mUrl);
+        mSrsFlvMuxer.connect(mUrl);
 
         // RTMPの配信準備が完了してから、エンコード処理を行わないと処理が進まないので、
         // ここで、配信準備が完了するのを待ちます。
@@ -139,7 +138,9 @@ public class RtmpMuxer implements IMediaMuxer {
 
     @Override
     public void onVideoFormatChanged(MediaFormat newFormat) {
-        mSrsFlvMuxer.setSpsPPs(newFormat.getByteBuffer("csd-0"), newFormat.getByteBuffer("csd-1"));
+        mSrsFlvMuxer.setVideoInfo(newFormat.getByteBuffer("csd-0"),
+                                    newFormat.getByteBuffer("csd-1"),
+                                        null);
         try {
             int width = newFormat.getInteger(MediaFormat.KEY_WIDTH);
             int height = newFormat.getInteger(MediaFormat.KEY_HEIGHT);
@@ -170,7 +171,7 @@ public class RtmpMuxer implements IMediaMuxer {
     @Override
     public void onReleased() {
         if (mSrsFlvMuxer != null) {
-            mSrsFlvMuxer.stop();
+            mSrsFlvMuxer.disconnect();
             mSrsFlvMuxer = null;
         }
     }
@@ -225,6 +226,13 @@ public class RtmpMuxer implements IMediaMuxer {
         public void onAuthSuccessRtmp() {
             if (DEBUG) {
                 Log.d(TAG, "RtmpMuxer::onAuthSuccessRtmp");
+            }
+        }
+
+        @Override
+        public void onConnectionStartedRtmp(String s) {
+            if (DEBUG) {
+                Log.d(TAG, "RtmpMuxer::onConnectionStartedRtmp");
             }
         }
     }
