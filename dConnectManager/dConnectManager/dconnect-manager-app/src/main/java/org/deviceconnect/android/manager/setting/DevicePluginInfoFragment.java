@@ -170,6 +170,7 @@ public class DevicePluginInfoFragment extends BaseSettingFragment {
         Map<String, DevicePluginXmlProfile> profiles = mPluginInfo.getSupportedProfiles();
         if (profiles != null) {
             String locale = Locale.getDefault().getLanguage();
+            mainLayout.removeAllViews();  // プロファイルが重複するため、一度全削除する
             for (String key : profiles.keySet()) {
                 String profileName = key;
                 DevicePluginXmlProfile p = profiles.get(key);
