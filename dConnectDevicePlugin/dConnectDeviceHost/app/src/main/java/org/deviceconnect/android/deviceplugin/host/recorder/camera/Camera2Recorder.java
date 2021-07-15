@@ -185,7 +185,7 @@ public class Camera2Recorder extends AbstractMediaRecorder {
 
             mSettings.setPreviewAudioSource(null);
             mSettings.setPreviewAudioBitRate(64 * 1024);
-            mSettings.setPreviewSampleRate(16000);
+            mSettings.setPreviewSampleRate(44100);
             mSettings.setPreviewChannel(1);
             mSettings.setUseAEC(true);
 

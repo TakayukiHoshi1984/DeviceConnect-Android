@@ -1556,7 +1556,7 @@ public interface HostMediaRecorder extends HostDevicePhotoRecorder, HostDeviceSt
          * @return プレビュー音声のサンプルレート
          */
         public int getPreviewSampleRate() {
-            return mPref.getInteger("preview_audio_sample_rate", 16000);
+            return mPref.getInteger("preview_audio_sample_rate", 44100);
         }
 
         /**

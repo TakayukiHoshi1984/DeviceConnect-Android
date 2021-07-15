@@ -37,7 +37,7 @@ public class UvcH264Recorder extends UvcRecorder {
 
             settings.setPreviewAudioSource(null);
             settings.setPreviewAudioBitRate(64 * 1024);
-            settings.setPreviewSampleRate(16000);
+            settings.setPreviewSampleRate(44100);
             settings.setPreviewChannel(1);
             settings.setUseAEC(true);
 
